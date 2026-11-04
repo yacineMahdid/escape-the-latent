@@ -194,7 +194,8 @@ export async function createRegionScene(ctx, regionId) {
     }
     const pending = mine.find((c) => !isSolved(c));
     // a challenge can say what its giver tells you while it is still locked (content: "locked": [lines])
-    if (pending?.locked) { await speak(id, [].concat(pending.locked)); return; }
+    const lockedOne = mine.find((c) => !isSolved(c) && c.locked);
+    if (lockedOne) { await speak(id, [].concat(lockedOne.locked)); return; }
     if (rec) {
       const lines = (!pending && mine.length) || allSolved() ? (rec.data.lines?.afterSolved || rec.data.lines?.default) : rec.data.lines?.default;
       await speak(id, lines || ['...']);
