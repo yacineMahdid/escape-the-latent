@@ -1,4 +1,5 @@
-// Becancourt's paper map of the Latent: pick where to go. Resolves to a region id or null.
+// Becancourt's map of the small worlds behind the little door. At the door (travel: true) it picks where
+// the door leads and resolves to a region id; from the M key (travel: false) it is only for looking.
 import { openModal, closeModal } from '../../ui/modal.js';
 import { api } from '../../api.js';
 import { getSave, regionState } from '../save.js';
@@ -19,7 +20,7 @@ const TEASERS = [
 const SVGNS = 'http://www.w3.org/2000/svg';
 const el = (tag, attrs = {}, parent) => { const e = document.createElementNS(SVGNS, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); parent?.appendChild(e); return e; };
 
-export async function openMapOverlay() {
+export async function openMapOverlay(_ctx, { travel = true } = {}) {
   const save = getSave();
   const regions = {};
   await Promise.all(REGION_ORDER.map(async (id) => { regions[id] = await api.region(id).catch(() => null); }));
@@ -93,7 +94,9 @@ export async function openMapOverlay() {
     st.textContent = rs.returned ? '✓ Done' : save.currentTask === id ? (rs.artefact ? '✦ Bring it to Becancourt' : '📍 Current task') : '🔒 Locked';
     info.appendChild(st);
     const canGo = rs.returned || save.currentTask === id;
-    const go = document.createElement('button'); go.className = 'etl-btn primary'; go.textContent = canGo ? '✈️ Travel' : '🔒 Locked'; go.title = canGo ? `Travel to ${rg?.region?.name || id}` : 'Locked'; go.disabled = !canGo || !rg;
+    const go = document.createElement('button'); go.className = 'etl-btn primary';
+    if (travel) { go.textContent = canGo ? '🚪 Go' : '🔒 Locked'; go.title = canGo ? `Through the little door to ${rg?.region?.name || id}` : 'Locked'; go.disabled = !canGo || !rg; }
+    else { go.textContent = canGo ? '🚪 Use the little door' : '🔒 Locked'; go.title = canGo ? 'Down the ruler, then the little door in the wall' : 'Locked'; go.disabled = true; }
     go.onclick = () => close(id);
     info.appendChild(go);
   }

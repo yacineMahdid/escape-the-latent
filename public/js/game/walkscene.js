@@ -116,7 +116,7 @@ export function createWalkScene({ engine, world, player, light, fog, background,
 export const dioramaCamera = {
   fov: 32,
   place(camera, c) {
-    const x = Math.max(-24, Math.min(30, c.x));
+    const x = Math.max(-27, Math.min(30, c.x));
     camera.position.set(x, c.y + 6.6, c.z + 19.5);
     camera.lookAt(x, c.y + 1.4, c.z - 3);
   },

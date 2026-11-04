@@ -13,7 +13,7 @@ export function mountHud({ onBook, onMap, onMenu } = {}) {
       <div class="hud-left"><div class="hud-task etl-panel"></div></div>
       <div class="hud-right">
         <div class="hud-artefacts etl-panel" title="Artefacts brought back"></div>
-        <button class="etl-btn hud-book" title="Read the paper, take notes, ask the book">📖 Book <kbd>B</kbd></button>
+        <button class="etl-btn hud-book" title="The Cursed Book of Dimensionality: read the paper, take notes, ask it things">📖 Book <kbd>B</kbd></button>
         <button class="etl-btn hud-map"><span class="hud-map-label">🗺️ Map</span> <kbd>M</kbd></button>
         <button class="etl-btn hud-icon hud-menu" title="Menu (Esc)">☰</button>
       </div>`;

@@ -74,7 +74,7 @@ describe('book: request shape', () => {
     const [persona, paper] = params.system;
     assert.equal(persona.type, 'text');
     assert.equal(persona.cache_control, undefined);
-    assert.match(persona.text, /Umbral Book/);
+    assert.match(persona.text, /Cursed Book of Dimensionality/);
     assert.match(persona.text, /humming with dark energy/);
     assert.match(persona.text, /1 or 2 terse sentences/);
     assert.match(persona.text, /under 90 characters/);

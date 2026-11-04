@@ -1,4 +1,5 @@
-// Jean-Lafontaine de Becancourt's lab: the hub. The Speck stands on his desk. Talk to him, deliver artefacts, open the map.
+// Jean-Lafontaine de Becancourt's lab: the hub. The Speck stands on his desk. Talk to him, deliver artefacts,
+// then climb down the ruler to the little door in the baseboard: behind it are the small (real) worlds.
 import * as THREE from 'three';
 import { createPlayer, loadScientist, scientistStandIn } from '../player.js';
 import { createWalkScene } from '../walkscene.js';
@@ -10,6 +11,7 @@ import { setHud, pulseHud } from '../hud.js';
 import { api } from '../../api.js';
 import { rbox, createRng } from '../../engine/geo.js';
 import { createKit } from '../../engine/kit.js';
+import { buildLittleDoor } from '../../engine/littledoor.js';
 
 export const REGION_ORDER = ['attention', 'clip', 'mamba'];
 
@@ -17,9 +19,9 @@ const SCIENTIST = { name: 'Jean-Lafontaine de Becancourt', color: '#6a5acd' };
 
 const INTRO = [
   'Oh. It\'s awake. I\'m Jean-Lafontaine de Becancourt. Normal size. YOU are a Speck.',
-  'Perfect size for the Latent: tiny worlds folded from famous papers.',
+  'Perfect size for the little door down there. Small worlds behind it. Real ones.',
   'Go in. Bring back REAL knowledge. Not vibes.',
-  'Take this book. It whispers. It helps BARELY.',
+  'Take this: the Cursed Book of Dimensionality. It whispers. It helps. BARELY.',
 ];
 const FINALE = [
   'Three. THREE. From a Speck.',
@@ -131,11 +133,44 @@ export async function createLabScene(ctx) {
   add(new THREE.SphereGeometry(0.28, 12, 10), new THREE.MeshBasicMaterial({ color: 0xfff1c0 }), -2.35, 3.0, 0.6, lampG);
   const lampLight = new THREE.PointLight(0xffe2a8, 18, 16, 1.4); lampLight.position.set(6.4, 2.6, -3.2); root.add(lampLight);
   colliders.push({ type: 'circle', x: 8.8, z: -3.8, r: 1.1 });
-  // the folded paper map: walk to it to travel into the Latent
+  // ---------- the way down: a wooden ruler leaning off the desk's right edge ----------
+  const RAMP = { x0: 10.5, x1: 26.6, z0: 2.5, z1: 4.9 }; // its top surface runs from y 0 to the floor
+  const rulerTex = K.mkTex(1024, 96, (g, w, h) => {
+    g.fillStyle = '#f2d27a'; g.fillRect(0, 0, w, h);
+    g.fillStyle = 'rgba(150,100,40,.18)'; for (let y = 0; y < h; y += 4) g.fillRect(0, y, w, 1);
+    g.fillStyle = '#2b2233'; g.font = 'bold 20px Georgia'; g.textAlign = 'center';
+    for (let i = 0; i <= 120; i++) {
+      const x = 12 + (i * (w - 24)) / 120; const len = i % 10 === 0 ? 34 : i % 5 === 0 ? 24 : 14;
+      g.fillRect(x - 1, 0, 2, len); g.fillRect(x - 1, h - len, 2, len);
+      if (i % 10 === 0) g.fillText(String(i / 4), x, 56);
+    }
+  });
+  {
+    const A = new THREE.Vector2(RAMP.x0, 0), B = new THREE.Vector2(RAMP.x1, FLOOR);
+    const len = A.distanceTo(B), ang = Math.atan2(B.y - A.y, B.x - A.x), T = 0.3;
+    const n = new THREE.Vector2(-Math.sin(ang), Math.cos(ang));
+    const mid = A.clone().add(B).multiplyScalar(0.5).addScaledVector(n, -T / 2);
+    const ruler = add(new THREE.BoxGeometry(len, T, RAMP.z1 - RAMP.z0 + 0.3), [L(0xd9b45f), L(0xd9b45f), L(0xffffff, { map: rulerTex }), L(0xc9a04f), L(0xd9b45f), L(0xd9b45f)], mid.x, mid.y, (RAMP.z0 + RAMP.z1) / 2);
+    ruler.rotation.z = ang;
+  }
+  // ---------- the floor at the Speck's scale: crumpled paper, a wastebasket ----------
+  const paperBall = add(new THREE.IcosahedronGeometry(1.5, 1), L(0xf4efe2, { flatShading: true }), 16.5, FLOOR + 1.2, -9.5);
+  paperBall.scale.set(1, 0.85, 1.05); paperBall.rotation.set(0.4, 0.8, 0.2);
+  colliders.push({ type: 'circle', x: 16.5, z: -9.5, r: 1.6 });
+  const basket = new THREE.Group(); basket.position.set(33.5, FLOOR, -15); root.add(basket);
+  add(new THREE.CylinderGeometry(3.3, 2.8, 7.5, 28, 1, true), L(0x8a9aae, { side: THREE.DoubleSide }), 0, 3.75, 0, basket);
+  add(new THREE.TorusGeometry(3.3, 0.14, 8, 32), L(0x6a7a8e), 0, 7.5, 0, basket).rotation.x = Math.PI / 2;
+  add(new THREE.CylinderGeometry(2.8, 2.8, 0.1, 28), L(0x6a7a8e), 0, 0.05, 0, basket);
+  for (const [dx, dz] of [[-0.8, 0.4], [0.9, -0.6], [0.1, 0.9]]) add(new THREE.IcosahedronGeometry(1.1, 1), L(0xf4efe2, { flatShading: true }), dx, 7.2, dz, basket);
+  colliders.push({ type: 'circle', x: 33.5, z: -15, r: 3.5 });
+  // ---------- the little door in the baseboard, with the map pinned beside it ----------
+  const DOOR = { x: 22, z: -22.9 };
+  const door = buildLittleDoor();
+  door.position.set(DOOR.x, FLOOR, DOOR.z); root.add(door);
   const mapTex = K.mkTex(256, 192, (g, w, h) => { g.fillStyle = '#f6e7c3'; g.fillRect(0, 0, w, h); g.fillStyle = '#7bcd5d'; g.beginPath(); g.ellipse(70, 80, 40, 28, 0, 0, 7); g.fill(); g.fillStyle = '#22cfd8'; g.beginPath(); g.ellipse(170, 60, 36, 24, 0, 0, 7); g.fill(); g.fillStyle = '#f3cf88'; g.beginPath(); g.ellipse(150, 140, 50, 26, 0, 0, 7); g.fill(); g.fillStyle = '#e8566a'; for (const [x, y] of [[70, 80], [170, 60], [150, 140]]) { g.beginPath(); g.arc(x, y, 7, 0, 7); g.fill(); } g.strokeStyle = '#8a5a36'; g.setLineDash([6, 6]); g.lineWidth = 3; g.beginPath(); g.moveTo(70, 80); g.lineTo(170, 60); g.lineTo(150, 140); g.stroke(); });
-  const tent = new THREE.Group(); tent.position.set(7.8, 0, 1.8); tent.rotation.y = -0.5; root.add(tent);
-  for (const side of [-1, 1]) { const pl = add(new THREE.PlaneGeometry(2.6, 1.9), L(0xffffff, { map: mapTex, side: THREE.DoubleSide }), 0, 0.82, side * 0.42, tent); pl.rotation.x = side * 0.45; }
-  colliders.push({ type: 'rect', x0: 6.5, x1: 9.1, z0: 0.9, z1: 2.7 });
+  const pinned = add(new THREE.PlaneGeometry(2.6, 1.95), L(0xffffff, { map: mapTex }), DOOR.x + 3.6, FLOOR + 3.6, -23.92);
+  pinned.rotation.z = -0.05;
+  add(new THREE.SphereGeometry(0.12, 10, 8), L(0xe8566a), DOOR.x + 3.6, FLOOR + 4.45, -23.85);
   // pedestals for the artefacts he keeps
   const shelfSlots = [[-8.3, 0.9], [-6.6, 0.9], [-4.9, 0.9]];
   const CAP_H = 0.36;
@@ -151,9 +186,14 @@ export async function createLabScene(ctx) {
 
   const world = {
     root,
-    zones: [{ x0: -9.9, x1: 9.9, z0: -3.3, z1: 4.8, y: 0 }],
+    zones: [
+      { x0: -9.9, x1: 9.9, z0: -3.3, z1: 4.8, y: 0 },                        // the desk top
+      { x0: 9.9, x1: RAMP.x0, z0: RAMP.z0, z1: RAMP.z1, y: 0 },              // the desk edge at the ruler
+      { ramp: true, axis: 'x', ...RAMP, y0: 0, y1: FLOOR },                   // the ruler
+      { x0: 11.5, x1: 37, z0: -22.3, z1: 9, y: FLOOR },                      // the floor, right of the desk
+    ],
     colliders,
-    update() {},
+    update(dt) { door.userData.update(dt); },
   };
 
   // Jean-Lafontaine de Becancourt: a normal-sized man standing behind his desk
@@ -167,9 +207,9 @@ export async function createLabScene(ctx) {
   setExpr('grumpy');
 
   const player = await createPlayer(save.character);
-  // back from the Latent: pop out next to the paper map
+  // back from a small world: step out of the little door
   const fromLatent = String(save.lastScene || '').startsWith('region:');
-  if (fromLatent) player.place(5.6, 0, 3.4); else player.place(0, 0, 2.6);
+  if (fromLatent) player.place(DOOR.x, FLOOR, -21.3); else player.place(0, 0, 2.6);
 
   const ws = createWalkScene({
     engine: ctx.engine, world, player,
@@ -177,7 +217,13 @@ export async function createLabScene(ctx) {
     background: 0xe9dcc0,
     camera: {
       fov: 48,
-      place(camera, c) { const x = Math.max(-4, Math.min(4, c.x * 0.4)); camera.position.set(x, 6.4, 18.5); camera.lookAt(x, 4.6, -6); },
+      // on the desk: a fixed view with him behind it; going down the ruler blends into a follow camera
+      place(camera, c) {
+        const dx = Math.max(-4, Math.min(4, c.x * 0.4));
+        const t = Math.max(0, Math.min(1, (-c.y - 0.3) / 6)); const k = t * t * (3 - 2 * t);
+        camera.position.set(dx + (c.x - 1.5 - dx) * k, 6.4 + (c.y + 6.8 - 6.4) * k, 18.5 + (c.z + 15.5 - 18.5) * k);
+        camera.lookAt(dx + (c.x + 0.5 - dx) * k, 4.6 + (c.y + 1.3 - 4.6) * k, -6 + (c.z - 4 + 6) * k);
+      },
     },
     actions: {
       book: () => openTaskBook(),
@@ -215,6 +261,7 @@ export async function createLabScene(ctx) {
     else await scientistSays(['Hmm. That map is missing. Somebody ate it.']);
     refreshHud();
     pulseHud('map');
+    toast('🚪 Down the ruler, through the little door', 3600);
   }
 
   async function talkToScientist() {
@@ -245,18 +292,40 @@ export async function createLabScene(ctx) {
     const cur = s.currentTask || nextTask();
     if (!cur) { await scientistSays(['You again. Go be competent elsewhere.']); return; }
     const rg = await region(cur);
-    await scientistSays(rg?.scientist?.reminder || ['The map, Speck. On my desk. GO.']);
+    await scientistSays(rg?.scientist?.reminder || ['The little door, Speck. Down the ruler. GO.']);
   }
 
+  // M: look at the map (travel happens at the little door)
   async function openMap() {
     const s = getSave();
     if (!s.introSeen) { toast('Talk to Becancourt first', 2200); return; }
     const { openMapOverlay } = await import('./map.js');
-    const choice = await openMapOverlay(ctx);
+    await openMapOverlay(ctx, { travel: false });
+  }
+
+  // the little door: pick a world on the pinned map, the door swings open, in you go
+  async function travel() {
+    const s = getSave();
+    if (!s.introSeen) { toast('Talk to Becancourt first', 2200); return; }
+    const { openMapOverlay } = await import('./map.js');
+    const choice = await openMapOverlay(ctx, { travel: true });
     if (!choice) return;
-    // dive into the paper map on the desk
-    await ws.cameraTo([7.4, 2.6, 5.6], [7.8, 0.7, 1.8], 750);
+    door.userData.setOpen(true);
+    await glide(DOOR.x, -22.2, 600);
+    await glide(DOOR.x, -23.6, 500);
     ctx.goto('region', choice);
+  }
+  // move the Speck along a short scripted path (input is frozen while ws.run is busy)
+  function glide(x, z, ms) {
+    const x0 = player.pos.x, z0 = player.pos.z, t0 = performance.now();
+    return new Promise((resolve) => {
+      const step = () => {
+        const u = Math.min(1, (performance.now() - t0) / ms);
+        player.place(x0 + (x - x0) * u, FLOOR, z0 + (z - z0) * u);
+        if (u < 1) requestAnimationFrame(step); else resolve();
+      };
+      requestAnimationFrame(step);
+    });
   }
 
   async function openTaskBook() {
@@ -281,7 +350,7 @@ export async function createLabScene(ctx) {
   }
 
   ws.addInteractable({ label: 'Becancourt', icon: '💬', pos: { x: 0, y: 0, z: -2.8 }, radius: 4.0, promptHeight: 2.6, onInteract: talkToScientist });
-  ws.addInteractable({ label: 'Map', icon: '🗺️', pos: { x: 7.8, y: 0, z: 1.8 }, radius: 2.6, promptHeight: 2.6, onInteract: openMap });
+  ws.addInteractable({ label: 'Little door', icon: '🚪', pos: { x: DOOR.x, y: FLOOR, z: -21.6 }, radius: 2.6, promptHeight: 3.6, onInteract: travel });
   ws.addInteractable({
     label: 'Trophies', icon: '✦', pos: { x: -6.6, y: 0, z: 0.9 }, radius: 2.4, promptHeight: 2.4,
     onInteract: async () => {
@@ -295,10 +364,10 @@ export async function createLabScene(ctx) {
 
   return {
     scene: ws.scene, camera: ws.camera, update: ws.update, dispose: ws.dispose,
-    async onEnter() { await refreshHud(); ws.snapCamera(); if (fromLatent) ws.cameraTo([7.4, 2.6, 5.6], [7.8, 0.7, 1.8], 1); },
+    async onEnter() { await refreshHud(); ws.snapCamera(); if (fromLatent) door.userData.openNow(true); },
     async start() {
       const s = getSave();
-      if (fromLatent) await ws.run(() => ws.cameraFrom([7.4, 2.6, 5.6], [7.8, 0.7, 1.8], 1100));
+      if (fromLatent) setTimeout(() => door.userData.setOpen(false), 450);
       if (!s.introSeen) {
         await ws.run(() => say(['You wake up on a desk. Everything is enormous. Including him.'], { style: 'narration' }));
         await ws.run(talkToScientist);

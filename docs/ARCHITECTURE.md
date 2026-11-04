@@ -15,7 +15,7 @@ Each paper is a **region** on a paper map, rendered as a layered paper diorama
 (Paper Mario world layout, Animal Crossing characters, everything at your
 scale). Each region has a small, child-like story whose problem *is* the
 paper's core idea. You solve it by actually reading the paper (inside the game,
-in your **dark book**), then passing hands-on world puzzles, a Python coding
+in **the Cursed Book of Dimensionality**), then passing hands-on world puzzles, a Python coding
 challenge and an "explain it" conversation graded by Claude. You win an
 **artefact**, bring it back, and Becancourt is (grudgingly) astonished. The game does not hold your hand.
 
@@ -34,7 +34,8 @@ challenge and an "explain it" conversation graded by Claude. You win an
 
 - Full name: **Jean-Lafontaine de Becancourt** (dialogue name tag, his intro).
 - Short name in tight UI (prompts, HUD task, toasts): **Becancourt**.
-- He calls the player "Speck". Latent villagers call him "your giant".
+- He calls the player "Speck". Villagers of the small worlds call him "your giant".
+- The player's book is **the Cursed Book of Dimensionality** ("the Cursed Book" for short; HUD label "Book").
 
 ## Run it
 
@@ -60,7 +61,7 @@ content/regions/*.json  region content (served at /content/regions/<id>.json)
 public/
   index.html            entry; import map; #game canvas host; #ui-root
   css/game.css          base theme variables + shared UI (dialogue, HUD)
-  css/book.css          dark book                                 owner: book
+  css/book.css          the Cursed Book of Dimensionality         owner: book
   css/creator.css       character creator                         owner: creator
   css/terminal.css      python terminal + explain UI              owner: terminal
   css/puzzles.css       world puzzle overlays                     owner: puzzles
@@ -70,7 +71,7 @@ public/
   js/engine/humans.js   human player + scientist models           owner: creator
   js/game/              save, dialogue, scenes (title/lab/map/region/ending) owner: core
   js/ui/modal.js        modal stack (pauses game input)           owner: core
-  js/ui/book.js         dark book: PDF reader, notes, ask         owner: book
+  js/ui/book.js         the Cursed Book: PDF reader, notes, ask   owner: book
   js/ui/creator.js      character creator (photo + manual)        owner: creator
   js/ui/terminal.js     Python challenge terminal                 owner: terminal
   js/ui/explain.js      explain-it conversation UI                owner: terminal
@@ -372,7 +373,7 @@ Besides the paper challenges, every region weaves **basic deep learning
 concepts** (dot products, softmax, cosine similarity, cross-entropy, hidden
 state, ...) into its story. They are small checks posed by inhabitants, always
 relevant to the region's paper and plot. When the player passes one, the
-Umbral Book **records** the concept on its Learned pages, and the game never
+Cursed Book of Dimensionality **records** the concept on its Learned pages, and the game never
 asks about that concept again: later regions that list the same concept treat
 it as already satisfied (the inhabitant just acknowledges it).
 

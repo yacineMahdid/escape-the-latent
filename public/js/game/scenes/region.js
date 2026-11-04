@@ -1,6 +1,6 @@
 // A paper region: diorama + inhabitants + stations + the challenge chain from content/regions/<id>.json.
 import * as THREE from 'three';
-import { buildDiorama, ANCHORS } from '../../engine/diorama.js';
+import { buildDiorama, ANCHORS, DOOR_POS } from '../../engine/diorama.js';
 import { buildVillager } from '../../engine/villagers.js';
 import { createPlayer } from '../player.js';
 import { createWalkScene, dioramaCamera } from '../walkscene.js';
@@ -23,8 +23,8 @@ export async function createRegionScene(ctx, regionId) {
   const world = buildDiorama(region.region.biome, { seed: hashSeed(regionId) });
   const player = await createPlayer(save.character);
   const st = regionState(regionId);
-  const arrival = ANCHORS.arrival;
-  player.place(arrival[0], arrival[1], arrival[2]);
+  // you step out of the little door at the far left
+  player.place(DOOR_POS.x + 0.3, 0, DOOR_POS.z + 1.6);
 
   const ws = createWalkScene({
     engine: ctx.engine, world, player, light: world.biome.light, fog: world.biome.fog, camera: dioramaCamera,
@@ -75,7 +75,7 @@ export async function createRegionScene(ctx, regionId) {
     world.colliders.push({ type: 'circle', x: a[0], z: a[2], r: 0.85 });
     ws.addInteractable({ label: s.label || 'Look', icon: STATION_ICONS[s.kind] || '⚙️', pos: { x: a[0], y: a[1], z: a[2] + 0.6 }, radius: 2.2, onInteract: () => talkTo(s.id) });
   }
-  ws.addInteractable({ label: 'Back to the lab', icon: '✈️', pos: { x: world.signpost.x, y: 0, z: world.signpost.z }, onInteract: () => leave() });
+  ws.addInteractable({ label: 'Little door', icon: '🚪', pos: { x: world.signpost.x, y: 0, z: world.signpost.z }, radius: 2.0, promptHeight: 3.8, onInteract: () => leave() });
 
   // ---------- the challenge chain ----------
   const challenges = region.challenges || [];
@@ -103,7 +103,7 @@ export async function createRegionScene(ctx, regionId) {
     // concepts the book already knows: acknowledge once, never ask again
     for (const f of fundamentals.filter((x) => x.giver === id && !solved()[x.id] && isLearned(x.concept))) {
       updateSave(() => { regionState(regionId).solved[f.id] = true; });
-      await speak(id, f.known || [`Your book already knows ${f.title}.`]);
+      await speak(id, f.known || [`The Cursed Book already knows ${f.title}.`]);
     }
     const mine = chain.filter((c) => c.giver === id);
     const next = mine.find(ready);
@@ -274,14 +274,30 @@ export async function createRegionScene(ctx, regionId) {
         await itemGet(region.artefact?.name || 'Artefact', region.artefact?.description || '');
         world.setGateOpen(true);
         setHud({ task: `Bring ${theName(region.artefact?.name)} to Becancourt`, artefacts: getSave().artefacts });
-        toast('Bring it to Becancourt: signpost, far left', 3600); pulseHud('map');
+        toast('Bring it to Becancourt: the little door, far left', 3600); pulseHud('map');
       },
     });
   }
 
   async function leave() {
     const choice = await ask('Back to the lab?', ['Go', 'Stay']);
-    if (choice === 0) ctx.goto('lab');
+    if (choice !== 0) return;
+    // walk to the little door, it opens, through you go
+    world.door?.userData.setOpen(true);
+    await glide(DOOR_POS.x + 0.3, DOOR_POS.z + 1.2, 450);
+    await glide(DOOR_POS.x + 0.3, DOOR_POS.z - 0.2, 450);
+    ctx.goto('lab');
+  }
+  function glide(x, z, ms) {
+    const x0 = player.pos.x, z0 = player.pos.z, t0 = performance.now();
+    return new Promise((resolve) => {
+      const step = () => {
+        const u = Math.min(1, (performance.now() - t0) / ms);
+        player.place(x0 + (x - x0) * u, 0, z0 + (z - z0) * u);
+        if (u < 1) requestAnimationFrame(step); else resolve();
+      };
+      requestAnimationFrame(step);
+    });
   }
 
   applyStages();
@@ -290,6 +306,8 @@ export async function createRegionScene(ctx, regionId) {
   return {
     scene: ws.scene, camera: ws.camera, update: ws.update, dispose: ws.dispose,
     async onEnter() {
+      world.door?.userData.openNow(true); // you just came through it
+      setTimeout(() => world.door?.userData.setOpen(false), 500);
       setHud({ place: region.region.name, task: st.artefact && !st.returned ? `Bring ${theName(region.artefact?.name)} to Becancourt` : (region.scientist?.taskTitle || ''), artefacts: getSave().artefacts, mapLabel: 'Leave' });
       ws.snapCamera();
     },
@@ -299,7 +317,7 @@ export async function createRegionScene(ctx, regionId) {
         updateSave(() => { regionState(regionId).arrived = true; });
         await ws.run(() => say(region.story?.arrival || [], { style: 'narration' }));
         pulseHud('book');
-        toast('📖 The paper is in your book (B)', 3600);
+        toast('📖 The paper is in the Cursed Book (B)', 3600);
       }
     },
   };

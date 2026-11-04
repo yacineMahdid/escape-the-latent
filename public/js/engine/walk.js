@@ -5,7 +5,8 @@ const STEP = 0.45;
 
 export function surfaceY(zone, x, z) {
   if (zone.ramp) {
-    const t = (z - zone.z0) / (zone.z1 - zone.z0);
+    // along z by default (y0 at z0, y1 at z1); axis: 'x' slopes along x instead (y0 at x0, y1 at x1)
+    const t = zone.axis === 'x' ? (x - zone.x0) / (zone.x1 - zone.x0) : (z - zone.z0) / (zone.z1 - zone.z0);
     return zone.y0 + (zone.y1 - zone.y0) * t;
   }
   if (zone.arch) {

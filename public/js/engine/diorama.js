@@ -2,9 +2,13 @@
 // stream, back terrace, hilltop, right step, hedge with a gate) dressed by biome.
 // Returns the world group plus walkable zones, colliders and named anchors.
 import * as THREE from 'three';
+import { buildLittleDoor } from './littledoor.js';
 import { BIOMES } from './biomes.js';
 import { createKit } from './kit.js';
 import { createRng, rbox, V3 } from './geo.js';
+
+// the little door stands at the far left of every small world (the player arrives in front of it)
+export const DOOR_POS = { x: -33.4, z: -1.5 };
 
 export const ANCHORS = {
   arrival: [-33, 0, 1.6],
@@ -309,15 +313,13 @@ export function buildDiorama(biomeId, { seed = 11, fences = true } = {}) {
 
   // ---------------- props ----------------
   function flower(x, y, z, c, s = 1) { add(new THREE.CylinderGeometry(0.03 * s, 0.03 * s, 0.4 * s, 5), L(0x3d9a4e), x, y + 0.2 * s, z); const pm = L(c); for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; add(new THREE.SphereGeometry(0.09 * s, 8, 6), pm, x + Math.cos(a) * 0.11 * s, y + 0.42 * s, z + Math.sin(a) * 0.11 * s); } add(new THREE.SphereGeometry(0.07 * s, 8, 6), L(0xffe14d), x, y + 0.44 * s, z); }
-  const flowerOk = (x, z) => !Object.values(ANCHORS).some(([ax, , az]) => Math.hypot(ax - x, az - z) < 1.3);
+  const flowerOk = (x, z) => !Object.values(ANCHORS).some(([ax, , az]) => Math.hypot(ax - x, az - z) < 1.3) && Math.hypot(DOOR_POS.x - x, DOOR_POS.z - z) > 2.6;
   for (let i = 0; i < B.flowerN; i++) { const x = -36 + r() * 78, z = -0.2 - r() * 2.6; if ((x > 9 && x < 14) || !flowerOk(x, z)) continue; flower(x, 0, z, B.flowers[i % B.flowers.length]); }
   for (let i = 0; i < B.flowerN * 0.4; i++) { const x = -36 + r() * 42, z = -6 + r() * -1; if (!flowerOk(x, z)) continue; flower(x, 1.7, z, B.flowers[i % B.flowers.length]); }
-  // the travel signpost at the arrival point
-  const signpost = grp(-35.2, 0, 0.6);
-  { add(new THREE.CylinderGeometry(0.1, 0.12, 2.2, 8), L(0x8a5a36), 0, 1.1, 0, signpost);
-    const s = new THREE.Shape(); s.moveTo(-0.95, -0.32); s.lineTo(0.7, -0.32); s.lineTo(1.05, 0); s.lineTo(0.7, 0.32); s.lineTo(-0.95, 0.32);
-    const board = add(new THREE.ExtrudeGeometry(s, { depth: 0.1, bevelEnabled: true, bevelSize: 0.04, bevelThickness: 0.04 }), L(BIOME === 'dusk' ? 0x9a8478 : 0xf6d79a), 0.1, 1.75, 0.05, signpost); board.rotation.y = Math.PI;
-    add(new THREE.SphereGeometry(0.14, 10, 8), L(0xe8566a), 0, 2.28, 0, signpost); circle(-35.2, 0.6, 0.45); }
+  // the little door at the arrival point: the way in from (and back to) Becancourt's lab
+  const littleDoor = buildLittleDoor({ standalone: true });
+  littleDoor.position.set(DOOR_POS.x, 0, DOOR_POS.z); root.add(littleDoor);
+  rect(DOOR_POS.x - 1.75, DOOR_POS.x + 1.75, DOOR_POS.z - 0.9, DOOR_POS.z + 0.55);
   function well(x, z, roofCol) { add(new THREE.CylinderGeometry(0.8, 0.85, 0.8, 14), L(0xffffff, { map: K.rep(K.wallTex('#d9d3c8', '#a9a397', 'brick'), 1.5, 0.5) }), x, 0.4, z); add(new THREE.CylinderGeometry(0.62, 0.62, 0.05, 14), L(BIOME === 'snow' ? 0xd8f0ff : 0x4fc1ee), x, 0.78, z); for (const sx of [-0.7, 0.7]) add(new THREE.CylinderGeometry(0.06, 0.06, 1.5, 6), L(0x8a5a36), x + sx, 1.2, z); const wr = add(new THREE.ConeGeometry(1.1, 0.7, 4), L(roofCol), x, 2.2, z); wr.rotation.y = Math.PI / 4; circle(x, z, 1.0); }
   const lampLights = [];
   function lamp(x, y, z, col = 0xfff0b0, light = true) { add(new THREE.CylinderGeometry(0.06, 0.08, 2.4, 8), L(0x3a3440), x, y + 1.2, z); add(new THREE.SphereGeometry(0.2, 12, 10), new THREE.MeshBasicMaterial({ color: col }), x, y + 2.5, z); add(new THREE.ConeGeometry(0.3, 0.25, 8), L(0x3a3440), x, y + 2.75, z); if (light) { const pl = new THREE.PointLight(col, BIOME === 'dusk' ? 5 : 2.5, 7, 1.4); pl.position.set(x, y + 2.4, z + 0.3); root.add(pl); lampLights.push(pl); } circle(x, z, 0.25); }
@@ -397,10 +399,11 @@ export function buildDiorama(biomeId, { seed = 11, fences = true } = {}) {
 
   return {
     root, biome: B, biomeId, zones, colliders, anchors: ANCHORS,
-    signpost: { x: -35.2, z: 0.6 },
+    signpost: { x: DOOR_POS.x, z: DOOR_POS.z + 1.4 }, // where to stand to use the little door
+    door: littleDoor,
     gatePos: { x: 21, z: -12.6 },
     setGateOpen(open) { seal.visible = !open; const c = colliders.find((k) => k.type === 'rect' && k.x0 === 21 - 1.2); if (c) c.disabled = open; },
-    update(dt, t) { for (const u of updaters) u(dt, t); },
+    update(dt, t) { for (const u of updaters) u(dt, t); littleDoor.userData.update(dt); },
     makeFlower: (x, y, z, c, s) => flower(x, y, z, c, s),
     kit: K,
   };

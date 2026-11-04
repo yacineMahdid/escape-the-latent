@@ -35,7 +35,7 @@ Then open http://localhost:3000.
 
 The key powers three things, all on the server (the key never reaches the browser):
 
-* **The Umbral Book** answers your questions about the paper, tersely, and refuses
+* **The Cursed Book of Dimensionality** answers your questions about the paper, tersely, and refuses
   anything that would solve a challenge for you.
 * **Your character** is generated from a photo you give it (sent once, never stored).
 * **Explanations** you give to villagers are graded against a rubric.
@@ -48,7 +48,7 @@ that only mutters cryptic hints, and keyword-based grading.
 * Move with the arrow keys or WASD. Up and down walk deeper or closer: paths,
   stairs and bridges lead to other layers of the diorama.
 * **E** or **Space** talks to villagers and uses things.
-* **B** opens the Umbral Book: the real arXiv PDF, highlights and notes, an Ask tab,
+* **B** opens the Cursed Book of Dimensionality: the real arXiv PDF, highlights and notes, an Ask tab,
   and the **Learned** pages where the book records basic concepts you have shown
   you understand (it never asks you about those again).
 * **M** opens Becancourt's map in the lab, or leaves a region.

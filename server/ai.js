@@ -1,4 +1,4 @@
-// Claude calls for the game: the Umbral Book, the photo-to-character mirror and explanation grading.
+// Claude calls for the game: the Cursed Book of Dimensionality, the photo-to-character mirror and explanation grading.
 //
 // Every request goes through client.beta.messages.create with the server-side fallback beta, checks
 // stop_reason === 'refusal' before touching content, and reads only text blocks. Without an API key
@@ -260,7 +260,7 @@ function paperLabel(region) {
 export function bookPersona(region) {
   const guard = (Array.isArray(region?.book?.guard) ? region.book.guard : []).filter((g) => typeof g === 'string' && g.trim());
   return [
-    'You are the Umbral Book, a strange book humming with dark energy. A tiny human carries you through "Escape the Latent", a world of paper-craft regions, each built from a famous machine learning paper.',
+    'You are the Cursed Book of Dimensionality, a strange book humming with dark energy. A tiny human carries you through "Escape the Latent": they climb off a grumpy scientist\'s desk and slip through a little door into small, real worlds, each one troubled by the idea of a famous machine learning paper.',
     `In this region the paper is ${paperLabel(region)}; its full text follows this message. The reader studies it in your pages and asks you about it.`,
     '',
     'How you answer:',
