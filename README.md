@@ -64,3 +64,13 @@ server, the UI modules and the region content files in `content/regions/`.
 ```bash
 npm test        # server tests (offline, with a stubbed Claude client)
 ```
+
+With the server running, every world puzzle can be solve-tested in a headless
+browser (needs Playwright):
+
+```bash
+BASE=http://localhost:3000 npm run test:puzzles
+```
+
+Dev pages: `/dev/puzzle.html?region=attention&challenge=c1` opens one puzzle on
+its own, `/dev/kit.html` shows the shared puzzle board kit.
