@@ -9,28 +9,28 @@
   "region": {
     "name": "Attendale",
     "biome": "meadow",
-    "tagline": "A village of words, a weary postduck and an unfinished Bell."
+    "tagline": "A village of words and an unfinished Bell."
   },
   "scientist": {
     "taskTitle": "Bring back the Listening Bell",
     "briefing": [
       "First errand, Speck. Attendale claims it hears everyone at once. Preposterous.",
       "Bring me what they listen with. You'll fail. Everyone fails the first one.",
-      "Read the footnotes. ...You won't. And mind the duck."
+      "Read the footnotes. ...You won't."
     ],
     "reminder": [
       "No Bell? I'm shocked. Shocked! (I am not shocked.)",
       "Read the book. And stop staring at my coffee."
     ],
     "return": [
-      "A bell with eight ears? *ding* ...Every word heard every other word. At once. HMPH.",
+      "Eight ears? *ding* ...Every word hears every other word. At once. HMPH.",
       "You read footnote four, didn't you? Who taught you that? Not me.",
-      "On the shelf. Next to my coffee. NOT touching my coffee."
+      "Shelf. Next to my coffee. NOT touching my coffee."
     ]
   },
   "story": {
     "arrival": [
-      "Attendale: every villager is a word. The Sentence must reach Reply Row by the Fair.",
+      "Every villager here is a word. The Sentence must reach Reply Row by the Fair.",
       "A duck carries it house by house. The new Bell hears all at once. Badly."
     ],
     "resolution": [
@@ -334,6 +334,7 @@
             "title": "sew the plate beside the coat: 16 wide"
           }
         ],
+        "joinQuestion": "Plate → word-coat",
         "initial": {
           "faces": [
             "cos",
@@ -389,15 +390,15 @@
           },
           "join": {
             "badge": "🚪✕",
-            "title": "too wide for the Bell's door"
+            "title": "too wide!"
           },
           "faces": {
             "badge": "∿✕",
-            "title": "some waves start on the wrong foot"
+            "title": "wrong foot"
           },
           "slowness": {
             "badge": "⏱✕",
-            "title": "some strings sway at the wrong pace"
+            "title": "wrong pace"
           }
         },
         "hintAfterFailures": {
@@ -406,12 +407,12 @@
         },
         "successText": "🔔 Ding!"
       },
-      "design": "A cork board: spec.title on top, spec.controlsHint under it, ✕ top right calls api.onClose(), and a small chip showing spec.dModelChip. GRID: 8 rows = spec.houses (label per spec.rowLabel), 8 columns = lanterns (header per spec.columnLabel). Each cell is a round paper lantern filled from spec.colorScale by value(pos, j) (spec.lanternValue); hover shows the value to 2 decimals. Under each column hangs a string with a SIN/COS token (click flips it, api.sfx('paper')) and a pace dial showing the label of its current spec.slownessOptions entry, with ◀ ▶ (the mouse wheel over the dial also steps); the dial clamps at m = 0 and m = 8, no wrap-around. Lanterns recompute live: fast strings flicker from house to house, slow ones barely change. RIGHT: the two paper tools of spec.joinTools (icon + label, title as tooltip); clicking one picks it (it lifts and glows, the other drops back) and sets join; none is picked at start. A little paper bell hangs above a big 🔔 button. Start from spec.initial. 🔔 checks spec.winCondition. Win: the paper bell dings (api.sfx('success')), every lantern pulses gold, then spec.successText with a ✓ button; call api.onSolved() exactly once, on ✓ or 1.8 s after the text appears, whichever comes first (the host closes the board). No Back button. Fail: api.sfx('fail'), the paper bell wobbles, and badges from spec.feedback appear beside 🔔 (badge on the board, title as tooltip), one per wrong category, in this order: joinMissing (nothing picked) or join (🪡 picked), faces (any token differs from the solution), slowness (any dial differs). Never mark which strings are wrong or how many. Badges clear on the next change. From the 3rd failed ring on, show spec.hintAfterFailures.text in a corner. Nothing resets on a failure; the player may ring any number of times.",
+      "design": "A cork board: spec.title on top, spec.controlsHint under it, ✕ top right calls api.onClose(), and a small chip showing spec.dModelChip. GRID: 8 rows = spec.houses (label per spec.rowLabel), 8 columns = lanterns (header per spec.columnLabel). Each cell is a round paper lantern filled from spec.colorScale by value(pos, j) (spec.lanternValue); hover shows the value to 2 decimals. Under each column hangs a string with a SIN/COS token (click flips it, api.sfx('paper')) and a pace dial showing the label of its current spec.slownessOptions entry, with ◀ ▶ (the mouse wheel over the dial also steps); the dial clamps at m = 0 and m = 8, no wrap-around. Lanterns recompute live: fast strings flicker from house to house, slow ones barely change. RIGHT: under the heading spec.joinQuestion, the two paper tools of spec.joinTools (icon + label, title as tooltip); clicking one picks it (it lifts and glows, the other drops back) and sets join; none is picked at start. A little paper bell hangs above a big 🔔 button. Start from spec.initial. 🔔 checks spec.winCondition. Win: the paper bell dings (api.sfx('success')), every lantern pulses gold, then spec.successText with a ✓ button; call api.onSolved() exactly once, on ✓ or 1.8 s after the text appears, whichever comes first (the host closes the board). No Back button. Fail: api.sfx('fail'), the paper bell wobbles, and badges from spec.feedback appear beside 🔔 (badge on the board, title as tooltip), one per wrong category, in this order: joinMissing (nothing picked) or join (🪡 picked), faces (any token differs from the solution), slowness (any dial differs). Never mark which strings are wrong or how many. Badges clear on the next change. From the 3rd failed ring on, show spec.hintAfterFailures.text in a corner. Nothing resets on a failure; the player may ring any number of times.",
       "paperLink": "Section 3.5 (Positional Encoding): PE(pos,2i) = sin(pos/10000^(2i/d_model)), PE(pos,2i+1) = cos(pos/10000^(2i/d_model)); encodings have dimension d_model so they can be summed with the input embeddings (Figure 1, the ⊕ under each stack).",
       "worldEffect": "Wave plates glow over every door. Bunting goes up for the Fair.",
       "intro": [
         "The Bell hears us all at once, but not who stands where. It says PLONK gave ME a pie!",
-        "It was MY pie! Each house needs a plate of wavy lanterns. Tune the Wave Loom?"
+        "Each house needs its own plate of wavy lanterns. Tune the Wave Loom?"
       ],
       "success": [
         "The Bell knows who gave whom the pie! Finally!",
@@ -831,15 +832,15 @@
           },
           "peeking": {
             "badge": "🙈 {pct}%",
-            "title": "peeking at an unwritten word"
+            "title": "peeking!"
           },
           "fainted": {
             "badge": "😵 NaN",
-            "title": "sees nothing at all"
+            "title": "sees nothing"
           },
           "squinting": {
             "badge": "😑",
-            "title": "can't see a written word"
+            "title": "can't see"
           },
           "bridge": {
             "badge": "🌉✕",
@@ -847,17 +848,21 @@
           },
           "desks": {
             "badge": "🗂?",
-            "title": "would they truly have these?"
+            "title": "would they have these?"
           }
         },
         "pctFormat": "{pct} = round(100 * peek(i)); show '<1' when 0 < 100 * peek(i) < 1.",
+        "hintAfterFailures": {
+          "after": 3,
+          "text": "📖 §3.1 · §3.2.3 · Fig. 1"
+        },
         "successText": "✓"
       },
-      "design": "A paper classroom board: spec.title on top, spec.controlsHint under it, ✕ top right calls api.onClose(). TOP: Desks 1-5, each with its tag (spec.deskTag) and an empty card slot; below them a tray with the six spec.cards (label only). Drag a card onto a slot (onto an occupied slot: the two swap; back to the tray: removed); each card sits on at most one desk. MIDDLE: two window grids. Left, spec.panels.self.label: 5×5, rows = writers 1-5, columns = desks 1-5 headed by the card on that desk. Right, spec.panels.cross.label: 5×8, columns = spec.villageWords. Row headers per spec.rowHeader in both. Each cell is a paper window whose glow (dark shutter at 0, bright at 1) is that writer's attention weight from spec.math, recomputed live; hover shows the weight as a %. A fainted row goes dark with 😵. BOTTOM: the stamp palette (spec.stamps: label on the stamp, title as tooltip). Pick a stamp, then click a window or click-drag across windows to stamp them (api.sfx('stamp')); a drag stays in the panel where it started; a stamp replaces any stamp already there; the eraser clears. A stamped window shows its stamp label. The live weights let the player see that a 0 screen does not stop the looking. A 🔔 button runs spec.evaluation. Win: tiny fences pop up on the fenced windows (tok-tok-tok), then spec.successText with a ✓ button; call api.onSolved() exactly once, on ✓ or 1.8 s after the text appears, whichever comes first (the host closes the board). No Back button. Fail: api.sfx('fail'), then the badges of spec.feedback (badge on the board, title as tooltip): row badges right of each affected writer row ({pct} per spec.pctFormat; a row can show 🙈 and 😑 together; 😵 replaces both), emptyDesk as a shake plus '?' on each empty slot, bridge beside the 🌉 panel, desks beside the desk strip. Never highlight which windows or cards to change and never show the 'reveals' numbers. Badges clear on the next change; the player may ring any number of times.",
+      "design": "A paper classroom board: spec.title on top, spec.controlsHint under it, ✕ top right calls api.onClose(). TOP: Desks 1-5, each with its tag (spec.deskTag) and an empty card slot; below them a tray with the six spec.cards (label only). Drag a card onto a slot (onto an occupied slot: the two swap; back to the tray: removed); each card sits on at most one desk. MIDDLE: two window grids. Left, spec.panels.self.label: 5×5, rows = writers 1-5, columns = desks 1-5 headed by the card on that desk. Right, spec.panels.cross.label: 5×8, columns = spec.villageWords. Row headers per spec.rowHeader in both. Each cell is a paper window whose glow (dark shutter at 0, bright at 1) is that writer's attention weight from spec.math, recomputed live; hover shows the weight as a %. A fainted row goes dark with 😵. BOTTOM: the stamp palette (spec.stamps: label on the stamp, title as tooltip). Pick a stamp, then click a window or click-drag across windows to stamp them (api.sfx('stamp')); a drag stays in the panel where it started; a stamp replaces any stamp already there; the eraser clears. A stamped window shows its stamp label. The live weights let the player see that a 0 screen does not stop the looking. A 🔔 button runs spec.evaluation. Win: tiny fences pop up on the fenced windows (tok-tok-tok), then spec.successText with a ✓ button; call api.onSolved() exactly once, on ✓ or 1.8 s after the text appears, whichever comes first (the host closes the board). No Back button. Fail: api.sfx('fail'), then the badges of spec.feedback (badge on the board, title as tooltip): row badges right of each affected writer row ({pct} per spec.pctFormat; a row can show 🙈 and 😑 together; 😵 replaces both), emptyDesk as a shake plus '?' on each empty slot, bridge beside the 🌉 panel, desks beside the desk strip. Never highlight which windows or cards to change and never show the 'reveals' numbers. From the 3rd failed ring on, the kit shows spec.hintAfterFailures.text. Badges clear on the next change; the player may ring any number of times.",
       "paperLink": "Section 3.1 (Decoder: self-attention is masked to prevent attending to subsequent positions; 'combined with fact that the output embeddings are offset by one position'); Section 3.2.3 (encoder-decoder attention lets every decoder position attend over all input positions; decoder self-attention attends 'up to and including that position', implemented by setting illegal softmax inputs to −∞); Figure 1 ('Outputs (shifted right)'); Figure 2 (Mask (opt.)).",
       "worldEffect": "A staircase of tiny fences pops up on Reply Row. Lanterns light the lane.",
       "intro": [
-        "My five writers practise all at once. Very modern. Very naughty.",
+        "My five writers practise all at once. Very naughty.",
         "They peek at words not written yet! At the Fair, those won't exist.",
         "Set each desk as it truly would be. Fence the peeking."
       ],
@@ -875,11 +880,11 @@
         "c1",
         "c2"
       ],
-      "prompt": "## The Bell's Gearbox\n*Bimble's note:* \"Exactly as the book says, or it hums nonsense. —B.\"\n\nTwo numpy functions, `float64`. Loops over heads are fine.\n\n### 1. `attention(Q, K, V, causal=False)` → `(n_q, d_v)`\nONE EAR: Scaled Dot-Product Attention, **Eq. (1)**, Section 3.2.1.\n- `Q` `(n_q, d_k)`, `K` `(n_k, d_k)`, `V` `(n_k, d_v)`; row `j` of `V` belongs to row `j` of `K`\n- each query's weights are ≥ 0 and sum to 1 over the keys\n- `causal=True` (only when `n_q == n_k`): for query `i`, every key `j > i` gets weight **exactly 0**, done as in **Section 3.2.3**\n- finite even for dot products near `1e4` (a softmax ignores a constant added to a whole row)\n\n### 2. `multi_head_attention(x_q, x_kv, W_q, W_k, W_v, W_o, h, causal=False)` → `(n_q, d_model)`\nMANY EARS: **MultiHead**, Section 3.2.2.\n- `x_q` `(n_q, d_model)`: the queries come from it; `x_kv` `(n_k, d_model)`: the keys **and** values do\n- `W_q`, `W_k` `(d_model, h*d_k)`; `W_v` `(d_model, h*d_v)`; `W_o` `(h*d_v, d_model)`\n- `d_k = W_q.shape[1] // h`, `d_v = W_v.shape[1] // h` (they may differ)\n- head `i` (0-based) uses columns `i*d_k:(i+1)*d_k` of `W_q` and `W_k`, and `i*d_v:(i+1)*d_v` of `W_v`\n- concatenate the heads in order (head 0 first), then apply `W_o`; every head uses the same `causal`\n",
+      "prompt": "Two numpy functions, `float64`. Loops over heads are fine.\n\n### 1. `attention(Q, K, V, causal=False)` → `(n_q, d_v)`\nONE EAR: Scaled Dot-Product Attention, **Eq. (1)**, Section 3.2.1.\n- `Q` `(n_q, d_k)`, `K` `(n_k, d_k)`, `V` `(n_k, d_v)`; row `j` of `V` belongs to row `j` of `K`\n- each query's weights are ≥ 0 and sum to 1 over the keys\n- `causal=True` (only when `n_q == n_k`): for query `i`, every key `j > i` gets weight **exactly 0**, done as in **Section 3.2.3**\n- finite even for dot products near `1e4` (a softmax ignores a constant added to a whole row)\n\n### 2. `multi_head_attention(x_q, x_kv, W_q, W_k, W_v, W_o, h, causal=False)` → `(n_q, d_model)`\nMANY EARS: **MultiHead**, Section 3.2.2.\n- `x_q` `(n_q, d_model)`: the queries come from it; `x_kv` `(n_k, d_model)`: the keys **and** values do\n- `W_q`, `W_k` `(d_model, h*d_k)`; `W_v` `(d_model, h*d_v)`; `W_o` `(h*d_v, d_model)`\n- `d_k = W_q.shape[1] // h`, `d_v = W_v.shape[1] // h` (they may differ)\n- head `i` (0-based) uses columns `i*d_k:(i+1)*d_k` of `W_q` and `W_k`, and `i*d_v:(i+1)*d_v` of `W_v`\n- concatenate the heads in order (head 0 first), then apply `W_o`; every head uses the same `causal`\n",
       "starterCode": "import numpy as np\n\n\ndef attention(Q, K, V, causal=False):\n    \"\"\"THE ONE EAR: Scaled Dot-Product Attention (Section 3.2.1, Eq. 1).\n\n    Q: (n_q, d_k)   K: (n_k, d_k)   V: (n_k, d_v)   ->   returns (n_q, d_v)\n    causal=True: query i may only use keys j <= i (only used when n_q == n_k).\n    \"\"\"\n    Q = np.asarray(Q, dtype=np.float64)\n    K = np.asarray(K, dtype=np.float64)\n    V = np.asarray(V, dtype=np.float64)\n    # TODO: the gearbox is empty. The Bell hums nothing at all.\n    return np.zeros((Q.shape[0], V.shape[1]))\n\n\ndef multi_head_attention(x_q, x_kv, W_q, W_k, W_v, W_o, h, causal=False):\n    \"\"\"THE MANY EARS: Multi-Head Attention (Section 3.2.2).\n\n    x_q: (n_q, d_model)   x_kv: (n_k, d_model)\n    W_q, W_k: (d_model, h*d_k)   W_v: (d_model, h*d_v)   W_o: (h*d_v, d_model)\n    returns (n_q, d_model)\n    \"\"\"\n    x_q = np.asarray(x_q, dtype=np.float64)\n    W_o = np.asarray(W_o, dtype=np.float64)\n    # TODO: eight little ears, all deaf.\n    return np.zeros((x_q.shape[0], W_o.shape[1]))\n",
       "tests": "import numpy as np\n\nTOL = 1e-6\n\n\ndef _arr(x):\n    return np.asarray(x, dtype=np.float64)\n\n\ndef _fresh(args):\n    # every call gets its own copies, so an in-place edit inside your code can't spoil the next call\n    return [np.array(a, dtype=np.float64) if isinstance(a, np.ndarray) else a for a in args]\n\n\ndef _att(*args, **kw):\n    return _arr(attention(*_fresh(args), **kw))\n\n\ndef _mha(*args, **kw):\n    return _arr(multi_head_attention(*_fresh(args), **kw))\n\n\ndef _close(a, b, tol=TOL):\n    return np.allclose(a, b, rtol=0.0, atol=tol)\n\n\ndef test_one_ear_hand_checked():\n    # One query, two keys, two values. d_k = 9, d_v = 2.\n    Q = np.ones((1, 9))\n    K = np.zeros((2, 9))\n    K[0, 0] = 3.0\n    V = np.array([[10.0, 0.0], [0.0, 10.0]])\n    out = _att(Q, K, V)\n    assert out.shape == (1, 2), f\"attention must return shape (n_q, d_v) = (1, 2), got {out.shape}\"\n    assert np.all(np.isfinite(out)), \"attention returned nan or inf on a tiny, friendly example\"\n    if _close(out, [[9.525741268224333, 0.4742587317756678]], 1e-4):\n        raise AssertionError(\"Too sharp! Those are the weights of the raw dot products. Eq. (1) does one more thing to them first.\")\n    if _close(out, [[5.825702064623147, 4.174297935376853]], 1e-4):\n        raise AssertionError(\"Too soft! Eq. (1) scales, just not by that much.\")\n    assert _close(out, [[7.310585786300049, 2.6894142136999513]]), (\n        \"The one ear gives the wrong output on a hand-checked example (one query, d_k = 9, two keys). Re-read Eq. (1).\")\n\n\ndef test_weights_are_a_proper_softmax_over_keys():\n    rng = np.random.default_rng(7)\n    Q = rng.normal(size=(4, 8))\n    K = rng.normal(size=(6, 8))\n    W = _att(Q, K, np.eye(6))  # with V = identity, row i of the output is query i's weights\n    assert W.shape == (4, 6), f\"with Q (4, 8), K (6, 8), V (6, 6) the output must be (4, 6), got {W.shape}\"\n    assert np.all(np.isfinite(W)), \"the weights contain nan or inf\"\n    assert np.all(W >= 0), \"attention weights can never be negative\"\n    assert _close(W.sum(axis=1), 1.0), (\n        \"each query's weights must sum to 1: normalise over the keys, one query (row) at a time\")\n    S = Q @ K.T\n    for i in range(4):\n        assert np.array_equal(np.argsort(S[i]), np.argsort(W[i])), (\n            \"a key that matches a query better (bigger dot product) must get a bigger weight\")\n\n\ndef test_quiet_questions_hear_everyone_equally():\n    rng = np.random.default_rng(1)\n    K = rng.normal(size=(5, 4))\n    V = rng.normal(size=(5, 3)) + 2.0\n    out = _att(np.zeros((3, 4)), K, V)\n    assert out.shape == (3, 3), f\"expected shape (3, 3), got {out.shape}\"\n    assert _close(out, np.tile(V.mean(axis=0), (3, 1))), (\n        \"a query of all zeros matches every key equally well, so it must get the plain average of all the values\")\n\n\ndef test_causal_hand_checked():\n    Q = np.zeros((3, 2))\n    K = np.zeros((3, 2))\n    V = np.array([[3.0], [6.0], [9.0]])\n    open_out = _att(Q, K, V, causal=False)\n    assert _close(open_out, [[6.0], [6.0], [6.0]]), (\n        \"with causal=False nothing is fenced: equal matches must average all three values\")\n    out = _att(Q, K, V, causal=True)\n    assert out.shape == (3, 1), f\"expected shape (3, 1), got {out.shape}\"\n    assert np.all(np.isfinite(out)), (\n        \"causal attention returned nan/inf. Is some position fenced off from *everything*?\")\n    assert _close(out, [[3.0], [4.5], [6.0]]), (\n        \"with causal=True, query i may use keys 0..i only, and its remaining weights must still add up to 1\")\n\n\ndef test_causal_never_peeks():\n    rng = np.random.default_rng(11)\n    n, d = 6, 4\n    Q = rng.normal(size=(n, d)) * 2.0\n    K = rng.normal(size=(n, d)) * 2.0\n    W = _att(Q, K, np.eye(n), causal=True)\n    assert W.shape == (n, n), f\"expected shape {(n, n)}, got {W.shape}\"\n    assert np.all(np.isfinite(W)), \"the causal weights contain nan or inf\"\n    assert np.all(W[np.triu_indices(n, 1)] == 0.0), \"a query is peeking at a later key: those weights must be exactly 0\"\n    assert _close(W.sum(axis=1), 1.0), \"with the fence up, each query's weights must still sum to 1\"\n    assert np.all(W[np.tril_indices(n)] > 0.0), \"a query must still hear every key up to and including its own position\"\n    V = rng.normal(size=(n, 3))\n    before = _att(Q, K, V, causal=True)\n    K2, V2 = K.copy(), V.copy()\n    K2[4:] += 5.0\n    V2[4:] -= 7.0\n    after = _att(Q, K2, V2, causal=True)\n    assert _close(before[:4], after[:4]), (\n        \"changing the keys/values at positions 4 and 5 changed the outputs at positions 0..3: the future leaked\")\n    assert not np.allclose(before[4:], after[4:]), \"positions 4 and 5 should notice their own (changed) keys and values\"\n\n\ndef test_big_numbers_do_not_break_the_bell():\n    Q = np.array([[100.0, 100.0], [-100.0, 50.0]])\n    K = np.array([[100.0, 100.0], [99.0, 100.0], [-100.0, -100.0]])\n    V = np.array([[1.0, 0.0], [0.0, 1.0], [5.0, 5.0]])\n    out = _att(Q, K, V)\n    assert np.all(np.isfinite(out)), \"huge dot products (around 10^4) made the softmax overflow into nan/inf\"\n    assert _close(out, [[1.0, 0.0], [5.0, 5.0]]), (\n        \"with huge, well-separated scores each query should take (almost exactly) the value of its best key\")\n    X = np.array([[60.0, 80.0], [80.0, 60.0], [-70.0, 70.0]])\n    Wc = _att(X, X, np.eye(3), causal=True)\n    assert np.all(np.isfinite(Wc)), \"huge scores plus the causal fence produced nan/inf\"\n    assert _close(Wc, np.eye(3)), (\n        \"huge, well-separated scores with the fence up should give (almost exactly) one-hot weights\")\n\n\ndef test_many_ears_hand_checked():\n    # d_model = 6 and h = 2, identity projections.\n    x = np.zeros((2, 6))\n    x[0, 0] = 2.0\n    x[1, 5] = 2.0\n    I = np.eye(6)\n    out = _mha(x, x, I, I, I, I, 2)\n    assert out.shape == (2, 6), f\"multi_head_attention must return (n_q, d_model) = (2, 6), got {out.shape}\"\n    assert np.all(np.isfinite(out)), \"the many ears returned nan/inf on a tiny example\"\n    w = 1.6731585189419584\n    if _close(out, [[w, 0, 0, 0, 0, 1], [1, 0, 0, 0, 0, w]], 1e-4):\n        raise AssertionError(\"So close! But each ear only hears its own little slice. How wide is one head, really?\")\n    a = 1.8193052900783009\n    assert _close(out, [[a, 0, 0, 0, 0, 1], [1, 0, 0, 0, 0, a]]), (\n        \"two heads, identity projections, d_model = 6: wrong output. Check how the columns are shared out \"\n        \"between the heads and how the heads are glued back together.\")\n\n\ndef test_one_head_with_real_projections():\n    x = np.array([[-0.7, -1.6, 0.9], [0.8, -1.1, -0.5], [1.2, -0.8, -0.4]])\n    W_q = np.array([[0.5, -1.3, 0.3], [-0.8, -1.8, -0.9], [-0.6, 1.8, -0.7]])\n    W_k = np.array([[0.2, 0.3, 1.3], [1.4, 0.5, 0.4], [0.8, -0.1, -0.4]])\n    W_v = np.array([[0.4, -0.5, -0.8], [-1.2, 1.1, 0.1], [0.3, -0.2, -0.6]])\n    W_o = np.array([[-0.3, 1.4, 0.0], [1.2, 0.0, -0.2], [1.3, 1.1, 0.4]])\n    out = _mha(x, x, W_q, W_k, W_v, W_o, 1)\n    assert out.shape == (3, 3), f\"expected shape (3, 3), got {out.shape}\"\n    want = [[-3.0479171556, 1.1275188896, 0.0007733619],\n            [-3.0383967782, 1.1574944331, 0.0069549324],\n            [-3.0130934836, 1.2327141539, 0.0231058432]]\n    assert _close(out, want), (\n        \"with a single head (h = 1) and real projection matrices the output is wrong. \"\n        \"Are all four projections used, each on the right side?\")\n\n\ndef test_queries_from_one_side_keys_and_values_from_the_other():\n    # Encoder-decoder style: 2 queries from x_q, 3 keys/values from x_kv. h = 2, d_k = 1, d_v = 2, d_model = 4.\n    x_q = np.array([[1.4, -0.6, 1.2, -2.0], [-0.6, 0.1, 1.4, -1.8]])\n    x_kv = np.array([[1.3, -1.4, -1.3, 1.2], [1.2, 0.3, -0.6, 2.1], [2.1, -1.6, 0.1, 0.2]])\n    W_q = np.array([[0.6, 0.4], [-0.3, 0.7], [-0.6, 0.4], [1.0, -0.8]])\n    W_k = np.array([[0.5, -0.6], [-0.4, -0.4], [0.0, 0.4], [-1.1, -0.2]])\n    W_v = np.array([[0.3, -0.1, -0.2, 0.7], [0.5, -0.7, -0.7, -1.0], [1.5, -2.2, 0.5, -1.4], [0.4, -1.8, -1.0, 0.8]])\n    W_o = np.array([[-0.5, 0.8, 0.0, -0.8], [-0.3, -0.4, 0.0, -1.4], [-0.4, 1.1, 0.0, -0.4], [1.3, 0.6, 1.7, 0.3]])\n    out = _mha(x_q, x_kv, W_q, W_k, W_v, W_o, 2)\n    assert out.shape == (2, 4), f\"2 queries in, so 2 rows out: expected (2, 4), got {out.shape}\"\n    want = [[5.4391586771, 3.232914873, 6.209178279, 4.5006753979],\n            [5.5476119282, 3.2833286245, 6.271596134, 4.770025982]]\n    assert _close(out, want), (\n        \"queries from x_q, keys and values from x_kv (n_q != n_k, d_k != d_v): wrong output\")\n\n\ndef test_heads_keep_to_their_own_columns():\n    rng = np.random.default_rng(5)\n    n, d_model, h = 4, 8, 2\n    x = rng.normal(size=(n, d_model))\n    W_q = rng.normal(size=(d_model, 8))\n    W_k = rng.normal(size=(d_model, 8))\n    W_v = rng.normal(size=(d_model, 8))\n    I = np.eye(8)\n    base = _mha(x, x, W_q, W_k, W_v, I, h)\n    assert base.shape == (n, d_model), f\"expected shape {(n, d_model)}, got {base.shape}\"\n    W_q2 = W_q.copy()\n    W_q2[:, 4:] = rng.normal(size=(d_model, 4)) * 3.0   # only the second head's query columns change\n    after = _mha(x, x, W_q2, W_k, W_v, I, h)\n    assert _close(base[:, :4], after[:, :4]), (\n        \"changing only the second head's query columns changed the first head's output columns\")\n    assert not np.allclose(base[:, 4:], after[:, 4:]), (\n        \"changing the second head's query columns should change the second head's output columns\")\n\n\ndef test_many_ears_with_the_fence():\n    rng = np.random.default_rng(21)\n    n, d_model, h = 5, 8, 4\n    x = rng.normal(size=(n, d_model))\n    W_q, W_k, W_v, W_o = (rng.normal(size=(d_model, d_model)) for _ in range(4))\n    base = _mha(x, x, W_q, W_k, W_v, W_o, h, causal=True)\n    assert base.shape == (n, d_model), f\"expected shape {(n, d_model)}, got {base.shape}\"\n    assert np.all(np.isfinite(base)), \"causal multi-head attention returned nan/inf\"\n    x_future = x.copy()\n    x_future[3:] += rng.normal(size=(2, d_model)) * 3.0\n    after = _mha(x_future, x_future, W_q, W_k, W_v, W_o, h, causal=True)\n    assert _close(base[:3], after[:3]), (\n        \"with causal=True, changing positions 3 and 4 must not change the outputs at positions 0..2 (in every head)\")\n    assert not np.allclose(base[3:], after[3:]), \"positions 3 and 4 should notice that they changed\"\n    x_past = x.copy()\n    x_past[0] += 1.0\n    after_past = _mha(x_past, x_past, W_q, W_k, W_v, W_o, h, causal=True)\n    assert not np.allclose(base[4], after_past[4]), \"the last position must still hear the first one\"\n    open_base = _mha(x, x, W_q, W_k, W_v, W_o, h, causal=False)\n    open_after = _mha(x_future, x_future, W_q, W_k, W_v, W_o, h, causal=False)\n    assert not np.allclose(open_base[0], open_after[0]), (\n        \"with causal=False there is no fence: the first position should hear the later ones\")\n",
       "solutionFile": "server/solutions/attention_c3.py",
-      "paperLink": "Section 3.2.1, Eq. (1) (Scaled Dot-Product Attention) and footnote 4; Section 3.2.2 (MultiHead(Q,K,V) = Concat(head_1..head_h)W^O, head_i = Attention(QW_i^Q, KW_i^K, VW_i^V), d_k = d_v = d_model/h); Section 3.2.3 (decoder masking by setting illegal softmax inputs to −∞; encoder-decoder attention takes queries from the decoder and keys/values from the encoder); Figure 2.",
+      "paperLink": "Eq. 1 · fn. 4 · §3.2.1 · §3.2.2 · §3.2.3 · Fig. 2",
       "intro": [
         "The Bell's gearbox hangs open: two empty sockets, ONE EAR and MANY EARS."
       ],
@@ -897,7 +902,7 @@
         "c2",
         "c3"
       ],
-      "question": "Why is a Bell better than a duck? Two real reasons. And on what lane would a duck still win?",
+      "question": "Why does a Bell beat a duck? Two real reasons. And on what lane would I still win?",
       "rubric": [
         "Sequential vs parallel (Sections 1 and 4, Table 1): a recurrent layer computes each hidden state h_t from h_(t-1), so the n positions must be processed one after another (O(n) sequential operations), which precludes parallelization within a training example; a self-attention layer connects all positions with a constant number (O(1)) of sequential operations, so all positions are computed at once and training is much faster.",
         "Path length (Section 4, Table 1): a signal between two distant positions must pass through O(n) steps in a recurrent layer but only O(1) in self-attention, where every position is directly connected to every other; the paper argues that shorter forward/backward paths make long-range dependencies easier to learn (the duck's crumpled first note is the long-path problem).",
@@ -959,7 +964,7 @@
   "artefact": {
     "id": "listening-bell",
     "name": "The Listening Bell",
-    "description": "A pocket Bell with eight little ears and a sine-and-cosine rope. It hears a whole Sentence at once.",
+    "description": "Eight little ears and a sine-and-cosine rope. It hears a whole Sentence at once.",
     "look": "A small brass-yellow paper bell (about 0.5 units tall) with a rounded crown and a flared lip; eight tiny teal ear-trumpets spaced evenly around its waist, pointing outward; a soft teardrop clapper; a short pull-rope of two twisted threads, one pink (sine) and one sky-blue (cosine), ending in a tassel. Idle: a gentle wobble; when rung, the ears glow faintly one after another and then all together."
   },
   "book": {

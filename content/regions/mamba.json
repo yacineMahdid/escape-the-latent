@@ -14,19 +14,18 @@
   "scientist": {
     "taskTitle": "Bring back the Sifting Hourglass",
     "briefing": [
-      "Speck. Two artefacts on my shelf. Real ones. I checked. Twice. Irritating.",
-      "Next: a desert snake carries messages down a road that never ends.",
-      "Tiny belly. Never drops a message, it claims. HA!",
-      "You'll fail. ...I keep saying that. Go."
+      "Right. No more easy ones. In Siftsand, a snake carries beads down an endless road.",
+      "One tiny belly, yet he never forgets a bead? HA! Bring me his secret.",
+      "You'll fail. ...I keep saying that. Why do I keep saying that? GO."
     ],
     "reminder": [
-      "Still here? The road won't get any shorter, Speck.",
+      "Not done? Good. GOOD. I mean... hurry up, Speck.",
       "Read the book. Most of a desert is just sand."
     ],
     "return": [
       "An hourglass. It shut out my coffee grounds and kept the sugar cube. HMPH.",
-      "Three for three, Speck. That stopped being luck at two.",
-      "On the shelf. Three in a row... Something's taking shape up there. Something big."
+      "Bell, Lens, hourglass... Look at that shelf. They're humming. Together.",
+      "That's not in any paper I know. ...Yet."
     ]
   },
   "story": {
@@ -49,8 +48,11 @@
         "shirt": "#ffd35a"
       },
       "anchor": "lane-left",
-      "role": "Giver of c1. The outpost's courier, a very long green sand snake with one small belly (the fixed-size state). He gulps every grain the same way (time-invariant), so at the bell he can only say mush. Sweet, burpy, easily excited; his happy loop-de-loop after c1 pops a vertebra (sets up c2). No default line: c1 is ready from the start, so talking to him always opens it.",
+      "role": "Giver of c1. The outpost's courier, a very long green sand snake with one small belly (the fixed-size state). He gulps every grain the same way (time-invariant), so at the bell he can only say mush. Sweet, burpy, easily excited; his happy loop-de-loop after c1 pops a vertebra (sets up c2). His default only shows if a later item of his is locked (so only after c1): keep it timeless.",
       "lines": {
+        "default": [
+          "Beads to carry, bells to answer! *burp*"
+        ],
         "afterSolved": [
           "Beads in, sand out! I'm a picky eater now.",
           "My back went *pop*. Doc Marrow fixes backs. Mostly."
@@ -66,10 +68,10 @@
         "shirt": "#ff7ab8"
       },
       "anchor": "lane-mid",
-      "role": "Flavour, and the region's curious kid: rides on Noodle's tail and asks everyone 'why'. A natural giver for later fundamentals (hidden state, exponential decay, sigmoid/softplus, linear projections). Never explains anything.",
+      "role": "Flavour, and the region's curious kid: rides on Noodle's tail and wants to know where the road ends. A natural giver for later fundamentals (hidden state, exponential decay, sigmoid/softplus, linear projections). Never explains anything.",
       "lines": {
         "default": [
-          "I'm Tumble! I ride on Noodle's tail. I have SO many questions. Like, why is sand?",
+          "I'm Tumble! I ride on Noodle's tail. Where does the road END?",
           "His belly gurgles in colours. Mostly the colour of sand."
         ],
         "afterSolved": [
@@ -119,13 +121,13 @@
     {
       "id": "penny",
       "name": "Penny",
-      "species": "pig",
+      "species": "bear",
       "colors": {
-        "fur": "#e8a07a",
+        "fur": "#d08a4a",
         "shirt": "#c8453c"
       },
       "anchor": "lane-right",
-      "role": "Giver of c4 (explain). The postmistress, a ginger pig in a post-box-red uniform, proud of her one big rubber stamp that prints a whole road at once and treats every grain alike: an LTI SSM / global convolution in a post-office cap. Fine for evenly spaced beads (Copying), smudges on scattered ones (Selective Copying). Skeptical of the 'fussy' snake.",
+      "role": "Giver of c4 (explain). The postmistress, a ginger bear in a post-box-red uniform, proud of her one big rubber stamp that prints a whole road at once and treats every grain alike: an LTI SSM / global convolution in a post-office cap. Fine for evenly spaced beads (Copying), smudges on scattered ones (Selective Copying). Skeptical of the 'fussy' snake.",
       "lines": {
         "default": [
           "Post office. My one stamp prints a whole road at once. Every grain alike. Fast!",
@@ -530,11 +532,11 @@
         "c1",
         "c2"
       ],
-      "prompt": "numpy, `float64`. A loop over time is fine.\n\n### 1. `selective_scan(x, delta, A, B, C, h0=None)` → `(y, h_last)`\nThe SSM of **Eq. (2a)/(2b)**, time-varying as in **Algorithm 2**, discretized by the **ZOH of Eq. (4)**.\n- `x` `(L, D)`; `delta` `(L, D)`, all > 0: one Δ per step and channel\n- `A` `(D, N)`, all < 0: row `d` is the diagonal of channel `d`'s A\n- `B`, `C` `(L, N)`: one row per step, shared by all channels\n- `h0` `(D, N)`: the belly before step 0; `None` = zeros\n- channel `d` runs its own SSM with an `N`-long state `h[d]`, using `A[d]`, `delta[t, d]`, `B[t]`, `C[t]`\n- `y[t, d] = C[t] · h_t[d]` (sum over the `N` pockets)\n- `y` `(L, D)`; `h_last` `(D, N)`: the state after the last step\n\n### 2. `s6(x, A, W_B, W_C, w_delta, delta_bias)` → `y` `(L, D)`\nSelection (**Section 3.2**, **Algorithm 2**), then `selective_scan` from a zero belly.\n- `x` `(L, D)`; `A` `(D, N)`; `W_B`, `W_C` `(D, N)`; `w_delta`, `delta_bias` `(D,)`\n- `B = x @ W_B`, `C = x @ W_C` (s_B, s_C = Linear_N, no bias)\n- `Δ = τ_Δ(Parameter + s_Δ(x))`: Parameter = `delta_bias`; `s_Δ(x) = Broadcast_D(Linear_1(x))` with `Linear_1(x) = x @ w_delta`; τ_Δ as Section 3.2 chooses\n",
+      "prompt": "Two numpy functions, `float64`. A loop over time is fine.\n\n### 1. `selective_scan(x, delta, A, B, C, h0=None)` → `(y, h_last)`\nThe SSM of **Eq. (2a)/(2b)**, time-varying as in **Algorithm 2**, discretized by the **ZOH of Eq. (4)**.\n- `x` `(L, D)`; `delta` `(L, D)`, all > 0: one Δ per step and channel\n- `A` `(D, N)`, all < 0: row `d` is the diagonal of channel `d`'s A\n- `B`, `C` `(L, N)`: one row per step, shared by all channels\n- `h0` `(D, N)`: the belly before step 0; `None` = zeros\n- channel `d` runs its own SSM with an `N`-long state `h[d]`, using `A[d]`, `delta[t, d]`, `B[t]`, `C[t]`\n- `y[t, d] = C[t] · h_t[d]` (sum over the `N` pockets)\n- `y` `(L, D)`; `h_last` `(D, N)`: the state after the last step\n\n### 2. `s6(x, A, W_B, W_C, w_delta, delta_bias)` → `y` `(L, D)`\nSelection (**Section 3.2**, **Algorithm 2**), then `selective_scan` from a zero belly.\n- `x` `(L, D)`; `A` `(D, N)`; `W_B`, `W_C` `(D, N)`; `w_delta`, `delta_bias` `(D,)`\n- `B = x @ W_B`, `C = x @ W_C` (s_B, s_C = Linear_N, no bias)\n- `Δ = τ_Δ(Parameter + s_Δ(x))`: Parameter = `delta_bias`; `s_Δ(x) = Broadcast_D(Linear_1(x))` with `Linear_1(x) = x @ w_delta`; τ_Δ as Section 3.2 chooses\n",
       "starterCode": "import numpy as np\n\n\ndef selective_scan(x, delta, A, B, C, h0=None):\n    \"\"\"x (L, D), delta (L, D) > 0, A (D, N) < 0, B and C (L, N), h0 (D, N) or None.\n\n    Returns (y, h_last): y (L, D), h_last (D, N).\n    \"\"\"\n    x = np.asarray(x, dtype=np.float64)\n    A = np.asarray(A, dtype=np.float64)\n    L, D = x.shape\n    N = A.shape[1]\n    # TODO: the hourglasses are empty.\n    return np.zeros((L, D)), np.zeros((D, N))\n\n\ndef s6(x, A, W_B, W_C, w_delta, delta_bias):\n    \"\"\"x (L, D), A (D, N), W_B and W_C (D, N), w_delta and delta_bias (D,). Returns y (L, D).\"\"\"\n    x = np.asarray(x, dtype=np.float64)\n    # TODO: Noodle chooses nothing yet.\n    return np.zeros_like(x)\n",
       "tests": "import numpy as np\n\n\ndef _etl_t_f64(v):\n    dt = getattr(v, 'dtype', None)\n    assert dt is None or dt.kind != 'f' or dt.itemsize >= 8, \"float32 is too rough here: use float64\"\n    return np.asarray(v, dtype=np.float64)\n\n\ndef _etl_t_scan(*args, **kwargs):\n    out = selective_scan(*args, **kwargs)\n    assert isinstance(out, (tuple, list)) and len(out) == 2, \"selective_scan must return a pair: (y, h_last)\"\n    return _etl_t_f64(out[0]), _etl_t_f64(out[1])\n\n\ndef _etl_t_s6(*args):\n    return _etl_t_f64(s6(*args))\n\n\ndef _etl_t_eq(a, b, tol):\n    return np.allclose(a, b, rtol=0.0, atol=tol)\n\n\ndef test_one_grain_by_hand():\n    ln2 = np.log(2.0)\n    x, delta, A, B, C = (np.array([[v]]) for v in (2.0, ln2, -1.0, 1.0, 1.0))\n    y, h = _etl_t_scan(x, delta, A, B, C)\n    assert y.shape == (1, 1), f\"L = D = 1: y must have shape (1, 1), got {y.shape}\"\n    assert h.shape == (1, 1), f\"D = N = 1: h_last must have shape (1, 1), got {h.shape}\"\n    assert np.all(np.isfinite(y)), \"the belly is nan/inf after one friendly grain\"\n    if _etl_t_eq(y, [[2.0 * ln2]], 1e-6):\n        raise AssertionError(\"A shortcut! That B̄ is only roughly right. Eq. (4) gives the exact rule.\")\n    if _etl_t_eq(y, [[2.0]], 1e-6):\n        raise AssertionError(\"B went into the belly raw. Eq. (4) discretizes B too, not only A.\")\n    assert _etl_t_eq(y, [[1.0]], 1e-9), \"one grain (x = 2, Δ = ln 2, A = -1, B = C = 1): wrong belly. See Eq. (4).\"\n    assert _etl_t_eq(h, [[1.0]], 1e-9), \"h_last must be the state after the last step\"\n    y2, h2 = _etl_t_scan(x, delta, A, B, C, h0=np.array([[4.0]]))\n    assert _etl_t_eq(y2, [[3.0]], 1e-9) and _etl_t_eq(h2, [[3.0]], 1e-9), (\n        \"with h0 = 4: wrong belly. h0 is the state *before* step 0\")\n\n\ndef test_two_pockets_two_steps_by_hand():\n    ln2 = np.log(2.0)\n    x = np.array([[1.0], [3.0]])\n    delta = np.array([[ln2], [ln2]])\n    A = np.array([[-1.0, -2.0]])\n    B = np.array([[1.0, 2.0], [0.0, 1.0]])\n    C = np.array([[1.0, 1.0], [2.0, -1.0]])\n    y, h = _etl_t_scan(x, delta, A, B, C)\n    assert y.shape == (2, 1), f\"L = 2, D = 1: y must have shape (2, 1), got {y.shape}\"\n    assert h.shape == (1, 2), f\"D = 1, N = 2: h_last must have shape (1, 2), got {h.shape}\"\n    if _etl_t_eq(y, [[2.0794415416798357], [-1.732867951399863]], 1e-6):\n        raise AssertionError(\"A shortcut! That B̄ is only roughly right. Eq. (4) gives the exact rule.\")\n    assert _etl_t_eq(y, [[1.25], [-0.8125]], 1e-9), (\n        \"N = 2, two steps: wrong y. Each step has its own B_t, C_t; y_t sums the pockets.\")\n    assert _etl_t_eq(h, [[0.25, 1.3125]], 1e-9), \"h_last must be the state after the last step\"\n\n\ndef test_theorem_1_the_old_gate_inside():\n    rng = np.random.default_rng(1)\n    L, D = 12, 3\n    g = rng.uniform(0.02, 0.98, size=(L, D))\n    delta = -np.log1p(-g)\n    x = rng.normal(size=(L, D))\n    y, h = _etl_t_scan(x, delta, -np.ones((D, 1)), np.ones((L, 1)), np.ones((L, 1)))\n    assert y.shape == (L, D), f\"expected y of shape {(L, D)}, got {y.shape}\"\n    assert h.shape == (D, 1), f\"expected h_last of shape {(D, 1)}, got {h.shape}\"\n    want = np.zeros((L, D))\n    s = np.zeros(D)\n    for t in range(L):\n        s = (1.0 - g[t]) * s + g[t] * x[t]\n        want[t] = s\n    assert _etl_t_eq(y, want, 1e-10), \"Theorem 1 case (N = 1, A = -1, B = C = 1): wrong belly. See Appendix C.\"\n    assert _etl_t_eq(h[:, 0], want[-1], 1e-10), \"h_last must be the state after the last step\"\n\n\ndef test_big_step_starts_fresh():\n    rng = np.random.default_rng(4)\n    L, D, N = 9, 3, 4\n    A = -np.tile(np.arange(1, N + 1, dtype=np.float64), (D, 1))\n    x = rng.normal(size=(L, D))\n    delta = rng.uniform(0.05, 0.6, size=(L, D))\n    delta[5] = 60.0\n    B = rng.normal(size=(L, N))\n    C = rng.normal(size=(L, N))\n    y, _ = _etl_t_scan(x, delta, A, B, C, h0=rng.normal(size=(D, N)))\n    x2 = x.copy()\n    x2[:5] = rng.normal(size=(5, D)) * 3.0\n    y2, _ = _etl_t_scan(x2, delta, A, B, C, h0=rng.normal(size=(D, N)))\n    assert y.shape == (L, D), f\"expected y of shape {(L, D)}, got {y.shape}\"\n    assert np.all(np.isfinite(y)), \"a big Δ made the belly nan/inf\"\n    assert not np.allclose(y[:5], y2[:5]), \"before step 5, different grains (and h0) must give a different belly\"\n    assert _etl_t_eq(y[5:], y2[5:], 1e-9), \"huge Δ at step 5: the past (and h0) must stop mattering from step 5 on\"\n\n\ndef test_tiny_step_lets_a_grain_slide_by():\n    rng = np.random.default_rng(5)\n    L, D, N = 8, 2, 3\n    A = -rng.uniform(0.5, 2.0, size=(D, N))\n    x = rng.normal(size=(L, D))\n    delta = rng.uniform(0.1, 1.0, size=(L, D))\n    delta[3] = 1e-9\n    B = rng.normal(size=(L, N))\n    C = rng.normal(size=(L, N))\n    y, _ = _etl_t_scan(x, delta, A, B, C)\n    assert np.all(np.isfinite(y)), \"a tiny Δ made the belly nan/inf\"\n    x2 = x.copy()\n    x2[3] += 1000.0\n    y2, _ = _etl_t_scan(x2, delta, A, B, C)\n    assert _etl_t_eq(y, y2, 1e-4), \"tiny Δ at step 3: making that grain 1000 bigger should barely matter\"\n    x3 = x.copy()\n    x3[2] += 1.0\n    y3, _ = _etl_t_scan(x3, delta, A, B, C)\n    assert not np.allclose(y[4:], y3[4:]), \"tiny Δ at step 3: the belly from step 2 must still be carried past it\"\n\n\ndef test_never_peeks_down_the_road():\n    rng = np.random.default_rng(6)\n    L, D, N = 10, 3, 2\n    A = -rng.uniform(0.5, 2.0, size=(D, N))\n    x = rng.normal(size=(L, D))\n    delta = rng.uniform(0.1, 1.0, size=(L, D))\n    B = rng.normal(size=(L, N))\n    C = rng.normal(size=(L, N))\n    y, _ = _etl_t_scan(x, delta, A, B, C)\n    x2, d2, B2, C2 = x.copy(), delta.copy(), B.copy(), C.copy()\n    x2[6:] += 5.0\n    d2[6:] *= 3.0\n    B2[6:] -= 2.0\n    C2[6:] += 1.0\n    y2, _ = _etl_t_scan(x2, d2, A, B2, C2)\n    assert _etl_t_eq(y[:6], y2[:6], 1e-10), \"changing grains 6.. changed steps 0..5: the scanner peeked ahead\"\n    assert not np.allclose(y[6:], y2[6:]), \"steps 6.. must notice their own changed grains\"\n\n\ndef test_long_road_in_two_chunks():\n    rng = np.random.default_rng(7)\n    L, D, N = 12, 3, 4\n    A = -rng.uniform(0.3, 3.0, size=(D, N))\n    x = rng.normal(size=(L, D))\n    delta = rng.uniform(0.05, 1.0, size=(L, D))\n    B = rng.normal(size=(L, N))\n    C = rng.normal(size=(L, N))\n    y, h = _etl_t_scan(x, delta, A, B, C)\n    assert y.shape == (L, D) and h.shape == (D, N), f\"expected {(L, D)} and {(D, N)}, got {y.shape} and {h.shape}\"\n    assert np.max(np.abs(y)) > 1e-3, \"the belly stays empty on a long, busy road\"\n    ya, ha = _etl_t_scan(x[:5], delta[:5], A, B[:5], C[:5])\n    yb, hb = _etl_t_scan(x[5:], delta[5:], A, B[5:], C[5:], h0=ha)\n    assert _etl_t_eq(np.concatenate([ya, yb]), y, 1e-10), \"two chunks (h_last fed in as h0) must match one long scan\"\n    assert _etl_t_eq(hb, h, 1e-10), \"after two chunks, h_last must match the long scan's h_last\"\n\n\ndef test_belly_is_linear_in_the_grains():\n    rng = np.random.default_rng(8)\n    L, D, N = 7, 2, 3\n    A = -rng.uniform(0.5, 2.0, size=(D, N))\n    delta = rng.uniform(0.05, 1.0, size=(L, D))\n    B = rng.normal(size=(L, N))\n    C = rng.normal(size=(L, N))\n    x1 = rng.normal(size=(L, D))\n    x2 = rng.normal(size=(L, D))\n    y1, _ = _etl_t_scan(x1, delta, A, B, C)\n    y2, _ = _etl_t_scan(x2, delta, A, B, C)\n    y12, _ = _etl_t_scan(2.0 * x1 - 3.0 * x2, delta, A, B, C)\n    assert np.max(np.abs(y1)) > 1e-3, \"the belly stays empty\"\n    assert _etl_t_eq(y12, 2.0 * y1 - 3.0 * y2, 1e-9), \"Δ, B, C held fixed: scanning 2·x1 - 3·x2 must give 2·y1 - 3·y2\"\n\n\ndef test_a_whole_road_by_the_book():\n    x = np.array([[-0.9, -0.63], [0.74, -0.71], [-0.52, -1.61], [-0.37, -1.03], [-0.64, 2.88]])\n    delta = np.array([[1.14, 1.25], [0.7, 1.17], [1.08, 1.37], [1.1, 1.07], [0.4, 0.76]])\n    A = np.array([[-2.64, -0.59, -2.74], [-1.77, -1.32, -1.2]])\n    B = np.array([[1.28, 0.44, -0.12], [1.32, 0.0, 0.62], [-0.44, 0.3, -0.74], [-0.9, 1.11, -0.42], [2.12, 1.23, -0.93]])\n    C = np.array([[1.39, -0.65, 0.53], [0.19, -1.13, -0.27], [-0.45, -0.63, -0.27], [0.78, -0.09, 0.97], [-0.49, 1.91, 0.39]])\n    y, h = _etl_t_scan(x, delta, A, B, C)\n    assert y.shape == (5, 2) and h.shape == (2, 3), f\"expected (5, 2) and (2, 3), got {y.shape} and {h.shape}\"\n    assert _etl_t_eq(y, [[-0.343057331522, -0.427752532804], [0.252449194484, 0.0147556825409], [0.0697493729232, -0.149690733504], [0.19729209814, 0.904597158158], [-1.01855110296, 0.973718384743]], 1e-8), (\n        \"L = 5, D = 2, N = 3: wrong y. Check Ā, B̄ (Eq. 4), the update, then the read-out.\")\n    assert _etl_t_eq(h, [[-0.291869169639, -0.641833832928, 0.164963140542], [2.67935468128, 1.43142400799, -1.14722481202]], 1e-8), \"L = 5, D = 2, N = 3: wrong h_last\"\n\n\ndef test_s6_chooses_by_the_book():\n    x = np.array([[0.5, -1.0], [1.5, 0.25], [-0.75, 2.0], [0.0, -0.5]])\n    A = np.array([[-1.0, -2.0], [-0.5, -3.0]])\n    W_B = np.array([[0.8, -0.3], [0.2, 0.6]])\n    W_C = np.array([[-0.4, 1.1], [0.7, 0.5]])\n    w_delta = np.array([1.2, -0.9])\n    delta_bias = np.array([-0.5, 0.3])\n    y = _etl_t_s6(x, A, W_B, W_C, w_delta, delta_bias)\n    assert y.shape == (4, 2), f\"s6 must return y of shape (L, D) = (4, 2), got {y.shape}\"\n    assert np.all(np.isfinite(y)), \"s6 returned nan/inf on a small, friendly road\"\n    assert _etl_t_eq(y, [[-0.0744921831255, 0.236877087446], [-0.995520042995, -0.173355165481], [2.28072866683, 0.475441213599], [-0.22905220853, -0.0802864107894]], 1e-8), (\n        \"s6: wrong y. Check B, C and Δ = τ_Δ(Parameter + s_Δ(x)) (Section 3.2).\")\n\n\ndef test_s6_one_choice_for_every_channel():\n    rng = np.random.default_rng(9)\n    L, D, N = 8, 3, 2\n    A = -np.tile(np.array([1.0, 2.0]), (D, 1))\n    W_B = rng.normal(size=(D, N))\n    W_C = rng.normal(size=(D, N))\n    w_delta = np.array([60.0, 0.0, 0.0])\n    delta_bias = np.array([-1.0, -0.5, 0.0])\n    x = rng.normal(size=(L, D))\n    x[:, 0] = 0.0\n    x[4, 0] = 1.0\n    y = _etl_t_s6(x, A, W_B, W_C, w_delta, delta_bias)\n    assert y.shape == (L, D), f\"expected y of shape {(L, D)}, got {y.shape}\"\n    assert np.all(np.isfinite(y)), \"s6 returned nan/inf\"\n    x2 = x.copy()\n    x2[:4, 1:] = rng.normal(size=(4, D - 1)) * 2.0\n    y2 = _etl_t_s6(x2, A, W_B, W_C, w_delta, delta_bias)\n    assert not np.allclose(y[:4], y2[:4]), \"different grains before the marker must give a different belly\"\n    assert _etl_t_eq(y[4:], y2[4:], 1e-9), \"a marker must reset every channel. How is s_Δ(x) built? (3.2, end of 3.5.1)\"\n",
       "solutionFile": "server/solutions/mamba_c3.py",
-      "paperLink": "Eqs. (2a)/(2b) and (4); Section 2 (Structure and Dimensions); Section 3.2 and Algorithm 2 (s_B, s_C, s_Δ, τ_Δ); Theorem 1 and Appendix C; Section 3.5.2; Appendix D (long sequences in chunks).",
+      "paperLink": "Eq. 2a/2b · Eq. 4 · §2 · §3.2 · §3.5.2 · Alg. 2 · Thm. 1 · App. C · App. D",
       "intro": [
         "Doc Marrow's note: 'Follow Noodle grain by grain. No shortcuts.'"
       ],
@@ -618,7 +620,7 @@
       ],
       "paperLink": "Section 2 (Linear Time Invariance; recurrence (2) vs convolution (3)); Section 3.1 and Figure 2 (Copying vs Selective Copying); Section 4.1.1 and Table 1; Section 3.2 and Algorithm 2 (selection); Section 3.5.2 and Theorem 1 (what Δ, B, C do); Section 3.3 and Appendix D (scan instead of convolution, hardware-aware).",
       "intro": [
-        "So the fussy snake works. Hmph.",
+        "So the fussy snake delivers. Pfft.",
         "Evenly spaced beads? Perfect prints. Scattered beads? Smudges!"
       ],
       "success": [
@@ -634,7 +636,7 @@
   "artefact": {
     "id": "sifting-hourglass",
     "name": "The Sifting Hourglass",
-    "description": "Its neck opens for beads, pinches shut for sand. One small bulb, only what matters.",
+    "description": "Opens for beads, pinches shut for sand. One small bulb, only what matters.",
     "look": "A small hourglass (about 0.6 units tall): two clear glass cones meeting at a narrow neck, warm wooden caps top and bottom, a little cone of golden sand in the lower bulb. A green paper snake coils around the top cap with its head raised. Idle: it turns slowly; sand trickles, the neck pinches and the trickle stops, then a coloured bead drops through."
   },
   "book": {

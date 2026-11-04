@@ -9,30 +9,29 @@
   "region": {
     "name": "Pairadise",
     "biome": "tropic",
-    "tagline": "Storm-scrambled postcards. A Lens that can't match them."
+    "tagline": "Storm-scrambled postcards and a puzzled Lens."
   },
   "scientist": {
     "taskTitle": "Bring back the Twin Lens",
     "briefing": [
-      "Speck. The Bell was luck. Luck doesn't happen twice.",
-      "Pairadise claims a lens that names things nobody ever labelled. HA!",
-      "Fetch it. Read the paper. Yes, the appendix too."
+      "The Bell was luck, Speck. Luck doesn't happen twice.",
+      "Pairadise claims a lens that names things nobody labelled. HA! Fetch it.",
+      "Read the paper. Yes, the appendix too."
     ],
     "reminder": [
       "No lens? Called it.",
       "Read the book, Speck. The small print. It's your size."
     ],
     "return": [
-      "A lens with two eyes? One sees pictures, one reads words... hmph.",
-      "It just named my mug. 'A photo of a mug.' Correct. Infuriatingly correct.",
-      "Twice now, Speck. TWICE. That's not luck. That's a... pattern.",
-      "Shelf. Next to the Bell. Then go away. I need to think."
+      "It named my mug. 'A photo of a mug.' Correct. Infuriatingly correct.",
+      "Twice, Speck. TWICE. That's not luck. That's a... pattern.",
+      "Shelf. Next to the Bell."
     ]
   },
   "story": {
     "arrival": [
-      "Pairadise: a postcard island. Last night's storm blew every photo off its words.",
-      "Photos here, words there. And the island's new Lens can't tell what goes with what."
+      "A postcard island. Last night's storm blew every photo off its words.",
+      "The island's new Lens can't tell which words go with which photo."
     ],
     "resolution": [
       "The Twin Lens hums. Every photo finds its words, even ones nobody labelled.",
@@ -64,7 +63,7 @@
       "name": "Blink",
       "species": "dog",
       "colors": {
-        "fur": "#e8d2a8",
+        "fur": "#d9a066",
         "shirt": "#1fa39a"
       },
       "anchor": "lane-right",
@@ -105,7 +104,7 @@
       "species": "bear",
       "colors": {
         "fur": "#8a5a36",
-        "shirt": "#d84f4f"
+        "shirt": "#2f4f8f"
       },
       "anchor": "bank-right",
       "role": "Red herring and comic relief: the ferry skipper's fix is a crate of exactly 1000 stickers, one fixed label per photo (the predetermined-categories approach the paper argues against).",
@@ -404,7 +403,7 @@
       },
       "design": "A fishing-net board of cut paper strung between two bamboo poles, spec.controlsHint along the top, ✕ top right calls api.onClose(). LEFT: four photo cards clipped to the left rope, one per row (🐢 🥥 ⛵ 🦀), fixed. TOP: four word tags pegged to the top rope (turtle, coconut, boat, crab) in spec.initialCaptionOrder; drag a tag onto another slot to swap the two (api.sfx('paper')). CENTRE: a 4×4 net; every knot is a bead whose colour and size show the Lens's current guess (spec.math, spec.beads), recomputed live after every change. A split bead (both floats hung) is two half-discs, each using its own p for colour and radius. Bead tooltip, 2 decimals, only the hung floats: '→ 0.69 · ↓ 0.34', '→ 0.69' or '↓ 0.34'; with no float hung: 'cos 0.47'. BOTTOM-LEFT: two paper floats, → and ↓ (tooltips from spec.floats); click a float to hang it on the net (→ hooks onto the right edge, ↓ onto the bottom edge) or click again to take it off. RIGHT: the Tide Knob, a big paper dial on spec.valueGrid: press anywhere on the dial and drag; the needle follows the pointer's angle (clamped to −135°…+135°) and snaps to the nearest grid value in log10 space; ◀ ▶ under it or the mouse wheel step one grid value; its value is printed under it ('×1.0'). Beside it a pin cushion holding one red pin: drag the pin onto the dial to stick it at the value under the pointer (readout '📌 ×value' beside the cushion), drag its head to move it, ◀ ▶ beside its readout step it, drag it back to the cushion (or click the cushion) to remove it. A press on the pin head grabs the pin, even where it overlaps the needle. The pin does not limit the player's own knob setting. A big 🎣 Haul button runs spec.evaluation. Win: spec.animations.win, then board.solve() (stamp + spec.successText; it calls api.onSolved() once). Failure: spec.animations.runaway (pin missing) or spec.animations.tug, then board.fail with the failing keys: each badge and its one-word title sit in the feedback line. Never show which slot a tag belongs in, never show the solution values, never say whether a value is too high or too low. From the 4th failed haul on, show spec.hintAfterFailures.text in a corner.",
       "paperLink": "Fig. 3 · §2.3 · §2.5 · Tab. 18",
-      "worldEffect": "Postcards flutter up and clip onto a line between the palms: photo and words, together.",
+      "worldEffect": "Postcards flutter up onto a line between the palms, photo and words together.",
       "intro": [
         "The storm unglued my postcards, and the new Lens thinks turtles are crabs!",
         "Gran's Pairing Net can teach it. Nobody remembers how she set it."
@@ -1120,7 +1119,7 @@
   "artefact": {
     "id": "twin-lens",
     "name": "The Twin Lens",
-    "description": "Two eyes: one sees photos, one reads words. Name a few things; it picks the right one.",
+    "description": "One eye sees photos, one reads words. Give it names; it picks the right one.",
     "look": "A small brass spyglass (about 0.5 units long) that forks into two eyepieces: a round one framing a tiny turquoise photo, a square one framing a cream caption card with three ink lines. A glowing turquoise thread loops between the two eyes. A tiny dial with a red pin on the barrel. Idle: slow spin; the thread pulses when it is used."
   },
   "book": {
