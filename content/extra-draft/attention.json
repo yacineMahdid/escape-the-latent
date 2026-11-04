@@ -1,0 +1,472 @@
+{
+  "challenges": [
+    {
+      "id": "m1",
+      "type": "minigame",
+      "title": "Who's It?",
+      "giver": "bimble",
+      "requires": [
+        "c2",
+        "f3"
+      ],
+      "minigame": "whos-it",
+      "spec": {
+        "goal": "Turn the ear till each 'it' hears who it means. Then ring!",
+        "controls": [
+          [
+            "← →",
+            "turn ear"
+          ],
+          [
+            "mouse",
+            "aim"
+          ],
+          [
+            "Space / click",
+            "ring"
+          ]
+        ],
+        "duration": 55,
+        "successText": "Every 'it' found!",
+        "loseText": "Too muddled! 'It' became a pie-frog.",
+        "toWin": 6,
+        "maxMuddles": 3,
+        "roundFuse": 8,
+        "nextRoundDelay": 0.8,
+        "sharpness": 10,
+        "threshold": 0.6,
+        "turnSpeed": {
+          "start": 70,
+          "max": 190,
+          "rampSeconds": 0.6,
+          "unit": "degrees per second while ← or → is held; speed ramps linearly from start to max over rampSeconds of holding"
+        },
+        "rounds": [
+          {
+            "words": [
+              "the",
+              "frog",
+              "ate",
+              "the",
+              "pie",
+              "because",
+              "it",
+              "was",
+              "hungry"
+            ],
+            "ask": 6,
+            "means": 1,
+            "decoy": 4
+          },
+          {
+            "words": [
+              "the",
+              "frog",
+              "ate",
+              "the",
+              "pie",
+              "because",
+              "it",
+              "was",
+              "yummy"
+            ],
+            "ask": 6,
+            "means": 4,
+            "decoy": 1
+          },
+          {
+            "words": [
+              "the",
+              "duck",
+              "dropped",
+              "the",
+              "note",
+              "because",
+              "it",
+              "was",
+              "soggy"
+            ],
+            "ask": 6,
+            "means": 4,
+            "decoy": 1
+          },
+          {
+            "words": [
+              "the",
+              "duck",
+              "dropped",
+              "the",
+              "note",
+              "because",
+              "it",
+              "was",
+              "sleepy"
+            ],
+            "ask": 6,
+            "means": 1,
+            "decoy": 4
+          },
+          {
+            "words": [
+              "the",
+              "mouse",
+              "fixed",
+              "the",
+              "Bell",
+              "because",
+              "it",
+              "was",
+              "broken"
+            ],
+            "ask": 6,
+            "means": 4,
+            "decoy": 1
+          },
+          {
+            "words": [
+              "the",
+              "mouse",
+              "fixed",
+              "the",
+              "Bell",
+              "because",
+              "it",
+              "was",
+              "clever"
+            ],
+            "ask": 6,
+            "means": 1,
+            "decoy": 4
+          },
+          {
+            "words": [
+              "the",
+              "bunny",
+              "threw",
+              "the",
+              "pie",
+              "because",
+              "it",
+              "was",
+              "burnt"
+            ],
+            "ask": 6,
+            "means": 4,
+            "decoy": 1
+          },
+          {
+            "words": [
+              "the",
+              "bunny",
+              "threw",
+              "the",
+              "pie",
+              "because",
+              "it",
+              "was",
+              "grumpy"
+            ],
+            "ask": 6,
+            "means": 1,
+            "decoy": 4
+          },
+          {
+            "words": [
+              "the",
+              "cat",
+              "read",
+              "the",
+              "note",
+              "because",
+              "it",
+              "was",
+              "curious"
+            ],
+            "ask": 6,
+            "means": 1,
+            "decoy": 4
+          },
+          {
+            "words": [
+              "the",
+              "cat",
+              "read",
+              "the",
+              "note",
+              "because",
+              "it",
+              "was",
+              "pink"
+            ],
+            "ask": 6,
+            "means": 4,
+            "decoy": 1
+          }
+        ],
+        "roundsNote": "Pool of 10. Each try deals them in a fresh seeded shuffle, never repeating within a try (a try needs at most 8). words: the sentence, in order. ask: index of the glowing word ('it'). means: index of the word 'it' really means. decoy: the other noun. Internal only: never show means or decoy.",
+        "keyLayout": {
+          "rule": "Every word of the round has a KEY: a flag at angle phi on the dial ring (degrees, 0 = up, clockwise). Per round: T = random 0..359. means gets phi = T. decoy gets T + 45 or T - 45 (random side). The other 7 words (both 'the's, the verb, 'because', 'it' itself, 'was', the last word) are shuffled into T+90, T+120, T+150, T+180, T+210, T+240, T+270.",
+          "why": "Word order and flag order differ on purpose: the ear finds words by their key, not by where they stand. Aiming exactly at the right flag gives it about 95% of the pie; aiming between it and the decoy splits about 50/50 (a muddle); the 60% bar leaves a window about 62 degrees wide around the right flag.",
+          "startAim": "The ear starts each round at T + 180 plus a random -60..+60 degrees, so every round needs a turn.",
+          "spin": {
+            "fromRound": 4,
+            "degPerSec": 10,
+            "note": "From the 4th round of a try, the whole flag ring drifts slowly (direction alternates per round): the Fair wind. Rounds 1-3 stand still."
+          }
+        },
+        "math": "q = (sin theta, -cos theta) for the ear angle theta; k_j = (sin phi_j, -cos phi_j). score_j = sharpness * dot(q, k_j) = sharpness * cos(theta - phi_j). w_j = exp(score_j - max score) / sum_k exp(score_k - max score). Recompute every frame. Never display sharpness, scores or the formula.",
+        "ring": {
+          "good": "argmax w === means AND w[means] >= threshold. Then: ding, ★ +1, the meant word's card hops, the 'it' card flips to show that word in its colour with a '!' (spec.feedback.good), a little confetti, next round after nextRoundDelay.",
+          "muddle": "anything else. Then: buzz, ✕ +1, the 'it' card wobbles and shows spec.feedback.muddle built from the two biggest slices (bigger first), or spec.feedback.wrong if the biggest slice is >= 0.85. Never show which word was right. Next round after nextRoundDelay + 0.3 s.",
+          "slow": "the round fuse burns out without a ring: counts as a muddle; the 'it' card shows spec.feedback.slow."
+        },
+        "feedback": {
+          "good": "{word}!",
+          "muddle": "{a}-{b}?!",
+          "wrong": "{a}?!",
+          "slow": "zzz…"
+        },
+        "win": "★ reaches toWin -> 'win'.",
+        "lose": "✕ reaches maxMuddles -> 'lose'; the clock running out -> timeUp returns 'lose'.",
+        "hud": "★ {good}/{toWin}  ✕ {muddles}/{maxMuddles}",
+        "layout": {
+          "canvas": "960 x 540 (kit units)",
+          "sentence": "Top strip, centred at y = 88: one cut-paper word card per word (Fredoka 24 px, padding 12 px, gap 8 px). Each card's paper brightens with its live weight w_j (pale at 0, full colour at 1), so the whole sentence shows who is being heard. The 'it' card is pink #ff7ab8, lifted, with a '?' bubble ringed by the round fuse (a shrinking arc).",
+          "dial": "Left-centre, centre (320, 330), ring radius 160: a round cream paper dial. Each flag is a pin on the ring with a paper pill showing its word, in its colour; neighbours alternate label radius 160 / 188 so labels never overlap. In the middle sits the teal ear-trumpet (#3ec7b5), its bell pointing at theta, with a faint listening cone (+-12 degrees, decoration only).",
+          "pie": "Right, centre (740, 300), radius 92: the listening pie. One slice per word, in word colours, in sentence order, always a whole pie. Slices >= 8% carry their word. When the biggest slice reaches the threshold it lifts out with an ink outline (it shows 'focused', never 'correct').",
+          "bubble": "Under the pie at (740, 450): '{ask word} = {word of the biggest slice}' in that word's colour; the runner-up follows in small type when its slice is > 15%. This is the blend of the values: what 'it' would turn into if you rang now."
+        },
+        "colors": {
+          "frog": "#7bcd5d",
+          "pie": "#ffb04a",
+          "duck": "#f2d16b",
+          "note": "#8fd3ff",
+          "mouse": "#b9b9c6",
+          "Bell": "#ffd35a",
+          "bunny": "#ffb3cf",
+          "cat": "#b39cff",
+          "it": "#ff7ab8",
+          "verbs": "#f4a6a6",
+          "last word": "#9fe0d0",
+          "little words": "#e4ddd0"
+        },
+        "input": "← → (A/D) turn the ear. Moving the mouse over the canvas aims the ear at the pointer (angle from the dial centre); keys still work when the mouse is still. Space/Enter or a click rings; a click first aims at the click point, then rings.",
+        "embodies": "One ear = one attention head. The ear's direction is the query, each flag is a key, the card glow and pie are the softmax weights (one whole pie, shared by every word at once), and the bubble is the weighted blend of the values. Playing well = pointing the query at the right key so the attention gets sharp, like the paper's Figure 4 heads on 'its'."
+      },
+      "design": "Mario Party-style rush, 55 s. Each round shows a short sentence with a glowing 'it'. The player reads it, decides who 'it' really means, turns the teal ear on the dial to that word's flag (keys are scattered round the dial, not in sentence order), watches the listening pie and the glowing cards, and rings. 6 good rings win; 3 muddles or the clock lose. The 10 sentences come in pairs that differ by one word (hungry/yummy), so 'it' means a different word each time and only the meaning decides.",
+      "paperLink": "Section 3.2 (an attention function maps a query and key-value pairs to a weighted sum of the values, weighted by query-key compatibility); Section 3.2.1 (dot products of the query with all keys, then a softmax gives the weights); Figure 4 (heads resolving the anaphora 'its', with very sharp attention).",
+      "intro": [
+        "Psst! I built a practice ear. Wherever the ear points, it listens hardest.",
+        "Fair gossip is full of 'it'. Turn my ear so each 'it' hears who it means!"
+      ],
+      "success": [
+        "It works! It hears everyone a little, and the right one a LOT.",
+        "My whiskers are tingling!"
+      ],
+      "retry": [
+        "Oops. 'It' heard a muddle. My whiskers drooped.",
+        "Read the whole sentence first. Then turn."
+      ]
+    },
+    {
+      "id": "q1",
+      "type": "quiz",
+      "title": "Long Questions",
+      "giver": "lengthwise",
+      "requires": [
+        "c2"
+      ],
+      "questions": [
+        {
+          "question": "The paper's two towers. How many identical floors does each one have?",
+          "options": [
+            "2",
+            "6",
+            "8",
+            "512"
+          ],
+          "answer": 1,
+          "right": [
+            "Sssix. Tall. Like me, standing up."
+          ]
+        },
+        {
+          "question": "Their word-coat is 512 wide, shared by 8 ears. How wide is each ear's slice?",
+          "kind": "number",
+          "answer": 64,
+          "tolerance": 0,
+          "placeholder": "a width",
+          "right": [
+            "Sssixty-four. Ssslim."
+          ]
+        },
+        {
+          "question": "When translating, a reply may run past the input's length. By how much, at most?",
+          "kind": "number",
+          "answer": 50,
+          "tolerance": 0,
+          "placeholder": "a number"
+        }
+      ],
+      "paperLink": "Q1: Section 3.1 (encoder and decoder are each a stack of N = 6 identical layers; Figure 1's Nx). Q2: Section 3.2.2 (h = 8 heads, d_k = d_v = d_model/h = 64 with d_model = 512). Q3: Section 6.1 (maximum output length at inference = input length + 50, terminating early when possible).",
+      "design": "Three questions in the dialogue box, all right in one go. Lengthwise, who complains nobody ever asks him anything, finally gets to ask. Long things: tower height, slice width, reply length. The answers are only in the paper (Cursed Book).",
+      "intro": [
+        "Sssomeone's talking to me? Finally! Then I shall ask YOU things.",
+        "Long things. From the paper. Three in a row, no mistakes. Ssss."
+      ],
+      "wrong": [
+        "Hiss! No. That's wrong-wise, not Lengthwise."
+      ],
+      "success": [
+        "Ssssplendid! Nobody's ever answered me before.",
+        "I feel ssso... asked."
+      ],
+      "retry": [
+        "It's all in the book. Long sections. My favourite kind."
+      ]
+    },
+    {
+      "id": "e1",
+      "type": "environment",
+      "title": "Ear Jobs",
+      "giver": "dabble",
+      "requires": [
+        "c4",
+        "m1",
+        "q1"
+      ],
+      "environment": "ear-jobs",
+      "spec": {
+        "goal": "Ring word posts, watch the ears, tag them at Dabble's board",
+        "reminder": [
+          "Ring a few word posts. Each ear always does its one job.",
+          "Then tag all four on my board, down by the pier."
+        ],
+        "sentence": [
+          "the",
+          "bunny",
+          "gave",
+          "the",
+          "frog",
+          "a",
+          "pie",
+          "."
+        ],
+        "posts": {
+          "where": "A straight row on the open main path right of the bridge: post i at x = 24.2 + 2.2*i, y = 0, z = 1.0 (i = 0..7, sentence order, left to right). Clear of the tree at (25, -2.1), the well at (31, -1.3), the c2 stage lanterns at z = 2.9, both ramps and every villager. Check world.colliders once and nudge a post sideways if it overlaps.",
+          "look": "A cut-paper word card (0.95 wide, 0.5 tall, cream #fffdf6 with an ink back plate) on a thin wooden stick, card centre at y = 1.35, the word in ink. A tiny brass hand-bell (#ffd35a) on top. The row pops up (scale-in) when the puzzle starts.",
+          "collider": "circle r = 0.3 at each post (w.addCollider; removed on destroy)",
+          "interactable": "label \"Ring '{word}'\" (for '.' use \"Ring the full stop\"), icon 🔔, radius 1.3, promptHeight 2.2. onInteract is instant: no dialogue.",
+          "onRing": "sfx('ding'), the little bell wiggles, the previous strings vanish, and the four ears' strings for query word i zip out (0.3 s) and stay until another post is rung."
+        },
+        "ears": [
+          {
+            "id": "pink",
+            "color": "#ff7ab8",
+            "name": "Pink ear",
+            "job": "back"
+          },
+          {
+            "id": "sky",
+            "color": "#8fd3ff",
+            "name": "Sky ear",
+            "job": "giver"
+          },
+          {
+            "id": "gold",
+            "color": "#ffd35a",
+            "name": "Gold ear",
+            "job": "stop"
+          },
+          {
+            "id": "teal",
+            "color": "#3ec7b5",
+            "name": "Teal ear",
+            "job": "little"
+          }
+        ],
+        "attention": {
+          "rule": "When post i (the query word) is rung, each ear has weights over the 8 posts (the keys).",
+          "back": "0.85 on post i-1 (on post 0 itself when i = 0), the other 0.15 shared evenly by the other 7 posts.",
+          "giver": "0.85 on post 1 'bunny' (on itself when i = 1), rest shared evenly.",
+          "stop": "0.85 on post 7 '.' (on itself when i = 7), rest shared evenly.",
+          "little": "If word i is a little word (posts 0 'the', 3 'the', 5 'a'): 0.85 on post i+1 (bunny, frog, pie), rest shared evenly. Any other word: an even 1/8 on all eight posts (this ear has nothing to find)."
+        },
+        "strings": {
+          "draw": "For each ear, a string from the top of post i to the top of every post j with weight >= 0.1. Weight >= 0.5: a thick paper string (tube radius 0.06) in the ear's colour. Weight 0.1..0.5: a thin faint string (radius 0.012, opacity 0.35). So the even 1/8 fan shows as eight thin strings: 'teal shrugs'.",
+          "shape": "Quadratic arc from post i to post j, apex 0.8 + 0.35*|i-j| above the card tops; the four ears' arcs are offset in z by (k - 1.5)*0.18 (k = ear index) so arcs to the same post stay side by side. j = i: a small loop above the post.",
+          "dots": "Each post also gets a small dot in an ear's colour on its card while that ear listens to it most, so overlapping arcs stay readable."
+        },
+        "board": {
+          "where": "Dabble's Fair board: a paper easel on the front bank at x = 18.8, y = -0.95, z = 7.9 (collider circle r = 0.5), next to Dabble (bank-left) and clear of the pier ramp (x 21..23). The puzzle ends here, so the artefact appears by Dabble, as the story's resolution says.",
+          "look": "A cream paper board on two legs, header 'FAIR PROGRAM'; four small paper ear-trumpets pinned along the top in the ears' colours, each with a blank paper tag that shows the chosen tag label once set.",
+          "interactable": "label 'Fair board', icon 📋, radius 1.6. Test hook: give it boardOf: 'e1'; give each post interactable postIndex: i (two posts are both 'the').",
+          "flow": "Press E: four questions in a row with w.ask(question, [the 7 tag labels in spec.tags order, 'Later'], { speaker: w.speakerOf('dabble'), neutral: true }): 'Pink ear's job?', 'Sky ear's job?', 'Gold ear's job?', 'Teal ear's job?'. 'Later' stops (choices so far stay on the tags). After the fourth answer, check: all four right -> every ear fires its strings from every post at once (1.2 s burst), w.confetti(80), then api.onSolved(). Otherwise w.speak('dabble', spec.feedback.wrongOne or wrongMany with {n} = number of wrong tags). Never say which tag is wrong. Tags may repeat (it is simply wrong)."
+        },
+        "tags": [
+          {
+            "id": "back",
+            "label": "one word back"
+          },
+          {
+            "id": "ahead",
+            "label": "one word ahead"
+          },
+          {
+            "id": "giver",
+            "label": "who gave the pie"
+          },
+          {
+            "id": "getter",
+            "label": "who got the pie"
+          },
+          {
+            "id": "stop",
+            "label": "the full stop"
+          },
+          {
+            "id": "self",
+            "label": "itself"
+          },
+          {
+            "id": "little",
+            "label": "little words find their thing"
+          }
+        ],
+        "solution": {
+          "pink": "back",
+          "sky": "giver",
+          "gold": "stop",
+          "teal": "little"
+        },
+        "deduction": "Two rings already separate everything: ring 'gave' (pink and sky both go to 'bunny', gold to '.', teal fans out), then ring 'the' or 'a' (pink goes back or loops, sky stays on 'bunny', teal jumps to the next word). Ringing 'bunny' shows sky looping on itself. Internal only: never show this.",
+        "feedback": {
+          "wrongOne": [
+            "Quack. One tag's wrong. Which? Not my job."
+          ],
+          "wrongMany": [
+            "Quack. {n} tags are wrong. I just deliver."
+          ]
+        },
+        "destroy": "Remove the posts, strings, board, colliders and interactables. Leaving the world restarts the puzzle with blank tags.",
+        "embodies": "Each ear is one attention head. Ringing a word shows that head's attention from that word (the query) to every word (the keys), drawn like the paper's coloured head plots. Nobody assigned the jobs: the heads learned them, and the player reads each job off the strings."
+      },
+      "design": "Finale walk-around. After the intro, the Sentence stands as eight word posts past the bridge, and a 'FAIR PROGRAM' board with four blank ear tags stands by Dabble on the bank. Ring any post (E): four coloured strings show where each of the Bell's ears listens from that word. Each ear always does one job (one word back, who gave the pie, the full stop, little words find their thing). Ring a few posts, deduce the jobs, then tag the four ears at the board. All four right solves it; otherwise Dabble only says how many tags are wrong.",
+      "paperLink": "Section 4, last paragraph (self-attention could yield more interpretable models; individual attention heads clearly learn to perform different tasks, many tied to the syntactic and semantic structure of sentences) and Figures 3-5 (attention from one word, one colour per head).",
+      "worldEffect": "Four little tags flutter up the hill onto the Bell's ears.",
+      "intro": [
+        "Quack. The Fair program's printed. Except one bit: what each ear DOES.",
+        "Four ears lost their tags. I deliver programs. I don't write them.",
+        "Ring the word posts past the bridge. Watch the ears. Tag them on my board."
+      ],
+      "reminder": [
+        "Ring a few word posts. Each ear always does its one job.",
+        "Then tag all four on my board, down by the pier."
+      ],
+      "success": [
+        "Quack. All four right. The ears picked those jobs all by themselves?",
+        "Nobody taught them. Clever ears. Cleverer than roller skates, anyway."
+      ]
+    }
+  ]
+}
