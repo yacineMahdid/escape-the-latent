@@ -1,0 +1,792 @@
+{
+  "id": "mamba",
+  "paper": {
+    "arxivId": "2312.00752",
+    "title": "Mamba: Linear-Time Sequence Modeling with Selective State Spaces",
+    "authors": "Gu, Dao",
+    "year": 2023
+  },
+  "region": {
+    "name": "Siftsand",
+    "biome": "desert",
+    "tagline": "A desert post, an endless road, and a snake who can't keep it all."
+  },
+  "scientist": {
+    "taskTitle": "Bring back the Sifting Hourglass",
+    "briefing": [
+      "Speck. Two artefacts on my shelf. I checked them twice. They're real. Irritating.",
+      "Next: a desert post. A snake carries messages down a road that never ends.",
+      "Its belly is tiny, so it must choose what to keep. Bring me how it chooses.",
+      "You'll fail. ...I keep saying that. Go."
+    ],
+    "reminder": [
+      "Still here? The road won't get shorter, Speck. It never ends. That's the point.",
+      "Read the book. Most of a desert is just sand."
+    ],
+    "return": [
+      "An hourglass. The neck opens for beads and pinches shut for sand. Hm. HMPH.",
+      "Three for three, Speck. That stopped being luck at two.",
+      "On the shelf. Three in a row... Something's taking shape up there. Something big."
+    ]
+  },
+  "story": {
+    "arrival": [
+      "Siftsand: a desert post where the Endless Road begins. It never ends. Ever.",
+      "Noodle the snake carries the message beads. He also swallows every grain of sand."
+    ],
+    "resolution": [
+      "Noodle gulps a ruby, lets the sand slide by, and grins. Belly never full.",
+      "Penny stamps a tiny parcel DELIVERED. Inside: an hourglass. 'For your giant.'"
+    ]
+  },
+  "inhabitants": [
+    {
+      "id": "noodle",
+      "name": "Noodle",
+      "species": "snake",
+      "colors": {
+        "fur": "#6cc24a",
+        "shirt": "#ffd35a"
+      },
+      "anchor": "lane-left",
+      "role": "Giver of c1. The outpost's courier, a very long green sand snake with one small belly (the fixed-size state). He gulps every grain the same way (time-invariant), so at the bell he can only say mush. Sweet, burpy, easily excited; his happy loop-de-loop after c1 pops a vertebra (sets up c2).",
+      "lines": {
+        "default": [
+          "Sssorry, can't chat. Too full of sand. *burp* ...that was a pebble."
+        ],
+        "afterSolved": [
+          "Beads in, sand out! I'm a picky eater now.",
+          "Doc Marrow says no more loop-de-loops. I say: never say never."
+        ]
+      }
+    },
+    {
+      "id": "tumble",
+      "name": "Tumble",
+      "species": "bunny",
+      "colors": {
+        "fur": "#fff4f8",
+        "shirt": "#ff7ab8"
+      },
+      "anchor": "lane-mid",
+      "role": "Flavour, and the region's curious kid: rides on Noodle's tail and asks everyone 'why'. A natural giver for later fundamentals (hidden state, exponential decay, sigmoid/softplus, linear projections). Never explains anything.",
+      "lines": {
+        "default": [
+          "I'm Tumble! I ride on Noodle's tail. I have SO many questions. Like, why is sand?",
+          "His belly gurgles in colours. Mostly the colour of sand."
+        ],
+        "afterSolved": [
+          "Noodle says ruby, lapis, emerald now! Next I'm teaching him 'please'."
+        ]
+      }
+    },
+    {
+      "id": "kayvee",
+      "name": "Kayvee",
+      "species": "mouse",
+      "colors": {
+        "fur": "#b9b3c6",
+        "shirt": "#a05a8c"
+      },
+      "anchor": "terrace-1",
+      "role": "Red herring and flavour: a pack-rat who never chooses and keeps every letter forever (attention's KV cache: no compression, so each lookup gets slower as the pile grows; Section 3.1). His door no longer shuts.",
+      "lines": {
+        "default": [
+          "Why choose? I keep EVERY letter. Every single one. Forever!",
+          "Finding one takes a bit longer every day. And my door won't shut."
+        ],
+        "afterSolved": [
+          "Noodle keeps one bellyful and still beats me. I'm having a yard sale."
+        ]
+      }
+    },
+    {
+      "id": "marrow",
+      "name": "Doc Marrow",
+      "species": "dog",
+      "colors": {
+        "fur": "#c98a52",
+        "shirt": "#8fd3ff"
+      },
+      "anchor": "terrace-2",
+      "role": "Giver of c2. The outpost's bone-setter in light-blue scrubs. Has every part for Noodle's new vertebra, but chewed the drawing. Professional, mostly. Points the player to the Belly Scanner (c3) after c2.",
+      "lines": {
+        "default": [
+          "Bone-setter. I set bones. Sometimes I chew them. Occupational hazard."
+        ],
+        "afterSolved": [
+          "Identical vertebrae, stacked all the way down. Lovely spine. Not chewing it."
+        ]
+      }
+    },
+    {
+      "id": "penny",
+      "name": "Penny",
+      "species": "pig",
+      "colors": {
+        "fur": "#ffb8c8",
+        "shirt": "#4f86d8"
+      },
+      "anchor": "lane-right",
+      "role": "Giver of c4 (explain). The postmistress, proud of her one big rubber stamp that prints a whole road at once and treats every grain alike: an LTI SSM / global convolution in a post-office cap. Skeptical of the 'fussy' snake.",
+      "lines": {
+        "default": [
+          "Post office. My one stamp prints a whole road at once. Every grain alike. Fast!",
+          "A snake for a postman? Hmph. Come back when that scanner agrees with him."
+        ],
+        "afterSolved": [
+          "My old stamp is framed now. Wonderful on straight roads. Only straight roads."
+        ]
+      }
+    },
+    {
+      "id": "umberto",
+      "name": "Umberto",
+      "species": "duck",
+      "colors": {
+        "fur": "#fff6e0",
+        "shirt": "#3ec7b5"
+      },
+      "anchor": "bank-left",
+      "role": "Comic relief by the oasis water: says 'um' all the time, a walking filler token (the paper's 'um' example in Section 3.5.2). Noodle used to swallow every um.",
+      "lines": {
+        "default": [
+          "Um. Hi. Um. I tell Noodle stories. Um. He swallows every um."
+        ],
+        "afterSolved": [
+          "Um. Noodle doesn't swallow my ums anymore. Um. Rude. Um. Fair."
+        ]
+      }
+    }
+  ],
+  "stations": [
+    {
+      "id": "scanner",
+      "kind": "machine",
+      "anchor": "terrace-3",
+      "label": "The Belly Scanner",
+      "look": "A paper booth shaped like a big open snake mouth, with a crank, a sand-coloured screen, a typewriter slot and a row of tiny empty hourglasses (one per belly pocket) along the top."
+    },
+    {
+      "id": "gatesign",
+      "kind": "sign",
+      "anchor": "path-to-gate",
+      "label": "To the Endless Road",
+      "look": "A sun-bleached wooden arrow on a stake pointing at the gate, with a little coiled paper snake painted on it."
+    }
+  ],
+  "challenges": [
+    {
+      "id": "c1",
+      "type": "puzzle",
+      "title": "Gulp or Let Go",
+      "giver": "noodle",
+      "requires": [],
+      "puzzle": "selective-gulp-knobs",
+      "spec": {
+        "title": "Gulp or Let Go",
+        "controlsHint": "Set Δ B C per grain · ⛓ links columns · ▶ run",
+        "A": -1,
+        "tokens": {
+          "ruby": {
+            "kind": "bead",
+            "color": [
+              0.9,
+              0.12,
+              0.2
+            ]
+          },
+          "lapis": {
+            "kind": "bead",
+            "color": [
+              0.15,
+              0.35,
+              0.9
+            ]
+          },
+          "emerald": {
+            "kind": "bead",
+            "color": [
+              0.1,
+              0.75,
+              0.35
+            ]
+          },
+          "sand": {
+            "kind": "sand",
+            "color": [
+              0.85,
+              0.72,
+              0.48
+            ]
+          },
+          "bell": {
+            "kind": "bell",
+            "color": [
+              0.17,
+              0.13,
+              0.2
+            ]
+          }
+        },
+        "roadCode": {
+          "r": "ruby",
+          "l": "lapis",
+          "e": "emerald",
+          ".": "sand",
+          "!": "bell"
+        },
+        "roads": [
+          "..r...!..l.!!...e....!..",
+          "l........................!..r...!...e..!.",
+          ".e.r....!!!...l.l...!...r.......!.."
+        ],
+        "kinds": [
+          {
+            "id": "bead",
+            "icon": "◆",
+            "tip": "beads"
+          },
+          {
+            "id": "sand",
+            "icon": "∴",
+            "tip": "sand"
+          },
+          {
+            "id": "bell",
+            "icon": "🔔",
+            "tip": "bell"
+          }
+        ],
+        "knobs": {
+          "delta": {
+            "label": "Δ",
+            "tip": "step",
+            "options": [
+              0.001,
+              0.01,
+              0.1,
+              1,
+              10
+            ]
+          },
+          "B": {
+            "label": "B",
+            "tip": "in",
+            "options": [
+              0,
+              1
+            ]
+          },
+          "C": {
+            "label": "C",
+            "tip": "out",
+            "options": [
+              0,
+              1
+            ]
+          }
+        },
+        "initial": {
+          "chained": true,
+          "bead": {
+            "delta": 0.1,
+            "B": 1,
+            "C": 1
+          },
+          "sand": {
+            "delta": 0.1,
+            "B": 1,
+            "C": 1
+          },
+          "bell": {
+            "delta": 0.1,
+            "B": 1,
+            "C": 1
+          }
+        },
+        "math": "Per road, belly h = [0, 0, 0] (one channel per colour, N = 1 each). For each tile t in order: k = tokens[tile].kind; Δ = knobs[k].delta; Abar = exp(A*Δ) = exp(-Δ); Bbar = (exp(A*Δ) - 1) / A * knobs[k].B = (1 - exp(-Δ)) * knobs[k].B (zero-order hold, Eq. 4, with A = -1); h = Abar*h + Bbar*color(tile), per channel; voice y_t = knobs[k].C * h. Draw the belly as rgb(h) and the voice as rgb(y), each channel clamped to [0, 1] for display only.",
+        "tolerance": 0.12,
+        "judge": [
+          "At every bell tile: target = colour of the most recent bead before it on the same road (every bell has one). err = max over channels |y - target|.",
+          "ok if err <= tolerance. Otherwise: silent if max|y| <= tolerance; else s = dot(y, target) / dot(target, target), r = y - s*target: faded if max|r| <= tolerance and s < 1; else mush.",
+          "At every non-bell tile: chatty if max|y| > tolerance (tag only the first such tile per road)."
+        ],
+        "winCondition": "Every bell on all three roads is ok and no road is chatty.",
+        "solution": {
+          "example": {
+            "chained": false,
+            "bead": {
+              "delta": 10,
+              "B": 1,
+              "C": 0
+            },
+            "sand": {
+              "delta": 0.001,
+              "B": 1,
+              "C": 0
+            },
+            "bell": {
+              "delta": 0.001,
+              "B": 1,
+              "C": 1
+            }
+          },
+          "allWinning": "Exactly 8 settings win (checked by brute force over all 8000): bead Δ=10, B=1, C=0; sand Δ=0.001, B=0 or 1, C=0; bell Δ=0.001 or 0.01, B=0 or 1, C=1. No chained (identical-column) setting can win.",
+          "rule": "Section 3.5.2: a large Δ resets the state and focuses on the current input (beads); a small Δ persists the state and ignores the input (sand, bells); B lets an input into the state, C lets the state out (only at bells). The rule must depend on the grain: selection, not time invariance."
+        },
+        "feedback": {
+          "ok": "✓",
+          "silent": "…",
+          "faded": "faded",
+          "mush": "mush",
+          "chatty": "chatty"
+        },
+        "hintAfterFailures": {
+          "after": 3,
+          "text": "📖 3.5.2"
+        },
+        "successText": "Beads in, sand out!"
+      },
+      "design": "A long sand-coloured paper board titled spec.title, spec.controlsHint along the top, ✕ top right calls api.onClose(). LEFT: the three roads of spec.roads as rows of small paper tiles, one tile per character (spec.roadCode): beads are faceted gems in their token colour, sand is a pale dot, bells are small ink-dark bells. Each road has a little green paper snake head at its left end with a round belly bubble beside it (a tiny 'A = −1' plaque on the bubble, tooltip only). RIGHT: the knob panel, three columns for spec.kinds (icons only, tooltips from tip). Each column: a Δ dial stepping through spec.knobs.delta.options (◀ ▶ or mouse wheel; shows the number), a B toggle (0/1, a closed/open mouth) and a C toggle (0/1, a closed/open speech bubble); row labels Δ, B, C with tooltips step/in/out. Above the columns a ⛓ button (tooltip 'same for all'). Start from spec.initial. While chained, changing a knob in any column sets that knob in all three (one rule for every grain); clicking ⛓ unchains them (values kept), clicking again re-chains them (the last-changed column is copied to the others). A big ▶ runs all three roads at once (clicking ▶ again mid-run skips to the end): each snake slides tile by tile (about 120 ms per tile), its belly bubble shows rgb(h), a thin ribbon swatch of rgb(h) is left under every tile it passes, and whenever max|y| > spec.tolerance a small speech bubble of colour rgb(y) pops above that tile (all values from spec.math). Then spec.judge tags every bell with ✓ or a spec.feedback word (…, faded, mush) and puts a red 'chatty' tag on the first off-bell tile where a snake talks. Win (spec.winCondition): the snakes wiggle, api.sfx('success'), spec.successText, api.onSolved() exactly once, then a ↩ button closes. Failure: api.sfx('fail') and a small shake; tags stay until the next change; never say which knob is wrong. From the 3rd failed run, show spec.hintAfterFailures.text in a corner. Runs are unlimited; nothing resets on failure.",
+      "paperLink": "Section 3.5.2 (Interpretation of Δ, B and C; Variable Spacing; Boundary Resetting); Section 3.2 and Algorithm 2 (selective versus time-invariant Δ, B, C); Theorem 1; Eq. (4); Section 3.1 and Figure 2 (Selective Copying, one bead at a time).",
+      "worldEffect": "Noodle's belly glows ruby, then lapis, then emerald. Neat sand piles line the road where he let grains slide by.",
+      "intro": [
+        "Hi! I'm Noodle. I carry the message beads. *burp* Sorry. Sand.",
+        "I gulp every grain the same. So at the bell, all I can say is mush.",
+        "Set my gulps for me? Beads, sand, bells. It's all in the old book."
+      ],
+      "success": [
+        "Ruby! Lapis! Emerald! And not one grain of sand!",
+        "I'm so happy I could loop-de-loop! *pop* ...Ow. My back."
+      ]
+    },
+    {
+      "id": "c2",
+      "type": "puzzle",
+      "title": "The Popped Vertebra",
+      "giver": "marrow",
+      "requires": [
+        "c1"
+      ],
+      "puzzle": "mamba-vertebra-jig",
+      "spec": {
+        "title": "The Vertebra Jig",
+        "controlsHint": "Drag bones into the jig · set E · 🔨 snap",
+        "tiles": [
+          {
+            "id": "linear",
+            "label": "Linear",
+            "shape": "trapezoid"
+          },
+          {
+            "id": "conv",
+            "label": "Conv",
+            "shape": "box"
+          },
+          {
+            "id": "silu",
+            "label": "σ",
+            "shape": "round"
+          },
+          {
+            "id": "ssm",
+            "label": "SSM",
+            "shape": "box"
+          },
+          {
+            "id": "mul",
+            "label": "⊗",
+            "shape": "round"
+          },
+          {
+            "id": "add",
+            "label": "⊕",
+            "shape": "round"
+          },
+          {
+            "id": "mha",
+            "label": "MHA",
+            "shape": "box"
+          },
+          {
+            "id": "mlp",
+            "label": "MLP",
+            "shape": "box"
+          }
+        ],
+        "slots": [
+          {
+            "id": "long1",
+            "lane": "long",
+            "pos": 1
+          },
+          {
+            "id": "long2",
+            "lane": "long",
+            "pos": 2
+          },
+          {
+            "id": "long3",
+            "lane": "long",
+            "pos": 3
+          },
+          {
+            "id": "long4",
+            "lane": "long",
+            "pos": 4
+          },
+          {
+            "id": "short1",
+            "lane": "short",
+            "pos": 1
+          },
+          {
+            "id": "short2",
+            "lane": "short",
+            "pos": 2
+          },
+          {
+            "id": "join",
+            "lane": "join",
+            "pos": 1
+          },
+          {
+            "id": "top",
+            "lane": "top",
+            "pos": 1
+          }
+        ],
+        "layout": "Input arrow at the bottom splits into two lanes going up: the long lane (left, slots long1 at the bottom to long4 at the top) and the short lane (right, short1 at the bottom, short2 above it). Both lanes end in the round join socket; above it the top slot, then the output arrow. pos counts from the bottom. All slots start empty.",
+        "expansion": {
+          "label": "E",
+          "options": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "initial": 1
+        },
+        "weights": {
+          "linear": "E",
+          "conv": 0,
+          "silu": 0,
+          "ssm": 0,
+          "mul": 0,
+          "add": 0,
+          "mha": 4,
+          "mlp": 8
+        },
+        "weightRule": "Weight of one vertebra w = sum over filled slots of weights[tile], where 'E' means the current expansion value (each Linear maps D to E*D or E*D to D: E*D^2 parameters). Empty slots weigh 0. Unit: D². The left pan holds two vertebrae, so it shows 2*w.",
+        "scale": {
+          "left": {
+            "count": 2
+          },
+          "right": {
+            "label": "MHA+MLP",
+            "value": 12
+          }
+        },
+        "solution": {
+          "long1": "linear",
+          "long2": "conv",
+          "long3": "silu",
+          "long4": "ssm",
+          "short1": "linear",
+          "short2": "silu",
+          "join": "mul",
+          "top": "linear",
+          "E": 2
+        },
+        "winCondition": "All 8 slots hold exactly spec.solution's tiles and E === 2 (then 2 * 3E = 12 = the right pan). Exact match, no tolerance.",
+        "feedback": {
+          "empty": "□",
+          "bones": "✕ bones",
+          "tilt": "⚖"
+        },
+        "hintAfterFailures": {
+          "after": 3,
+          "text": "📖 Fig. 3"
+        },
+        "successText": "Snap!"
+      },
+      "design": "A paper workbench titled spec.title, spec.controlsHint along the top, ✕ calls api.onClose(). CENTRE: the jig, an empty vertebra-shaped frame drawn like one column of Figure 3 (see spec.layout): dashed slots, round join socket, arrows in and out, no labels. Lane width grows with E. BOTTOM: a tray with one stack per type in spec.tiles (unlimited copies, labels exactly spec.tiles[].label; 'trapezoid' = a green trapezoid, 'round' = a small circle, 'box' = a blue rounded box). Drag a tile onto any slot (api.sfx('paper')); dropping on a filled slot replaces it; dragging a placed tile off the jig (or right-clicking it) empties the slot. RIGHT: a balance scale. Left pan: two tiny vertebra icons and the number 2*w (spec.weightRule); right pan: a little wagon showing spec.scale.right.label and spec.scale.right.value; unit 'D²'. The beam tilts toward the heavier pan and is level when equal, live. Under it an E dial (◀ E ▶) cycling spec.expansion.options from spec.expansion.initial. A 🔨 button checks spec.winCondition. Win: the bones click together, the vertebra slides onto a stack of identical vertebrae, api.sfx('success'), spec.successText, api.onSolved() exactly once, then a ↩ button closes. Failure: api.sfx('fail'), the jig rattles, and the tags that apply appear: □ (some slot empty), ✕ bones (some filled slot holds a wrong tile), ⚖ (beam not level). Never mark which slot is wrong. From the 3rd failure on, show spec.hintAfterFailures.text in a corner. Unlimited tries.",
+      "paperLink": "Figure 3 (the Mamba block, next to H3 and the Gated MLP) and Section 3.4 (expansion factor E, where the parameters live, two blocks versus one Transformer layer).",
+      "worldEffect": "Noodle stretches out straight as a ruler, every vertebra the same, all the way down the road.",
+      "intro": [
+        "Noodle did a loop-de-loop and popped a vertebra. Classic Noodle.",
+        "I have all the bits, but I chewed the drawing. Build one just like the others?"
+      ],
+      "success": [
+        "Snap! Perfect fit, perfect weight. Two of those weigh one old wagon.",
+        "Now let the Belly Scanner check him, grain by grain. It's next door."
+      ]
+    },
+    {
+      "id": "c3",
+      "type": "code",
+      "title": "The Belly Scanner",
+      "giver": "scanner",
+      "requires": [
+        "c1",
+        "c2"
+      ],
+      "prompt": "## The Belly Scanner\n\n*Follow Noodle grain by grain, exactly as the book says.*\n\nnumpy, `float64`. A loop over time is fine.\n\n### 1. `selective_scan(x, delta, A, B, C, h0=None)`\nThe SSM of **Eq. (2a)/(2b)**, time-varying as in **Algorithm 2**, discretized by the **ZOH of Eq. (4)**.\n\n- `x`: `(L, D)` grains; `delta`: `(L, D)`, all > 0 (one Δ per step and channel)\n- `A`: `(D, N)`, all < 0; row `d` is the diagonal of channel `d`'s A\n- `B`, `C`: `(L, N)`, one row per step, shared by all channels\n- `h0`: `(D, N)` belly before step 0; `None` = zeros\n- Channel `d` runs its own SSM with an `N`-long state `h[d]`, using `A[d]`, `delta[t, d]`, `B[t]`, `C[t]`\n- `y[t, d] = C[t] · h_t[d]` (sum over the `N` pockets)\n- **returns** `(y, h_last)`: `y` `(L, D)`; `h_last` `(D, N)` = the state after the last step\n\n### 2. `s6(x, A, W_B, W_C, w_delta, delta_bias)`\nThe selection mechanism (**Section 3.2**, **Algorithm 2**), then `selective_scan` from a zero belly.\n\n- `x`: `(L, D)`; `A`: `(D, N)`; `W_B`, `W_C`: `(D, N)`; `w_delta`, `delta_bias`: `(D,)`\n- `B = x @ W_B`, `C = x @ W_C` (s_B, s_C = Linear_N, no bias)\n- `Δ = τ_Δ(Parameter + s_Δ(x))` with Parameter = `delta_bias`, `s_Δ(x) = Broadcast_D(Linear_1(x))`, `Linear_1(x) = x @ w_delta`, and τ_Δ as Section 3.2 chooses\n- **returns** `y` `(L, D)`\n\nRun the tests. The hourglasses only flip when every test passes.\n",
+      "starterCode": "import numpy as np\n\n\ndef selective_scan(x, delta, A, B, C, h0=None):\n    \"\"\"THE BELLY SCANNER: Noodle's belly, grain by grain (Eq. 2, ZOH Eq. 4, Algorithm 2).\n\n    x: (L, D)  delta: (L, D) > 0  A: (D, N) < 0  B, C: (L, N)  h0: (D, N) or None\n    returns (y, h_last): y (L, D), h_last (D, N)\n    \"\"\"\n    x = np.asarray(x, dtype=np.float64)\n    A = np.asarray(A, dtype=np.float64)\n    L, D = x.shape\n    N = A.shape[1]\n    # TODO: the hourglasses are empty. The scanner shows nothing at all.\n    return np.zeros((L, D)), np.zeros((D, N))\n\n\ndef s6(x, A, W_B, W_C, w_delta, delta_bias):\n    \"\"\"THE CHOOSER: Δ, B, C made from the grains themselves (Section 3.2, Algorithm 2).\n\n    x: (L, D)  A: (D, N)  W_B, W_C: (D, N)  w_delta: (D,)  delta_bias: (D,)  ->  y (L, D)\n    \"\"\"\n    x = np.asarray(x, dtype=np.float64)\n    # TODO: Noodle chooses nothing yet.\n    return np.zeros_like(x)\n",
+      "tests": "import numpy as np\n\n\ndef _scan(*args, **kwargs):\n    out = selective_scan(*args, **kwargs)\n    assert isinstance(out, (tuple, list)) and len(out) == 2, \"selective_scan must return a pair: (y, h_last)\"\n    return np.asarray(out[0], dtype=np.float64), np.asarray(out[1], dtype=np.float64)\n\n\ndef _s6(*args):\n    return np.asarray(s6(*args), dtype=np.float64)\n\n\ndef test_one_grain_by_hand():\n    ln2 = np.log(2.0)\n    x, delta, A, B, C = [[2.0]], [[ln2]], [[-1.0]], [[1.0]], [[1.0]]\n    y, h = _scan(np.array(x), np.array(delta), np.array(A), np.array(B), np.array(C))\n    assert y.shape == (1, 1), f\"one grain, one channel: y must have shape (L, D) = (1, 1), got {y.shape}\"\n    assert h.shape == (1, 1), f\"h_last must have shape (D, N) = (1, 1), got {h.shape}\"\n    assert np.all(np.isfinite(y)), \"the belly is nan/inf after a single friendly grain\"\n    if np.allclose(y, [[2.0 * ln2]], atol=1e-6):\n        raise AssertionError(\"A shortcut! That B̄ is only approximately right. Eq. (4) gives the exact rule.\")\n    if np.allclose(y, [[2.0]], atol=1e-6):\n        raise AssertionError(\"B went into the belly raw. Eq. (4) discretizes B too, not only A.\")\n    assert np.allclose(y, [[1.0]], atol=1e-9), \"one grain (x = 2, Δ = ln 2, A = -1, B = C = 1): wrong belly. Re-read Eq. (4).\"\n    assert np.allclose(h, [[1.0]], atol=1e-9), \"h_last must be the state after the last step\"\n    y2, h2 = _scan(np.array(x), np.array(delta), np.array(A), np.array(B), np.array(C), h0=np.array([[4.0]]))\n    assert np.allclose(y2, [[3.0]], atol=1e-9) and np.allclose(h2, [[3.0]], atol=1e-9), (\n        \"starting from h0 = 4 the belly is wrong: h0 is the state *before* step 0\")\n\n\ndef test_two_pockets_two_steps_by_hand():\n    ln2 = np.log(2.0)\n    x = np.array([[1.0], [3.0]])\n    delta = np.array([[ln2], [ln2]])\n    A = np.array([[-1.0, -2.0]])\n    B = np.array([[1.0, 2.0], [0.0, 1.0]])\n    C = np.array([[1.0, 1.0], [2.0, -1.0]])\n    y, h = _scan(x, delta, A, B, C)\n    assert y.shape == (2, 1), f\"L = 2, D = 1: y must have shape (2, 1), got {y.shape}\"\n    assert h.shape == (1, 2), f\"D = 1, N = 2: h_last must have shape (1, 2), got {h.shape}\"\n    if np.allclose(y, [[2.0794415416798357], [-1.732867951399863]], atol=1e-6):\n        raise AssertionError(\"A shortcut! That B̄ is only approximately right. Eq. (4) gives the exact rule.\")\n    assert np.allclose(y, [[1.25], [-0.8125]], atol=1e-9), (\n        \"one channel, two belly pockets (N = 2), two steps: wrong y. Each step t uses its own B_t and C_t, \"\n        \"each pocket its own A, and y_t adds up every pocket.\")\n    assert np.allclose(h, [[0.25, 1.3125]], atol=1e-9), \"h_last must be the state after the last step\"\n\n\ndef test_theorem_1_the_old_gate_inside():\n    rng = np.random.default_rng(1)\n    L, D = 12, 3\n    g = rng.uniform(0.02, 0.98, size=(L, D))\n    delta = -np.log1p(-g)  # picked so that the gate of Theorem 1 is exactly g\n    x = rng.normal(size=(L, D))\n    y, h = _scan(x, delta, -np.ones((D, 1)), np.ones((L, 1)), np.ones((L, 1)))\n    assert y.shape == (L, D), f\"expected y of shape {(L, D)}, got {y.shape}\"\n    assert h.shape == (D, 1), f\"expected h_last of shape {(D, 1)}, got {h.shape}\"\n    want = np.zeros((L, D))\n    s = np.zeros(D)\n    for t in range(L):\n        s = (1.0 - g[t]) * s + g[t] * x[t]\n        want[t] = s\n    assert np.allclose(y, want, atol=1e-10), (\n        \"Theorem 1: with N = 1, A = -1, B = 1 (and C = 1) the scan must become the gated recurrence (5), \"\n        \"h_t = (1 - g_t) h_(t-1) + g_t x_t. Appendix C shows why.\")\n    assert np.allclose(h[:, 0], want[-1], atol=1e-10), \"h_last must be the state after the last step\"\n\n\ndef test_big_step_starts_fresh():\n    rng = np.random.default_rng(4)\n    L, D, N = 9, 3, 4\n    A = -np.tile(np.arange(1, N + 1, dtype=np.float64), (D, 1))  # S4D-Real: A_n = -(n + 1)\n    x = rng.normal(size=(L, D))\n    delta = rng.uniform(0.05, 0.6, size=(L, D))\n    delta[5] = 60.0\n    B = rng.normal(size=(L, N))\n    C = rng.normal(size=(L, N))\n    y, _ = _scan(x, delta, A, B, C, h0=rng.normal(size=(D, N)))\n    x2 = x.copy()\n    x2[:5] = rng.normal(size=(5, D)) * 3.0\n    y2, _ = _scan(x2, delta, A, B, C, h0=rng.normal(size=(D, N)))\n    assert y.shape == (L, D), f\"expected y of shape {(L, D)}, got {y.shape}\"\n    assert np.all(np.isfinite(y)), \"a big Δ made the belly nan/inf\"\n    assert not np.allclose(y[:5], y2[:5]), \"before step 5, different grains (and a different h0) must give a different belly\"\n    assert np.allclose(y[5:], y2[5:], atol=1e-9), (\n        \"a huge Δ at step 5: everything before it (grains and h0) should no longer matter from step 5 on\")\n\n\ndef test_tiny_step_lets_a_grain_slide_by():\n    rng = np.random.default_rng(5)\n    L, D, N = 8, 2, 3\n    A = -rng.uniform(0.5, 2.0, size=(D, N))\n    x = rng.normal(size=(L, D))\n    delta = rng.uniform(0.1, 1.0, size=(L, D))\n    delta[3] = 1e-9\n    B = rng.normal(size=(L, N))\n    C = rng.normal(size=(L, N))\n    y, _ = _scan(x, delta, A, B, C)\n    assert np.all(np.isfinite(y)), \"a tiny Δ made the belly nan/inf\"\n    x2 = x.copy()\n    x2[3] += 1000.0\n    y2, _ = _scan(x2, delta, A, B, C)\n    assert np.allclose(y, y2, atol=1e-4), \"a tiny Δ at step 3: making that grain 1000 bigger should barely change anything\"\n    x3 = x.copy()\n    x3[2] += 1.0\n    y3, _ = _scan(x3, delta, A, B, C)\n    assert not np.allclose(y[4:], y3[4:]), \"with a tiny Δ at step 3, the belly from step 2 must still be carried past it\"\n\n\ndef test_never_peeks_down_the_road():\n    rng = np.random.default_rng(6)\n    L, D, N = 10, 3, 2\n    A = -rng.uniform(0.5, 2.0, size=(D, N))\n    x = rng.normal(size=(L, D))\n    delta = rng.uniform(0.1, 1.0, size=(L, D))\n    B = rng.normal(size=(L, N))\n    C = rng.normal(size=(L, N))\n    y, _ = _scan(x, delta, A, B, C)\n    x2, d2, B2, C2 = x.copy(), delta.copy(), B.copy(), C.copy()\n    x2[6:] += 5.0\n    d2[6:] *= 3.0\n    B2[6:] -= 2.0\n    C2[6:] += 1.0\n    y2, _ = _scan(x2, d2, A, B2, C2)\n    assert np.allclose(y[:6], y2[:6], atol=1e-12), \"changing grains 6.. changed the belly at steps 0..5: the scanner peeked ahead\"\n    assert not np.allclose(y[6:], y2[6:]), \"steps 6.. should notice their own changed grains\"\n\n\ndef test_long_road_in_two_chunks():\n    rng = np.random.default_rng(7)\n    L, D, N = 12, 3, 4\n    A = -rng.uniform(0.3, 3.0, size=(D, N))\n    x = rng.normal(size=(L, D))\n    delta = rng.uniform(0.05, 1.0, size=(L, D))\n    B = rng.normal(size=(L, N))\n    C = rng.normal(size=(L, N))\n    y, h = _scan(x, delta, A, B, C)\n    assert y.shape == (L, D) and h.shape == (D, N), f\"expected shapes {(L, D)} and {(D, N)}, got {y.shape} and {h.shape}\"\n    assert np.max(np.abs(y)) > 1e-3, \"the belly stays empty on a long, busy road\"\n    ya, ha = _scan(x[:5], delta[:5], A, B[:5], C[:5])\n    yb, hb = _scan(x[5:], delta[5:], A, B[5:], C[5:], h0=ha)\n    assert np.allclose(np.concatenate([ya, yb]), y, atol=1e-10), (\n        \"the road scanned in two chunks (h_last of the first fed in as h0 of the second) must match one long scan\")\n    assert np.allclose(hb, h, atol=1e-10), \"after two chunks, h_last must match the one long scan's h_last\"\n\n\ndef test_belly_is_linear_in_the_grains():\n    rng = np.random.default_rng(8)\n    L, D, N = 7, 2, 3\n    A = -rng.uniform(0.5, 2.0, size=(D, N))\n    delta = rng.uniform(0.05, 1.0, size=(L, D))\n    B = rng.normal(size=(L, N))\n    C = rng.normal(size=(L, N))\n    x1 = rng.normal(size=(L, D))\n    x2 = rng.normal(size=(L, D))\n    y1, _ = _scan(x1, delta, A, B, C)\n    y2, _ = _scan(x2, delta, A, B, C)\n    y12, _ = _scan(2.0 * x1 - 3.0 * x2, delta, A, B, C)\n    assert np.max(np.abs(y1)) > 1e-3, \"the belly stays empty\"\n    assert np.allclose(y12, 2.0 * y1 - 3.0 * y2, atol=1e-9), (\n        \"with Δ, B and C held fixed the recurrence (2) is linear in x: scanning 2·x1 - 3·x2 must give 2·y1 - 3·y2\")\n\n\ndef test_a_whole_road_by_the_book():\n    x = np.array([[-0.9, -0.63], [0.74, -0.71], [-0.52, -1.61], [-0.37, -1.03], [-0.64, 2.88]])\n    delta = np.array([[1.14, 1.25], [0.7, 1.17], [1.08, 1.37], [1.1, 1.07], [0.4, 0.76]])\n    A = np.array([[-2.64, -0.59, -2.74], [-1.77, -1.32, -1.2]])\n    B = np.array([[1.28, 0.44, -0.12], [1.32, 0.0, 0.62], [-0.44, 0.3, -0.74], [-0.9, 1.11, -0.42], [2.12, 1.23, -0.93]])\n    C = np.array([[1.39, -0.65, 0.53], [0.19, -1.13, -0.27], [-0.45, -0.63, -0.27], [0.78, -0.09, 0.97], [-0.49, 1.91, 0.39]])\n    y, h = _scan(x, delta, A, B, C)\n    assert y.shape == (5, 2) and h.shape == (2, 3), f\"expected shapes (5, 2) and (2, 3), got {y.shape} and {h.shape}\"\n    assert np.allclose(y, [[-0.343057331522, -0.427752532804], [0.252449194484, 0.0147556825409], [0.0697493729232, -0.149690733504], [0.19729209814, 0.904597158158], [-1.01855110296, 0.973718384743]], atol=1e-8), (\n        \"a whole road (L = 5, D = 2, N = 3): wrong y. Per step: Δ_t per channel, Ā and B̄ from Eq. (4), \"\n        \"then the state update, then the read-out with C_t.\")\n    assert np.allclose(h, [[-0.291869169639, -0.641833832928, 0.164963140542], [2.67935468128, 1.43142400799, -1.14722481202]], atol=1e-8), \"a whole road: wrong h_last\"\n\n\ndef test_s6_chooses_by_the_book():\n    x = np.array([[0.5, -1.0], [1.5, 0.25], [-0.75, 2.0], [0.0, -0.5]])\n    A = np.array([[-1.0, -2.0], [-0.5, -3.0]])\n    W_B = np.array([[0.8, -0.3], [0.2, 0.6]])\n    W_C = np.array([[-0.4, 1.1], [0.7, 0.5]])\n    w_delta = np.array([1.2, -0.9])\n    delta_bias = np.array([-0.5, 0.3])\n    y = _s6(x, A, W_B, W_C, w_delta, delta_bias)\n    assert y.shape == (4, 2), f\"s6 must return y of shape (L, D) = (4, 2), got {y.shape}\"\n    assert np.all(np.isfinite(y)), \"s6 returned nan/inf on a small, friendly road\"\n    assert np.allclose(y, [[-0.0744921831255, 0.236877087446], [-0.995520042995, -0.173355165481], [2.28072866683, 0.475441213599], [-0.22905220853, -0.0802864107894]], atol=1e-8), (\n        \"s6 on a small road: wrong y. Check B = x @ W_B, C = x @ W_C, and Δ: Parameter plus the broadcast \"\n        \"Linear_1(x), passed through τ_Δ (Section 3.2 names it).\")\n\n\ndef test_s6_one_choice_for_every_channel():\n    rng = np.random.default_rng(9)\n    L, D, N = 8, 3, 2\n    A = -np.tile(np.array([1.0, 2.0]), (D, 1))\n    W_B = rng.normal(size=(D, N))\n    W_C = rng.normal(size=(D, N))\n    w_delta = np.array([60.0, 0.0, 0.0])  # only channel 0 (the marker) feeds Linear_1\n    delta_bias = np.array([-1.0, -0.5, 0.0])\n    x = rng.normal(size=(L, D))\n    x[:, 0] = 0.0\n    x[4, 0] = 1.0  # a marker grain at step 4\n    y = _s6(x, A, W_B, W_C, w_delta, delta_bias)\n    assert y.shape == (L, D), f\"expected y of shape {(L, D)}, got {y.shape}\"\n    assert np.all(np.isfinite(y)), \"s6 returned nan/inf\"\n    x2 = x.copy()\n    x2[:4, 1:] = rng.normal(size=(4, D - 1)) * 2.0\n    y2 = _s6(x2, A, W_B, W_C, w_delta, delta_bias)\n    assert not np.allclose(y[:4], y2[:4]), \"different grains before the marker should give a different belly\"\n    assert np.allclose(y[4:], y2[4:], atol=1e-9), (\n        \"the marker at step 4 must make every channel start fresh, even channels whose own value there is ordinary. \"\n        \"Re-read how s_Δ(x) is built (Section 3.2, and the end of Section 3.5.1).\")\n",
+      "solutionFile": "server/solutions/mamba_c3.py",
+      "paperLink": "Eqs. (2a)/(2b) and (4); Section 2 (Structure and Dimensions); Section 3.2 and Algorithm 2 (s_B, s_C, s_Δ, τ_Δ); Theorem 1 and Appendix C; Section 3.5.2; Appendix D (long sequences in chunks).",
+      "intro": [
+        "The Belly Scanner: a crank, a typewriter and a row of empty hourglasses.",
+        "A note from Doc Marrow: 'Follow Noodle grain by grain. Exactly as the book. No shortcuts.'"
+      ],
+      "success": [
+        "The hourglasses flip in time. The scanner's belly matches Noodle's, grain for grain."
+      ]
+    },
+    {
+      "id": "c4",
+      "type": "explain",
+      "title": "The Old Stamp",
+      "giver": "penny",
+      "requires": [
+        "c1",
+        "c2",
+        "c3"
+      ],
+      "question": "Why can't my stamp carry scattered beads? What does Noodle do instead, and why can't he use my stamp?",
+      "rubric": [
+        "Time invariance (Section 2, 'Linear Time Invariance', Eqs. 2-3): the stamp is an LTI SSM / global convolution: its parameters (Δ, A, B, C, hence A_bar, B_bar) are the same at every step, so every token is processed identically whatever it is; the whole layer is one fixed kernel K = (CB_bar, CA_barB_bar, ..., CA_bar^k B_bar, ...) applied as y = x * K.",
+        "Copying versus Selective Copying (Section 3.1, Figure 2, Section 4.1.1): on the ordinary Copying task the spacing between inputs and outputs is constant, so tracking time alone (e.g. a kernel of exactly the right length) solves it; in Selective Copying the spacing is random, so what to keep must be decided from the content, and a static kernel cannot model varying spacing (Table 1: S4 18.3% vs S6 97.0% without gating).",
+        "Selection (Section 3.2, Algorithm 2): Mamba makes Δ, B and C functions of the current input (B and C linear projections of x; Δ = softplus of a parameter plus a projection of x), so the dynamics change token by token (time-varying).",
+        "What the input-dependent Δ does (Section 3.5.2, Theorem 1): a large Δ resets the state and focuses on the current input (keep the bead), a small Δ keeps the state and ignores the current input (let sand pass); B controls what enters the state and C what is read out.",
+        "The price (Sections 3.2-3.3, Appendix D): with time-varying parameters the model is no longer equivalent to a convolution, so the fast convolution mode is lost; Mamba computes the recurrence with a parallel scan in a hardware-aware fused kernel (expanded state kept in fast SRAM, recomputed in the backward pass), still linear in sequence length."
+      ],
+      "passBar": "Pass if at least 3 of the 5 criteria are clearly met and criteria 2 and 4 are both among them. Fail regardless of the count if the answer reverses Δ (says a large Δ ignores the input or a small Δ resets the state), claims LTI or convolutional models cannot solve the ordinary Copying task, says selective SSMs are still computed as a convolution, or credits architectural gating alone with solving Selective Copying.",
+      "offline": [
+        [
+          "same",
+          "alike",
+          "identical",
+          "fixed",
+          "constant",
+          "invariant",
+          "every grain",
+          "every token",
+          "doesn't change",
+          "does not change",
+          "never changes",
+          "kernel",
+          "convolution"
+        ],
+        [
+          "spacing",
+          "spaced",
+          "random",
+          "scattered",
+          "position",
+          "where",
+          "gap",
+          "content",
+          "vary",
+          "varies",
+          "varying"
+        ],
+        [
+          "δ",
+          "delta",
+          "step",
+          "reset",
+          "focus",
+          "ignore",
+          "skip",
+          "forget"
+        ]
+      ],
+      "paperLink": "Section 2 (Linear Time Invariance; recurrence (2) vs convolution (3)); Section 3.1 and Figure 2 (Copying vs Selective Copying); Section 4.1.1 and Table 1; Section 3.2 and Algorithm 2 (selection); Section 3.5.2 and Theorem 1 (what Δ, B, C do); Section 3.3 and Appendix D (scan instead of convolution, hardware-aware).",
+      "intro": [
+        "So the fussy snake works now. Hmph.",
+        "My stamp prints a whole road at once. Every grain alike. Never failed on straight roads!"
+      ],
+      "success": [
+        "Oh. My stamp never looks at the grains at all. It only counts steps.",
+        "Noodle decides with every grain. Fine. The stamp goes in a nice frame."
+      ],
+      "retry": [
+        "Hmm. My stamp still thinks it's perfect.",
+        "Why did it work on straight roads? What changes for Noodle, grain by grain?"
+      ]
+    }
+  ],
+  "artefact": {
+    "id": "sifting-hourglass",
+    "name": "The Sifting Hourglass",
+    "description": "A pocket hourglass with a tiny snake coiled on top. Its neck opens wide for beads and pinches shut for sand, so its one small bulb keeps only what matters.",
+    "look": "A small hourglass (about 0.6 units tall): two clear glass cones meeting at a narrow neck, warm wooden caps top and bottom, a little cone of golden sand in the lower bulb. A green paper snake coils around the top cap with its head raised. Idle: it turns slowly; sand trickles, the neck pinches and the trickle stops, then a coloured bead drops through."
+  },
+  "book": {
+    "guard": [
+      "Do not say what Δ does (a large Δ resets the state and focuses on the current input; a small Δ keeps the state and ignores the input), what Δ → ∞ or Δ → 0 means, or which Δ, B or C a bead, a sand grain or a bell needs.",
+      "Do not say that B controls what enters the state and C what is read out of it, or when either should be 0 or 1.",
+      "Do not say whether the knobs should be the same for every grain or chosen per grain (time-invariant versus selective).",
+      "Do not explain Theorem 1's gate in words or symbols (g_t = σ(Linear(x_t)), h_t = (1 - g_t) h_(t-1) + g_t x_t) or what g_t → 0 or g_t → 1 does.",
+      "Do not describe the Mamba block of Figure 3 / Section 3.4: which pieces sit in which branch, their order (Conv, σ, SSM), the σ on the second branch, the multiplicative join, the input and output projections. Do not give E = 2, the 3ED² / 2ED² / ED² counts, or that two blocks match a Transformer layer's 12D².",
+      "Do not write Eq. (4) out for a diagonal A (B_bar = (exp(ΔA) - 1)/A · B), and do not say whether B_bar equals Δ·B.",
+      "Do not say that τ_Δ is softplus, or how s_Δ(x) is built and broadcast over the D channels.",
+      "Never write scan or s6 code or pseudo-code: no per-step update with A_bar_t, B_bar_t, C_t, no read-out formula, nothing on carrying the last state into the next chunk.",
+      "Do not explain why time-invariant (LTI) models fail on Selective Copying (constant versus random spacing, static kernels, content-awareness), or that selection breaks the convolution view and forces a scan.",
+      "Never confirm, grade or correct the player's answer to any puzzle, code task or explanation in this region."
+    ],
+    "offlineHints": [
+      {
+        "keywords": [
+          "δ",
+          "delta",
+          "step size",
+          "timestep",
+          "gulp",
+          "hourglass"
+        ],
+        "text": "The step decides: linger, or let it pass. Section 3.5.2 reads it plainly. Theorem 1 reads it twice."
+      },
+      {
+        "keywords": [
+          "mouth",
+          "voice",
+          "speak",
+          "read out",
+          "let in",
+          "b and c"
+        ],
+        "text": "One letter lets in. One lets out. The last lines of 3.5.2 know which is which."
+      },
+      {
+        "keywords": [
+          "chain",
+          "same for all",
+          "same knobs",
+          "invariant",
+          "every grain",
+          "one rule",
+          "alike"
+        ],
+        "text": "Who treats every grain alike learns nothing of grains. Section 2 names this habit. Algorithm 2 breaks it."
+      },
+      {
+        "keywords": [
+          "copying",
+          "spacing",
+          "scatter",
+          "bead",
+          "sand",
+          "noise",
+          "bells"
+        ],
+        "text": "Straight roads and scattered roads. Figure 2 draws both. Section 3.1 says why one is harder."
+      },
+      {
+        "keywords": [
+          "vertebra",
+          "spine",
+          "block",
+          "bone",
+          "jig",
+          "architecture",
+          "branch",
+          "marrow"
+        ],
+        "text": "Bones stack in one shape, again and again. Figure 3 draws three shapes. Only one is a snake."
+      },
+      {
+        "keywords": [
+          "weigh",
+          "balance",
+          "expansion",
+          "expand",
+          "parameters",
+          "projections",
+          "12d",
+          "wagon",
+          "scale"
+        ],
+        "text": "Weigh the projections, not the snake. Section 3.4 counts them in D squared."
+      },
+      {
+        "keywords": [
+          "discret",
+          "zoh",
+          "zero-order",
+          "b bar",
+          "b̄",
+          "ā",
+          "equation 4",
+          "eq. 4",
+          "eq 4"
+        ],
+        "text": "Continuous becomes discrete by a rule with a name. Equation 4 holds it. Hold the grain the whole step."
+      },
+      {
+        "keywords": [
+          "scan",
+          "scanner",
+          "recurrence",
+          "belly",
+          "state",
+          "pocket",
+          "loop"
+        ],
+        "text": "The belly is carried grain by grain. Equations 2a and 2b, with a little t on every letter."
+      },
+      {
+        "keywords": [
+          "softplus",
+          "τ",
+          "tau",
+          "broadcast",
+          "projection",
+          "linear_1",
+          "bias",
+          "s6"
+        ],
+        "text": "What chooses the step? Algorithm 2, line four. Then the sentence after it in Section 3.2."
+      },
+      {
+        "keywords": [
+          "chunk",
+          "carry",
+          "h0",
+          "h_last",
+          "split",
+          "too long",
+          "sram",
+          "memory"
+        ],
+        "text": "Long roads are walked in pieces. Appendix D says what must be carried from one piece to the next."
+      },
+      {
+        "keywords": [
+          "stamp",
+          "convolution",
+          "kernel",
+          "fast",
+          "parallel",
+          "penny",
+          "fft"
+        ],
+        "text": "A stamp needs a rule that never changes. Section 3.3 says what replaced it. Appendix D says how."
+      },
+      {
+        "keywords": [
+          "gate",
+          "gating",
+          "rnn",
+          "theorem",
+          "sigmoid",
+          "appendix c"
+        ],
+        "text": "An old gate sleeps inside the new snake. Theorem 1 wakes it. Appendix C shows its bones."
+      }
+    ]
+  }
+}

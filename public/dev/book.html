@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Book harness</title>
+<link rel="stylesheet" href="/css/game.css">
+<style>
+  /* a stand-in for the cozy diorama behind the book */
+  body {
+    background:
+      radial-gradient(ellipse 60% 30% at 20% 88%, #79c86a 60%, transparent 61%),
+      radial-gradient(ellipse 70% 34% at 85% 92%, #8fd47a 60%, transparent 61%),
+      radial-gradient(circle at 78% 18%, #fff6c8 0 40px, transparent 41px),
+      linear-gradient(#bfe6ff, #e6f6ff 60%, #8fd47a 60%);
+  }
+  .harness-open { position: fixed; top: 14px; right: 14px; z-index: 5; font-size: 22px; }
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div id="ui-root"></div>
+<button class="etl-btn harness-open" id="open" title="Book (B)">📖</button>
+<script type="module">
+// /dev/book.html?arxiv=1706.03762&region=fixture&tab=read&auto=1
+//   region= (empty) opens the lab book (regionId null). window.__book exposes { opens, closes, open } for tests.
+import { open } from '/js/ui/book.js';
+
+const q = new URLSearchParams(location.search);
+const arxivId = q.has('arxiv') ? q.get('arxiv') : '1706.03762';
+const regionId = q.has('region') ? (q.get('region') || null) : 'fixture';
+const title = q.get('title') || 'Attention Is All You Need';
+const state = (window.__book = { opens: 0, closes: 0, open: false });
+
+async function go(tab) {
+  if (state.open) return;
+  state.opens++;
+  state.open = true;
+  await open({ paper: arxivId ? { arxivId, title } : null, regionId, tab });
+  state.closes++;
+  state.open = false;
+}
+
+document.getElementById('open').addEventListener('click', () => go());
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'KeyB' && !state.open && !e.repeat && !/INPUT|TEXTAREA/.test(e.target.tagName)) go();
+});
+if (q.get('auto') !== '0') go(q.get('tab') || undefined);
+</script>
+</body>
+</html>

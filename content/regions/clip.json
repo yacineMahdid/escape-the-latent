@@ -1,0 +1,1248 @@
+{
+  "id": "clip",
+  "paper": {
+    "arxivId": "2103.00020",
+    "title": "Learning Transferable Visual Models From Natural Language Supervision",
+    "authors": "Radford, Kim, Hallacy, Ramesh, Goh, Agarwal, Sastry, Askell, Mishkin, Clark, Krueger, Sutskever",
+    "year": 2021
+  },
+  "region": {
+    "name": "Pairadise",
+    "biome": "tropic",
+    "tagline": "A storm unglued every postcard. Can a new Lens tell what goes with what?"
+  },
+  "scientist": {
+    "taskTitle": "Bring back the Twin Lens",
+    "briefing": [
+      "Speck. The Bell was luck. Luck doesn't happen twice.",
+      "Pairadise claims a lens that names things nobody ever labelled. HA!",
+      "Fetch it. Read the paper. Yes, the appendix too."
+    ],
+    "reminder": [
+      "No lens? Called it.",
+      "Read the book, Speck. The small print. It's your size."
+    ],
+    "return": [
+      "A lens with two eyes? One sees pictures, one reads words... hmph.",
+      "It just named my mug. 'A photo of a mug.' Correct. Infuriatingly correct.",
+      "Twice now, Speck. TWICE. That's not luck. That's a... pattern.",
+      "Shelf. Next to the Bell. Then go away. I need to think."
+    ]
+  },
+  "story": {
+    "arrival": [
+      "Pairadise: a postcard island. Last night's storm blew every photo off its words.",
+      "Photos here, words there. And the island's new Lens can't tell what goes with what."
+    ],
+    "resolution": [
+      "The Twin Lens blinks awake. Every photo finds its words, even photos nobody labelled.",
+      "Old Scribbit slides a tiny Twin Lens your way. 'For your giant. Postage paid.'"
+    ]
+  },
+  "inhabitants": [
+    {
+      "id": "pomelo",
+      "name": "Mrs. Pomelo",
+      "species": "pig",
+      "colors": {
+        "fur": "#f7a8b8",
+        "shirt": "#2f6fb3"
+      },
+      "anchor": "terrace-2",
+      "role": "Giver of c1 (the Pairing Net). Postmistress of the Stilt Post (house 2); her storm-unglued postcards are the Lens's training pairs.",
+      "lines": {
+        "default": [
+          "Mind the puddles. Every puddle is a photo that lost its words."
+        ],
+        "afterSolved": [
+          "Every postcard glued and posted. I may retire. I won't. But I may."
+        ]
+      }
+    },
+    {
+      "id": "blink",
+      "name": "Blink",
+      "species": "dog",
+      "colors": {
+        "fur": "#c98a4a",
+        "shirt": "#ffd35a"
+      },
+      "anchor": "lane-right",
+      "role": "Giver of c2 (the Name Racks). Island photographer with a crate of storm photos nobody ever labelled; his racks are a zero-shot classifier.",
+      "lines": {
+        "default": [
+          "I snapped a hundred photos in the storm. No idea what half of them are.",
+          "Teach that Lens to match first. Then it's mine!"
+        ],
+        "afterSolved": [
+          "Racks full, cranes apart. Even the pugs look smug."
+        ]
+      }
+    },
+    {
+      "id": "scribbit",
+      "name": "Old Scribbit",
+      "species": "frog",
+      "colors": {
+        "fur": "#5aa86a",
+        "shirt": "#b39cff"
+      },
+      "anchor": "bank-left",
+      "role": "Giver of c4 (explain). The island's old caption-writer, who writes every caption by hand, word by word: a caption-predicting model in a straw hat. The artefact appears beside him.",
+      "lines": {
+        "default": [
+          "Ribbit. I write every caption by hand. Word. By. Word.",
+          "I'll be done by next spring. Or the one after."
+        ],
+        "afterSolved": [
+          "I still write captions. For fun. The Lens can't. Ha!"
+        ]
+      }
+    },
+    {
+      "id": "brine",
+      "name": "Skipper Brine",
+      "species": "bear",
+      "colors": {
+        "fur": "#8a5a36",
+        "shirt": "#d84f4f"
+      },
+      "anchor": "bank-right",
+      "role": "Red herring and comic relief: the ferry skipper's fix is a crate of exactly 1000 stickers, one fixed label per photo (the predetermined-categories approach the paper argues against).",
+      "lines": {
+        "default": [
+          "Ahoy! I've a crate of 1000 stickers. One per photo. Job done!",
+          "Unless it's not one of my 1000 things. Then... back in the sea?"
+        ],
+        "afterSolved": [
+          "The Lens named a thing I've got no sticker for. Rude. Brilliant, but rude."
+        ]
+      }
+    },
+    {
+      "id": "nubbin",
+      "name": "Nubbin",
+      "species": "cat",
+      "colors": {
+        "fur": "#f2c9a0",
+        "shirt": "#8fd3ff"
+      },
+      "anchor": "bridge",
+      "role": "Flavour: a curious kitten full of 'why?'. Room for later fundamentals checks (cosine similarity, softmax, cross-entropy...).",
+      "lines": {
+        "default": [
+          "Why do photos need words? Why is the sea wet? Why are YOU so small?",
+          "I've got SO many questions. Later. You look busy."
+        ],
+        "afterSolved": [
+          "I asked the Lens 'what's this?' fifty times. It got bored. I didn't."
+        ]
+      }
+    }
+  ],
+  "stations": [
+    {
+      "id": "lens",
+      "kind": "machine",
+      "anchor": "hilltop",
+      "label": "The Twin Lens",
+      "look": "A lighthouse-sized brass spyglass on the hilltop that forks into two great eyes: a round one with a turquoise photo glowing inside, a square one holding a cream caption card with ink lines. Below them an open brass panel with two blank gears, and a typewriter on a driftwood stool."
+    },
+    {
+      "id": "racks",
+      "kind": "board",
+      "anchor": "rightstep",
+      "label": "Blink's Racks",
+      "look": "Four bamboo drying racks in a row with clothes-peg photos, each topped by a small wooden sign; the first two posts carry a painted anchor and a painted wave.",
+      "lines": [
+        "Four racks. Four signs. The Lens reads only the signs."
+      ]
+    },
+    {
+      "id": "gatesign",
+      "kind": "sign",
+      "anchor": "path-to-gate",
+      "label": "To the Far Reef (when the Lens wakes)",
+      "look": "A driftwood arrow on a stake pointing at the tiki gate, a tiny paper spyglass dangling from its tip."
+    }
+  ],
+  "challenges": [
+    {
+      "id": "c1",
+      "type": "puzzle",
+      "title": "The Pairing Net",
+      "giver": "pomelo",
+      "requires": [],
+      "puzzle": "pairing-net",
+      "spec": {
+        "title": "The Pairing Net",
+        "controlsHint": "Drag tags · hang floats · knob + pin · 🎣",
+        "photos": [
+          {
+            "id": "turtle",
+            "icon": "🐢"
+          },
+          {
+            "id": "coconut",
+            "icon": "🥥"
+          },
+          {
+            "id": "boat",
+            "icon": "⛵"
+          },
+          {
+            "id": "crab",
+            "icon": "🦀"
+          }
+        ],
+        "captions": [
+          {
+            "id": "turtle",
+            "word": "turtle"
+          },
+          {
+            "id": "coconut",
+            "word": "coconut"
+          },
+          {
+            "id": "boat",
+            "word": "boat"
+          },
+          {
+            "id": "crab",
+            "word": "crab"
+          }
+        ],
+        "rowsNote": "Rows are the photos, top to bottom in 'photos' order; they never move. Columns are the 4 slots on the top rope.",
+        "initialCaptionOrder": [
+          "boat",
+          "crab",
+          "turtle",
+          "coconut"
+        ],
+        "cosine": {
+          "note": "The Lens's current cosine similarity of photo r (row, 'photos' order) with caption c (column, 'captions' order). Fixed while playing. Its row-wise favourite for the turtle photo is the 'crab' caption: it is still wrong, on purpose.",
+          "values": [
+            [
+              0.47,
+              0.28,
+              0.1,
+              0.53
+            ],
+            [
+              0.22,
+              0.63,
+              0.08,
+              0.31
+            ],
+            [
+              0.12,
+              0.09,
+              0.66,
+              0.38
+            ],
+            [
+              0.45,
+              0.16,
+              0.2,
+              0.57
+            ]
+          ]
+        },
+        "trainedCosine": {
+          "note": "Same layout. What the Lens has learned by the end of a winning haul (used only in the win animation).",
+          "values": [
+            [
+              0.93,
+              0.12,
+              0.05,
+              0.18
+            ],
+            [
+              0.1,
+              0.94,
+              0.04,
+              0.08
+            ],
+            [
+              0.06,
+              0.05,
+              0.95,
+              0.09
+            ],
+            [
+              0.16,
+              0.07,
+              0.08,
+              0.92
+            ]
+          ]
+        },
+        "valueGrid": {
+          "note": "Allowed values for the knob and the pin (both are logit multipliers). Dragging snaps to the nearest grid value; ◀ ▶ and the mouse wheel step to the neighbouring grid value.",
+          "ranges": [
+            {
+              "from": 0.01,
+              "to": 0.99,
+              "step": 0.01
+            },
+            {
+              "from": 1.0,
+              "to": 19.9,
+              "step": 0.1
+            },
+            {
+              "from": 20,
+              "to": 199,
+              "step": 1
+            },
+            {
+              "from": 200,
+              "to": 1000,
+              "step": 10
+            }
+          ],
+          "format": "'×' + value: 2 decimals below 1 (×0.07), 1 decimal below 20 (×14.3), otherwise an integer (×100).",
+          "dialMapping": "log scale: angle = -135° + 270° · (log10(value) + 2) / 5, so ×0.01 sits at -135°, ×1 at -27°, ×1000 at +135°. Tick marks with numbers only at ×0.01, ×0.1, ×1, ×10, ×100, ×1000."
+        },
+        "knob": {
+          "initial": 1.0
+        },
+        "pin": {
+          "initial": null,
+          "note": "null = still in its cushion (no pin on the dial)."
+        },
+        "floats": [
+          {
+            "id": "rows",
+            "icon": "→",
+            "title": "each photo picks a caption"
+          },
+          {
+            "id": "cols",
+            "icon": "↓",
+            "title": "each caption picks a photo"
+          }
+        ],
+        "beads": {
+          "colorStops": [
+            {
+              "p": 0,
+              "color": "#1f5f6b"
+            },
+            {
+              "p": 0.5,
+              "color": "#3fd0c8"
+            },
+            {
+              "p": 1,
+              "color": "#ffd35a"
+            }
+          ],
+          "radius": "r = R · (0.35 + 0.65 · p), R = the full bead radius",
+          "noFloat": "with no float hung, every bead is a plain grey bead of radius R·(0.35 + 0.65·max(0, cos)) (the raw similarity, no colour)"
+        },
+        "math": [
+          "m = the knob value (a multiplier). order[j] = id of the caption tag in top-rope slot j.",
+          "logit[r][j] = m · cosine[r][index of order[j]]  (r = photo row, j = slot).",
+          "rowP[r][j] = exp(logit[r][j]) / Σ_k exp(logit[r][k])   (softmax along row r: the → float).",
+          "colP[r][j] = exp(logit[r][j]) / Σ_q exp(logit[q][j])   (softmax down column j: the ↓ float).",
+          "Subtract the row max (resp. column max) before exp; m goes up to 1000, so this matters.",
+          "Bead (r, j): → only: one bead coloured by rowP; ↓ only: by colP; both: a bead split vertically, left half rowP, right half colP.",
+          "Haul gauge (win animation only): L = ½·[mean_r −log rowP[r][r] + mean_j −log colP[j][j]], drawn on a 0 … ln 4 scale."
+        ],
+        "solution": {
+          "captionOrder": [
+            "turtle",
+            "coconut",
+            "boat",
+            "crab"
+          ],
+          "floats": [
+            "rows",
+            "cols"
+          ],
+          "start": 14.2857,
+          "startTolerance": 0.15,
+          "pin": 100,
+          "pinTolerance": 1
+        },
+        "rule": "Section 2.3 + Figure 3: labels = arange(n), so photo i's own caption must sit in slot i (the diagonal); the loss is a symmetric cross-entropy, softmax along rows AND down columns, averaged. Section 2.5: the learned temperature τ starts at the equivalent of 0.07, i.e. the logits are multiplied by 1/0.07 ≈ 14.29 (Figure 3 multiplies by exp(t)), and is clipped so the logits are never scaled by more than 100 (Table 18: maximum temperature 100.0).",
+        "evaluation": [
+          "On 🎣 Haul, check four things. lineup: order equals solution.captionOrder. floats: exactly {rows, cols} are hung. start: |knob − 1/0.07| ≤ 0.15 (accepts ×14.2, ×14.3, ×14.4). pin: on the dial and |pin − 100| ≤ 1.",
+          "All four right → win animation.",
+          "Otherwise: if the pin is missing, play the runaway animation; else play the tug. Then show a badge for every failing check, in this order: lineup, floats, start, pin.",
+          "Badges stay until the board changes. The player can haul again any number of times; nothing resets."
+        ],
+        "animations": {
+          "win": "2.5 s: s goes 0 → 1; knob m(s) = start · (pin / start)^s turns by itself; cosine(s) = (1 − s²)·cosine + s²·trainedCosine; beads and the haul gauge recompute every frame (the tide drains). Then each photo slides along its row and each caption tag down its column to their diagonal knot, they flip into one postcard and fly up to a clothesline. api.sfx('success').",
+          "runaway": "1.2 s: the knob spins by itself from its start value up to ×1000, beads flare to pure gold/black, the top rope snaps (api.sfx('snap')), the net droops; 1 s later it re-strings and the knob returns to the player's start value.",
+          "tug": "0.4 s: the net jerks once. api.sfx('fail')."
+        },
+        "feedback": {
+          "lineup": {
+            "badge": "🌀",
+            "title": "Some photos aren't facing their own words."
+          },
+          "floats": {
+            "badge": "🎈 ✗",
+            "title": "The floats aren't right."
+          },
+          "start": {
+            "badge": "🎛️ ✗",
+            "title": "The knob starts in the wrong place."
+          },
+          "pinMissing": {
+            "badge": "💥 snap!",
+            "title": "Nothing stopped the knob."
+          },
+          "pinWrong": {
+            "badge": "📌 ✗",
+            "title": "The pin is in the wrong place."
+          }
+        },
+        "hintAfterFailures": {
+          "after": 4,
+          "text": "📖 Fig. 3 · §2.5"
+        },
+        "successText": "✓ Pairs!"
+      },
+      "design": "A fishing-net board of cut paper strung between two bamboo poles, spec.controlsHint along the top, ✕ top right calls api.onClose(). LEFT: four photo cards clipped to the left rope, one per row (🐢 🥥 ⛵ 🦀), fixed. TOP: four word tags pegged to the top rope (turtle, coconut, boat, crab) in spec.initialCaptionOrder; drag a tag onto another slot to swap the two (api.sfx('paper')). CENTRE: a 4×4 net; every knot is a bead whose colour and size show the Lens's current guess (spec.math, spec.beads), recomputed live after every change; hover a bead for '→ 0.69 · ↓ 0.34' (2 decimals). BOTTOM-LEFT: two paper floats, → and ↓ (tooltips from spec.floats); click a float to hang it on the net (→ hooks onto the right edge, ↓ onto the bottom edge) or click again to take it off. RIGHT: the Tide Knob, a big paper dial on spec.valueGrid (drag to rotate, ◀ ▶ under it or the mouse wheel to step; its value is printed under it, e.g. '×1.0'), and a pin cushion holding one red pin: drag the pin onto the dial rim to stick it at the value under the cursor (shown as '📌 ×value' beside it), drag along the rim to move it, ◀ ▶ beside its readout to step it, drag it back to the cushion to remove it. The pin does not limit the player's own knob setting. A big 🎣 Haul button runs spec.evaluation. Win: spec.animations.win, then spec.successText with a ✓ button; call api.onSolved() exactly once, on ✓ or 1.8 s after the text appears, whichever comes first (the host closes the board). Failure: spec.animations.runaway (pin missing) or spec.animations.tug, then the badges from spec.feedback (icon on the board, title as tooltip). Never show which slot a tag belongs in, never show the solution values, never say whether a value is too high or too low. From the 4th failed haul on, show spec.hintAfterFailures.text in a corner.",
+      "paperLink": "Section 2.3 (predict which of the N × N (image, text) pairings in a batch occurred: maximise the cosine similarity of the N real pairs, minimise it for the N² − N incorrect ones, symmetric cross-entropy); Figure 3 (labels = np.arange(n); loss_i over axis 0 and loss_t over axis 1, averaged; logits = I_e·T_eᵀ·np.exp(t)); Section 2.5 (τ initialised to the equivalent of 0.07 and clipped so logits are never scaled by more than 100); Table 18 (maximum temperature 100.0).",
+      "worldEffect": "Postcards flutter up and clip onto a line between the palms: photo and words, together.",
+      "intro": [
+        "A visitor! Mind the mess. These were postcards, before the storm.",
+        "The new Lens must learn which words go with which photo. It thinks turtles are crabs!",
+        "Gran's Pairing Net can teach it. Nobody remembers how she set it."
+      ],
+      "success": [
+        "They're sticking! Photos to words, words to photos!",
+        "And the Lens knows a turtle from a crab. Mostly."
+      ]
+    },
+    {
+      "id": "c2",
+      "type": "puzzle",
+      "title": "The Name Racks",
+      "giver": "blink",
+      "requires": [
+        "c1"
+      ],
+      "puzzle": "name-racks",
+      "spec": {
+        "title": "The Name Racks",
+        "controlsHint": "Drag a tag onto a sign · the Lens files every photo",
+        "signFrame": "A photo of a {label}{tag}.",
+        "racks": [
+          {
+            "id": "dock",
+            "label": "crane",
+            "post": "⚓"
+          },
+          {
+            "id": "lagoon",
+            "label": "crane",
+            "post": "🌊"
+          },
+          {
+            "id": "boxer",
+            "label": "boxer",
+            "post": ""
+          },
+          {
+            "id": "pug",
+            "label": "pug",
+            "post": ""
+          }
+        ],
+        "tags": [
+          {
+            "id": "pet",
+            "text": ", a type of pet"
+          },
+          {
+            "id": "bird",
+            "text": ", a type of bird"
+          },
+          {
+            "id": "machine",
+            "text": ", a type of machine"
+          },
+          {
+            "id": "food",
+            "text": ", a type of food"
+          },
+          {
+            "id": "aircraft",
+            "text": ", a type of aircraft"
+          }
+        ],
+        "photos": [
+          {
+            "id": "dock1",
+            "truth": "dock",
+            "icon": "🏗️",
+            "art": "yellow harbour crane lifting a crate"
+          },
+          {
+            "id": "dock2",
+            "truth": "dock",
+            "icon": "🏗️",
+            "art": "red harbour crane, mirrored"
+          },
+          {
+            "id": "lagoon1",
+            "truth": "lagoon",
+            "icon": "🐦",
+            "art": "grey long-legged crane bird with a red cap, wading"
+          },
+          {
+            "id": "lagoon2",
+            "truth": "lagoon",
+            "icon": "🐦",
+            "art": "the same crane bird mid-flap, mirrored"
+          },
+          {
+            "id": "boxer1",
+            "truth": "boxer",
+            "icon": "🐕",
+            "art": "fawn boxer dog, square muzzle"
+          },
+          {
+            "id": "boxer2",
+            "truth": "boxer",
+            "icon": "🐕",
+            "art": "brindle boxer dog, sitting"
+          },
+          {
+            "id": "pug1",
+            "truth": "pug",
+            "icon": "🐶",
+            "art": "beige pug with a black mask"
+          },
+          {
+            "id": "pug2",
+            "truth": "pug",
+            "icon": "🐶",
+            "art": "black pug with a curly tail"
+          }
+        ],
+        "photosNote": "'icon' is a fallback; draw each photo as a small paper polaroid of its 'art'. The player always sees what a photo really shows.",
+        "embedding": {
+          "note": "Toy Lens. 'photos': one vector per photo. 'signs': one vector per sign TEXT, keyed '<label>|<tag id or none>'. Identical text gives the identical vector, so the two crane racks share a vector whenever their tags match.",
+          "dims": [
+            "photo",
+            "craneBird",
+            "craneMachine",
+            "boxerDog",
+            "boxerAthlete",
+            "pug",
+            "dog",
+            "pet",
+            "bird",
+            "machine",
+            "food",
+            "aircraft"
+          ],
+          "photos": {
+            "dock1": [
+              0.536656,
+              0.0,
+              0.715542,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.447214,
+              0.0,
+              0.0
+            ],
+            "dock2": [
+              0.545455,
+              0.0,
+              0.636364,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.545455,
+              0.0,
+              0.0
+            ],
+            "lagoon1": [
+              0.536656,
+              0.715542,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.447214,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "lagoon2": [
+              0.542105,
+              0.677631,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.496929,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "boxer1": [
+              0.534522,
+              0.0,
+              0.0,
+              0.62361,
+              0.0,
+              0.0,
+              0.445435,
+              0.356348,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "boxer2": [
+              0.528783,
+              0.0,
+              0.0,
+              0.572848,
+              0.0,
+              0.0,
+              0.484718,
+              0.396587,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pug1": [
+              0.534522,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.62361,
+              0.445435,
+              0.356348,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pug2": [
+              0.529297,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.661622,
+              0.396973,
+              0.352865,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "signs": {
+            "crane|none": [
+              0.762493,
+              0.457496,
+              0.457496,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "crane|pet": [
+              0.672673,
+              0.403604,
+              0.403604,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.470871,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "crane|bird": [
+              0.633724,
+              0.633724,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.443607,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "crane|machine": [
+              0.633724,
+              0.0,
+              0.633724,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.443607,
+              0.0,
+              0.0
+            ],
+            "crane|food": [
+              0.672673,
+              0.403604,
+              0.403604,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.470871,
+              0.0
+            ],
+            "crane|aircraft": [
+              0.672673,
+              0.403604,
+              0.403604,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.470871
+            ],
+            "boxer|none": [
+              0.735215,
+              0.0,
+              0.0,
+              0.147043,
+              0.661693,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "boxer|pet": [
+              0.604122,
+              0.0,
+              0.0,
+              0.604122,
+              0.0,
+              0.0,
+              0.302061,
+              0.422885,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "boxer|bird": [
+              0.65372,
+              0.0,
+              0.0,
+              0.130744,
+              0.588348,
+              0.0,
+              0.0,
+              0.0,
+              0.457604,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "boxer|machine": [
+              0.65372,
+              0.0,
+              0.0,
+              0.130744,
+              0.588348,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.457604,
+              0.0,
+              0.0
+            ],
+            "boxer|food": [
+              0.65372,
+              0.0,
+              0.0,
+              0.130744,
+              0.588348,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.457604,
+              0.0
+            ],
+            "boxer|aircraft": [
+              0.65372,
+              0.0,
+              0.0,
+              0.130744,
+              0.588348,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.457604
+            ],
+            "pug|none": [
+              0.666667,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.666667,
+              0.333333,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pug|pet": [
+              0.604122,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.604122,
+              0.302061,
+              0.422885,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pug|bird": [
+              0.604122,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.604122,
+              0.302061,
+              0.0,
+              0.422885,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pug|machine": [
+              0.604122,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.604122,
+              0.302061,
+              0.0,
+              0.0,
+              0.422885,
+              0.0,
+              0.0
+            ],
+            "pug|food": [
+              0.604122,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.604122,
+              0.302061,
+              0.0,
+              0.0,
+              0.0,
+              0.422885,
+              0.0
+            ],
+            "pug|aircraft": [
+              0.604122,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.604122,
+              0.302061,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.422885
+            ]
+          }
+        },
+        "category": {
+          "dock": "machine",
+          "lagoon": "bird",
+          "boxer": "pet",
+          "pug": "pet"
+        },
+        "categoryNote": "What each rack's photos really are. A sign whose tag names a different category 'lies' (🤨).",
+        "math": [
+          "For each rack r: key = rack.label + '|' + (tag id on its sign, or 'none'); s = embedding.signs[key].",
+          "For each photo p: score[r] = cosine(embedding.photos[p], s_r) = dot / (|a|·|b|).",
+          "best = max over racks; every rack with score ≥ best − 1e-9 is tied for the top.",
+          "One top rack → the photo hangs on it. Two or more → the photo wobbles between them (⚖️) and counts as not filed.",
+          "Recompute on open and after every change."
+        ],
+        "initialSigns": {
+          "dock": null,
+          "lagoon": null,
+          "boxer": null,
+          "pug": null
+        },
+        "winCondition": "Every photo hangs alone on the rack named by its 'truth' (no ⚖️), and no sign lies (no 🤨). Six tag settings do this; all of them count.",
+        "feedback": {
+          "tie": "⚖️",
+          "lie": "🤨",
+          "misfiled": "✗"
+        },
+        "successText": "✓ All filed!"
+      },
+      "design": "A bamboo wall outside Blink's shack, spec.controlsHint along the top, ✕ top right calls api.onClose(). Four racks left to right (spec.racks); the twin crane racks differ only by the little ⚓ / 🌊 painted on their posts. Each rack has a wooden sign printed with spec.signFrame (e.g. 'A photo of a crane.') and a dashed slot just before the full stop. BOTTOM: a tray of the five tags (spec.tags); each tag is a rubber stamp that is never used up: drag one onto a sign's slot to set it (replaces any tag there, api.sfx('stamp')); drag a tag off a sign, or click it, to clear it. LEFT: the Lens, a brass eye whose beam points at each photo in turn as it is filed. The eight photos (spec.photos) hang on the racks chosen by spec.math and slide there (0.4 s) after every change; tied photos wobble between their tied racks with ⚖️. A misfiled photo shows a small red ✗ corner (the player can see what the photo really is). A sign that lies (spec.category) shows 🤨. Hover a photo for its four scores as '⚓ 0.34 · 🌊 0.34 · boxer 0.32 · pug 0.33' (2 decimals). No submit button: when spec.winCondition holds, wait 0.6 s, the beam turns gold, every sign glows, api.sfx('success'), spec.successText with a ✓ button; call api.onSolved() exactly once, on ✓ or 1.8 s after the text appears, whichever comes first. Never suggest which tag goes where.",
+      "paperLink": "Section 3.1.2 (zero-shot: the class names become the candidate texts; the image goes to the class text with the highest cosine similarity; the text encoder generates the classifier's weights); Section 3.1.4 (polysemy: ImageNet has construction cranes and cranes that fly, Oxford-IIIT Pets' 'boxer' could be an athlete; 'A photo of a {label}.' as the default template; 'A photo of a {label}, a type of pet.' and specifying the category).",
+      "worldEffect": "Blink's racks fill up: dock cranes, lagoon cranes, boxers, pugs. Every sign glows.",
+      "intro": [
+        "The Lens can file my storm photos! It only reads the rack signs.",
+        "But Grandpa's list says CRANE twice: one for the dock, one for the lagoon.",
+        "And it keeps filing my boxers under pug. They are NOT pugs!"
+      ],
+      "success": [
+        "Every photo on its own rack! And nobody labelled a single one!"
+      ]
+    },
+    {
+      "id": "c3",
+      "type": "code",
+      "title": "The Two Gears",
+      "giver": "lens",
+      "requires": [
+        "c1",
+        "c2"
+      ],
+      "prompt": "## The Twin Lens\n*Note on the panel:* \"Pair them. Then name them. —B.\"\n\nTwo numpy functions, `float64`.\n\n### 1. `clip_loss(I_f, T_f, W_i, W_t, t)` → `float`\nThe pairing gear: **exactly Figure 3**, plus the pin from **Section 2.5**.\n- `I_f` `(n, d_i)`, `T_f` `(n, d_t)`: photo and word features; row `k` of both is postcard `k`\n- `W_i` `(d_i, d_e)`, `W_t` `(d_t, d_e)`: the linear projections\n- `t`: the learned temperature parameter of Figure 3, a float\n- returns the mean loss, one float; finite even for a huge `t`\n\n### 2. `zero_shot(image_emb, prompt_emb, scale=100.0)` → `(m, C)`\nThe naming gear: **Section 3.1.2**, prompts ensembled as in **Section 3.1.4** (one cached embedding per class).\n- `image_emb` `(m, d)`: photo embeddings, any length\n- `prompt_emb` `(C, K, d)`: `K` prompt embeddings for each of `C` classes, any length; L2-normalise each prompt before ensembling\n- `scale`: the logit scale\n- returns probabilities: row `i` sums to 1 over the `C` classes\n",
+      "starterCode": "import numpy as np\n\n\ndef clip_loss(I_f, T_f, W_i, W_t, t):\n    \"\"\"THE PAIRING SPELL (Figure 3, with the pin from Section 2.5).\n\n    I_f: (n, d_i) photo features   T_f: (n, d_t) word features   (row k = postcard k)\n    W_i: (d_i, d_e)   W_t: (d_t, d_e)   t: float, the learned log-temperature\n    returns: the mean loss, one float\n    \"\"\"\n    I_f = np.asarray(I_f, dtype=np.float64)\n    T_f = np.asarray(T_f, dtype=np.float64)\n    # TODO: the Lens has never seen a postcard.\n    return 0.0\n\n\ndef zero_shot(image_emb, prompt_emb, scale=100.0):\n    \"\"\"THE NAMING SPELL (Section 3.1.2, ensembled as in Section 3.1.4).\n\n    image_emb: (m, d) photos   prompt_emb: (C, K, d) K prompts for each of C classes\n    returns: (m, C) probabilities, each row sums to 1\n    \"\"\"\n    image_emb = np.asarray(image_emb, dtype=np.float64)\n    prompt_emb = np.asarray(prompt_emb, dtype=np.float64)\n    # TODO: the Lens shrugs at every photo.\n    m, C = image_emb.shape[0], prompt_emb.shape[0]\n    return np.full((m, C), 1.0 / C)\n",
+      "tests": "import numpy as np\n\n\ndef _f(x):\n    return float(np.asarray(x, dtype=np.float64))\n\n\ndef _probs(x):\n    return np.asarray(x, dtype=np.float64)\n\n\ndef test_two_perfect_postcards():\n    I = np.eye(2)\n    out = clip_loss(I, I, I, I, 0.0)\n    assert np.ndim(out) == 0, \"clip_loss must return one number (the mean loss), not an array\"\n    out = _f(out)\n    assert np.isfinite(out), \"clip_loss returned nan/inf for two tidy postcards\"\n    if abs(out - np.log(2.0)) < 1e-6:\n        raise AssertionError(\"Every logit came out 0 when t = 0. Does the knob hold the scale itself, or its logarithm?\")\n    assert abs(out - 0.31326168751822286) < 1e-9, \"two perfect pairs at t = 0: wrong loss\"\n    out2 = _f(clip_loss(I, I, I, I, np.log(2.0)))\n    if abs(out2 - 0.4054651081081644) < 1e-6:\n        raise AssertionError(\"With t = log 2 you scaled the logits by t itself. t is the logarithm of the scale.\")\n    if abs(out2 - 0.47407698418010663) < 1e-6:\n        raise AssertionError(\"The knob turned the wrong way: a bigger t must make the Lens sharper, as in Figure 3.\")\n    assert abs(out2 - 0.1269280110429725) < 1e-9, \"two perfect pairs at t = log 2: wrong loss\"\n\n\ndef test_both_ways_round():\n    I_f = np.array([[1.0, 0.0], [0.0, 1.0], [1.0, 1.0]])\n    T_f = np.array([[1.0, 0.2], [0.1, 1.0], [0.6, 1.0]])\n    I = np.eye(2)\n    out = _f(clip_loss(I_f, T_f, I, I, np.log(5.0)))\n    if abs(out - 0.3842139326029483) < 1e-6:\n        raise AssertionError(\"Only the photos chose their words. The words never chose their photos.\")\n    if abs(out - 0.4036531743718618) < 1e-6:\n        raise AssertionError(\"Only the words chose their photos. The photos never chose their words.\")\n    if abs(out - 0.7878671069748101) < 1e-6:\n        raise AssertionError(\"Both directions are there, but the Lens counted them twice over.\")\n    assert abs(out - 0.39393355348740505) < 1e-9, \"3 postcards at t = log 5: wrong loss\"\n\n\ndef test_lengths_do_not_matter():\n    rng = np.random.default_rng(4)\n    I_f = rng.normal(size=(5, 3))\n    T_f = rng.normal(size=(5, 4))\n    W_i = rng.normal(size=(3, 6))\n    W_t = rng.normal(size=(4, 6))\n    base = _f(clip_loss(I_f, T_f, W_i, W_t, 2.0))\n    I_long = I_f * np.array([[3.0], [0.5], [7.0], [1.0], [0.2]])\n    T_long = T_f * np.array([[0.1], [4.0], [1.0], [9.0], [2.5]])\n    other = _f(clip_loss(I_long, T_long, W_i, W_t, 2.0))\n    assert np.isfinite(base) and np.isfinite(other), \"clip_loss returned nan/inf on random postcards\"\n    assert abs(base - other) < 1e-9, (\n        \"stretching a postcard's features changed the loss. The Lens compares directions, not lengths.\")\n\n\ndef test_projections_are_used():\n    I_f = np.array([[2.0, -2.6, 0.4], [-0.6, -0.5, -0.2], [-2.0, -0.2, -0.9]])\n    T_f = np.array([[3.3, 0.2, -0.4, -0.3], [-0.7, -1.1, -0.4, 0.5], [-0.2, 1.0, -0.2, 0.0]])\n    W_i = np.array([[1.5, 0.5], [-0.5, -0.2], [0.5, 1.9]])\n    W_t = np.array([[-0.3, -0.2], [1.0, -0.9], [-0.3, 0.9], [0.6, 0.1]])\n    out = _f(clip_loss(I_f, T_f, W_i, W_t, 1.5))\n    assert abs(out - 4.678538308532757) < 1e-9, (\n        \"3 postcards, d_i = 3, d_t = 4, d_e = 2, t = 1.5: wrong loss. Walk Figure 3 again, line by line.\")\n\n\ndef test_swapping_eyes_changes_nothing():\n    rng = np.random.default_rng(8)\n    I_f = rng.normal(size=(6, 5))\n    T_f = rng.normal(size=(6, 3))\n    W_i = rng.normal(size=(5, 4))\n    W_t = rng.normal(size=(3, 4))\n    a = _f(clip_loss(I_f, T_f, W_i, W_t, 1.0))\n    b = _f(clip_loss(T_f, I_f, W_t, W_i, 1.0))\n    assert np.isfinite(a) and np.isfinite(b), \"clip_loss returned nan/inf\"\n    assert abs(a - b) < 1e-9, \"swapping the photo side and the word side changed the loss\"\n\n\ndef test_true_pairs_are_the_diagonal():\n    rng = np.random.default_rng(15)\n    I_f = rng.normal(size=(8, 4))\n    T_f = I_f + 0.05 * rng.normal(size=(8, 4))\n    W = np.eye(4)\n    paired = _f(clip_loss(I_f, T_f, W, W, 3.0))\n    shuffled = _f(clip_loss(I_f, T_f[[3, 0, 6, 1, 7, 2, 5, 4]], W, W, 3.0))\n    assert paired < shuffled, (\n        \"postcard k's photo and words are row k of each array; matching rows must cost less than mixed-up rows\")\n    assert paired < np.log(8.0) < shuffled, (\n        \"well-matched postcards must cost less than blind guessing, and mixed-up ones more\")\n\n\ndef test_safety_pin():\n    I_f = np.array([[1.0, 0.0], [0.9848, 0.1736], [0.9397, 0.342], [0.866, 0.5]])\n    T_f = np.array([[0.9986, 0.0523], [0.9903, 0.1392], [0.9135, 0.4067], [0.891, 0.454]])\n    I = np.eye(2)\n    huge = _f(clip_loss(I_f, T_f, I, I, 10.0))\n    assert np.isfinite(huge), \"t = 10 made the loss nan/inf. Something should have stopped the knob.\"\n    below = _f(clip_loss(I_f, T_f, I, I, np.log(90.0)))\n    if abs(huge) < 1e-6 and abs(below - 0.5034453128823664) < 1e-6:\n        raise AssertionError(\"At t = 10 the logits ran wild. Read about the temperature in Section 2.5.\")\n    assert abs(below - 0.5034453128823664) < 1e-9, \"4 close postcards at a scale of 90: wrong loss\"\n    assert abs(huge - 0.4733426872138775) < 1e-9, \"t = 10: the knob stopped in the wrong place\"\n\n\ndef test_quiet_knob_means_blind_guessing():\n    rng = np.random.default_rng(23)\n    I_f = rng.normal(size=(6, 3))\n    T_f = rng.normal(size=(6, 3))\n    W = np.eye(3)\n    out = _f(clip_loss(I_f, T_f, W, W, -30.0))\n    assert abs(out - np.log(6.0)) < 1e-9, \"with a tiny scale every pairing looks alike: the loss must be log(6)\"\n\n\ndef test_naming_hand_checked():\n    out = _probs(zero_shot([[2.0, 0.0]], [[[1.0, 0.0]], [[0.0, 3.0]]], scale=1.0))\n    assert out.shape == (1, 2), f\"1 photo and 2 classes: expected shape (1, 2), got {out.shape}\"\n    if np.allclose(out, [[0.8807970779778824, 0.11920292202211755]], atol=1e-6):\n        raise AssertionError(\"Those are raw dot products. The Lens compares directions, not lengths.\")\n    assert np.allclose(out, [[0.7310585786300049, 0.2689414213699951]], atol=1e-9), (\n        \"one photo, two one-prompt classes, scale 1: wrong probabilities\")\n\n\ndef test_names_make_probabilities():\n    rng = np.random.default_rng(31)\n    out = _probs(zero_shot(rng.normal(size=(5, 6)), rng.normal(size=(4, 3, 6)), scale=100.0))\n    assert out.shape == (5, 4), f\"5 photos, 4 classes (3 prompts each): expected (5, 4), got {out.shape}\"\n    assert np.all(np.isfinite(out)), \"zero_shot returned nan/inf\"\n    assert np.all(out >= 0), \"probabilities can't be negative\"\n    assert np.allclose(out.sum(axis=1), 1.0, atol=1e-9), \"each photo's probabilities must sum to 1 over the classes\"\n\n\ndef test_scale_sharpens():\n    rng = np.random.default_rng(37)\n    img = rng.normal(size=(4, 5))\n    prm = rng.normal(size=(3, 2, 5))\n    soft = _probs(zero_shot(img, prm, scale=1.0))\n    sharp = _probs(zero_shot(img, prm, scale=100.0))\n    assert not np.allclose(soft, sharp), \"the scale must change the probabilities\"\n    assert np.array_equal(soft.argmax(axis=1), sharp.argmax(axis=1)), \"the scale must not change which class wins\"\n    assert np.all(sharp.max(axis=1) > soft.max(axis=1)), \"a bigger scale must make every photo more confident\"\n    default = _probs(zero_shot(img, prm))\n    assert np.allclose(default, sharp, atol=1e-12), \"the default scale is 100\"\n\n\ndef test_blend_the_lanterns_not_the_votes():\n    prompts = [[[0.766044, 0.642788], [0.819152, -0.573576]],\n               [[0.906308, 0.422618], [0.906308, 0.422618]]]\n    out = _probs(zero_shot([[1.0, 0.0]], prompts, scale=10.0))\n    assert out.shape == (1, 2), f\"expected shape (1, 2), got {out.shape}\"\n    if np.allclose(out, [[0.2461640944279006, 0.7538359055720995]], atol=1e-6):\n        raise AssertionError(\"You blended the votes. Section 3.1.4 blends somewhere else.\")\n    if np.allclose(out, [[0.19739774328434498, 0.802602256715655]], atol=1e-6):\n        raise AssertionError(\"Only the first prompt of each class was heard.\")\n    assert np.allclose(out, [[0.7165480654266814, 0.2834519345733185]], atol=1e-6), (\n        \"two classes, two prompts each, scale 10: wrong probabilities\")\n\n\ndef test_long_prompts_do_not_shout():\n    prompts = [[[5.0, 8.66025], [0.939693, -0.34202]],\n               [[0.707107, 0.707107], [0.707107, 0.707107]]]\n    out = _probs(zero_shot([[0.965926, 0.258819]], prompts, scale=10.0))\n    if np.allclose(out, [[0.28074108976335305, 0.7192589102366469]], atol=1e-6):\n        raise AssertionError(\"One long prompt drowned out the other. Normalise each prompt before you blend.\")\n    assert np.allclose(out, [[0.7861198215852274, 0.21388017841477264]], atol=1e-6), (\n        \"prompts of different lengths: wrong probabilities\")\n\n\ndef test_photo_length_does_not_matter():\n    rng = np.random.default_rng(41)\n    img = rng.normal(size=(3, 4))\n    prm = rng.normal(size=(5, 2, 4))\n    a = _probs(zero_shot(img, prm, scale=30.0))\n    b = _probs(zero_shot(img * np.array([[0.1], [6.0], [2.0]]), prm * 3.0, scale=30.0))\n    assert np.allclose(a, b, atol=1e-12), \"stretching photo or prompt vectors changed the answer\"\n\n\ndef test_classes_keep_their_own_prompts():\n    rng = np.random.default_rng(43)\n    img = rng.normal(size=(4, 6))\n    prm = rng.normal(size=(3, 5, 6))\n    base = _probs(zero_shot(img, prm, scale=20.0))\n    assert base.shape == (4, 3), f\"4 photos, 3 classes of 5 prompts: expected (4, 3), got {base.shape}\"\n    shuffled_prompts = _probs(zero_shot(img, prm[:, [4, 2, 0, 3, 1]], scale=20.0))\n    assert np.allclose(base, shuffled_prompts, atol=1e-12), \"reordering a class's prompts must not change anything\"\n    swapped_classes = _probs(zero_shot(img, prm[[2, 0, 1]], scale=20.0))\n    assert np.allclose(base[:, [2, 0, 1]], swapped_classes, atol=1e-12), (\n        \"reordering the classes must reorder the columns, nothing else\")\n    prm2 = prm.copy()\n    prm2[0, 1] = rng.normal(size=6) * 5.0\n    changed = _probs(zero_shot(img, prm2, scale=20.0))\n    assert not np.allclose(base, changed), \"every prompt of a class must count\"\n",
+      "solutionFile": "server/solutions/clip_c3.py",
+      "paperLink": "Figure 3 (linear projections W_i, W_t; l2_normalize; logits = I_e·T_eᵀ·exp(t); labels = arange(n); cross-entropy over axis 0 and axis 1, averaged); Section 2.3 (temperature τ optimised as a log-parameterised multiplicative scalar); Section 2.5 (initialised to the equivalent of 0.07, clipped at a logit scale of 100); Section 3.1.2 (zero-shot: cosine similarity scaled by the temperature, softmax); Section 3.1.4 (ensembling over the embedding space: one cached, averaged text embedding per class).",
+      "intro": [
+        "The Twin Lens's brass panel hangs open. Two blank gears.",
+        "A typewriter waits, with a note: 'Pair them. Then name them. —B.'"
+      ],
+      "success": [
+        "The gears catch. Both eyes of the Lens blink open.",
+        "Down the hill, every photo turns toward its words."
+      ]
+    },
+    {
+      "id": "c4",
+      "type": "explain",
+      "title": "Why Not Write the Words?",
+      "giver": "scribbit",
+      "requires": [
+        "c1",
+        "c2",
+        "c3"
+      ],
+      "question": "Why does the Lens learn faster by picking the right caption than by writing it word by word? And what can my quill still do that it can't?",
+      "rubric": [
+        "Why writing is hard (Section 2.3): predicting the exact words of the text that comes with an image is a difficult task, because of the wide variety of descriptions, comments and related text that co-occur with images; a captioning / language model has to get the wording itself right.",
+        "What CLIP does instead (Section 2.3, Figures 1 and 3): an easier proxy task, predicting only which text as a whole is paired with which image, not its exact words: for a batch of N (image, text) pairs it predicts which of the N × N pairings really occurred, raising the cosine similarity of the N true pairs and lowering it for the N² − N wrong ones, with a symmetric cross-entropy loss.",
+        "The evidence (Figure 2, Section 2.3): a transformer language model predicting the caption learned zero-shot ImageNet about 3x slower than a baseline predicting a bag-of-words encoding of the same text, and swapping that predictive objective for the contrastive one gave a further 4x efficiency gain (about 12x over the captioner); OR the paper's supporting point that contrastive objectives learn better representations than their equivalent predictive objectives, while generative models need over an order of magnitude more compute for the same performance.",
+        "What the quill can still do (Section 6, Limitations): CLIP can only choose among the concepts (captions / class names) it is given in a zero-shot classifier; unlike an image captioning model it cannot generate novel outputs such as a brand-new caption. The authors suggest combining a contrastive and a generative objective (or searching over many natural-language explanations) as future work."
+      ],
+      "passBar": "Pass if at least 3 of the 4 criteria are clearly met and criterion 2 is one of them. Fail regardless of the count if the answer claims that CLIP writes, generates or predicts the words of captions, that the captioning objective was the more efficient one, or that CLIP can name things it is not given words for.",
+      "offline": [
+        [
+          "which caption",
+          "which text",
+          "which words",
+          "match",
+          "pair",
+          "pick",
+          "choose",
+          "chooses",
+          "contrastive",
+          "as a whole",
+          "right one",
+          "correct one"
+        ],
+        [
+          "exact word",
+          "word by word",
+          "every word",
+          "exact",
+          "wording",
+          "variety",
+          "many ways",
+          "hard",
+          "difficult",
+          "harder"
+        ],
+        [
+          "4x",
+          "4 times",
+          "four times",
+          "3x",
+          "three times",
+          "12x",
+          "efficien",
+          "faster",
+          "compute",
+          "can't generate",
+          "cannot generate",
+          "can't write",
+          "cannot write",
+          "only choose",
+          "only pick",
+          "novel",
+          "new caption"
+        ]
+      ],
+      "paperLink": "Section 2.3 and Figure 2 (transformer language model 3x slower than bag-of-words prediction; contrastive objective a further 4x more efficient; exact words are hard to predict; contrastive is the easier proxy task of predicting which text as a whole goes with which image); Section 6 (CLIP only chooses among the concepts in a zero-shot classifier; image captioning could generate novel outputs; joint contrastive + generative training suggested).",
+      "intro": [
+        "So. Your Lens never writes a single word, and still it beats me?",
+        "Tell me why, Speck. And tell me what my old quill can still do."
+      ],
+      "success": [
+        "So it never learns my words. Just which card goes with which photo. Sly.",
+        "But it can't write a NEW caption. Ha! I keep my quill."
+      ],
+      "retry": [
+        "Hmm. My quill isn't convinced.",
+        "Why is picking easier than writing? And what can't the Lens do?"
+      ]
+    }
+  ],
+  "artefact": {
+    "id": "twin-lens",
+    "name": "The Twin Lens",
+    "description": "A pocket lens with two eyes: one sees photos, one reads words. Say a few names and it picks the right one. No labels needed.",
+    "look": "A small brass spyglass (about 0.5 units long) that forks into two eyepieces: a round one framing a tiny turquoise photo, a square one framing a cream caption card with three ink lines. A glowing turquoise thread loops between the two eyes. A tiny dial with a red pin on the barrel. Idle: slow spin; the thread pulses when it is used."
+  },
+  "book": {
+    "guard": [
+      "Do not state where the temperature starts (0.07, or a logit multiplier of 1/0.07 ≈ 14.3) or where it is clipped (logits never scaled by more than 100; Table 18's 'maximum temperature 100'), and do not say whether the knob holds τ or 1/τ.",
+      "Do not say that the contrastive loss is taken in both directions (softmax over rows and over columns, axis 0 and axis 1) and averaged, or that the true pairs sit on the diagonal (labels = arange(n)).",
+      "Do not say how to tell two classes with the same name apart, which context words to add to which class's prompt, or that identical class names give identical text embeddings and so identical classifier weights.",
+      "Do not say which context phrase suits which kind of class (e.g. that pets want '..., a type of pet.', satellite images 'a satellite photo of a {label}.'), and do not quote Section 3.1.4's task-specific templates.",
+      "Do not write, complete or correct the Figure 3 pseudocode or any loss or zero-shot code: no l2_normalize, no exp(t) or clipping, no cross-entropy over axis 0 and axis 1, no averaging of the two losses, no softmax tricks.",
+      "Do not say how prompt ensembles are combined (normalised text embeddings averaged in embedding space, not probabilities averaged) or why (one cached embedding per class, the cost of a single classifier).",
+      "Do not explain why the contrastive objective beats predicting the caption: nothing about the exact words being hard to predict, predicting only which text as a whole is paired, the N² − N wrong pairings, or Figure 2's 3x and 4x efficiency gaps.",
+      "Do not state CLIP's limitation that it only chooses among the concepts it is given and cannot generate new captions like a captioning model, nor the suggested joint contrastive and generative training.",
+      "Never confirm, grade or correct the player's proposed answer to any puzzle, code task or explanation in this region."
+    ],
+    "offlineHints": [
+      {
+        "keywords": [
+          "pair",
+          "pairs",
+          "match",
+          "batch",
+          "net",
+          "diagonal",
+          "postcard",
+          "tags"
+        ],
+        "text": "N photos, N captions, N×N guesses. Section 2.3 counts the wrong ones. Figure 3 marks the right ones."
+      },
+      {
+        "keywords": [
+          "both",
+          "rows",
+          "columns",
+          "symmetric",
+          "direction",
+          "float",
+          "floats",
+          "two-way",
+          "axis",
+          "loss",
+          "cross entropy",
+          "cross-entropy"
+        ],
+        "text": "A photo seeks its words. Do the words seek back? Figure 3 answers. Twice."
+      },
+      {
+        "keywords": [
+          "knob",
+          "temperature",
+          "tau",
+          "τ",
+          "scale",
+          "start",
+          "initial",
+          "0.07",
+          "sharp",
+          "soft"
+        ],
+        "text": "The knob's first setting was borrowed from older work. Section 2.5 whispers it. Mind which way it divides."
+      },
+      {
+        "keywords": [
+          "pin",
+          "clip",
+          "clipped",
+          "100",
+          "maximum",
+          "limit",
+          "ceiling",
+          "snap",
+          "unstable",
+          "instability"
+        ],
+        "text": "Every knob needs a ceiling. Section 2.5 says why. A table at the very end says where."
+      },
+      {
+        "keywords": [
+          "log",
+          "exp",
+          "learned",
+          "learnable",
+          "logarithm",
+          "multiplicative"
+        ],
+        "text": "The knob turns itself as the Lens learns. Section 2.3 tells how it is held."
+      },
+      {
+        "keywords": [
+          "crane",
+          "cranes",
+          "boxer",
+          "pug",
+          "twin",
+          "same name",
+          "polysemy",
+          "meaning",
+          "rack",
+          "racks"
+        ],
+        "text": "One word, two meanings. Section 3.1.4 names a bird, a machine, and a dog mistaken for a fighter."
+      },
+      {
+        "keywords": [
+          "prompt",
+          "template",
+          "sign",
+          "signs",
+          "photo of",
+          "sentence",
+          "context",
+          "type of"
+        ],
+        "text": "The Lens was raised on sentences, not lonely words. Section 3.1.4 shows how to speak to it."
+      },
+      {
+        "keywords": [
+          "zero-shot",
+          "zero shot",
+          "classifier",
+          "classify",
+          "label",
+          "labels",
+          "naming",
+          "name"
+        ],
+        "text": "No labels. Only words. Section 3.1.2 turns a list of names into a classifier."
+      },
+      {
+        "keywords": [
+          "ensemble",
+          "ensembling",
+          "average",
+          "blend",
+          "combine",
+          "many prompts",
+          "lantern",
+          "big",
+          "small"
+        ],
+        "text": "Many prompts, one lantern. Section 3.1.4 says where the blending happens, and why it costs nothing."
+      },
+      {
+        "keywords": [
+          "normalize",
+          "normalise",
+          "l2",
+          "cosine",
+          "length",
+          "unit",
+          "direction"
+        ],
+        "text": "Long arrows, short arrows: the Lens cares only where they point. Figure 3 trims them first."
+      },
+      {
+        "keywords": [
+          "caption",
+          "write",
+          "writing",
+          "word by word",
+          "predict",
+          "contrastive",
+          "slow",
+          "faster",
+          "efficient",
+          "efficiency",
+          "scribbit",
+          "quill"
+        ],
+        "text": "Writing every word is slow. Figure 2 races three ways of learning. Count the gaps."
+      },
+      {
+        "keywords": [
+          "limitation",
+          "limitations",
+          "can't",
+          "cannot",
+          "generate",
+          "novel",
+          "new caption",
+          "flexible"
+        ],
+        "text": "What the Lens cannot do, it confesses in Section 6. Look for the captioner."
+      }
+    ]
+  }
+}
