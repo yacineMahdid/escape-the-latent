@@ -263,7 +263,7 @@ export default {
     function ring(i) {
       if (destroyed || solved) return;
       const p = posts[i];
-      query = i; root.userData.query = i;
+      query = i;
       w.sfx('ding');
       p.wig = 0; p.wigDelay = 0;
       ripple.position.set(p.x, TOP + 0.1, POST.z - 0.02);
