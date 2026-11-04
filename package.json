@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node server/index.js",
+    "start:claude": "USE_CLAUDE_CODE=1 node server/index.js",
     "dev": "node --watch server/index.js",
     "test": "node server/test/run.mjs",
     "test:puzzles": "node test/puzzles/solve.cjs",
