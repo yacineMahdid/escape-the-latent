@@ -18,19 +18,47 @@ import { api } from '../../api.js';
 
 const STATION_ICONS = { terminal: '⌨️', board: '📌', mailbox: '✉️', sign: '🪧', machine: '⚙️' };
 
-// What a typed number may mean: '0.96', '0,96' (decimal comma), '1,000' (thousands), '48/50', '96%' (0.96 or 96).
+// What a typed number may mean: '0.96', '0,96' (decimal comma), '1,000' (thousands), '48/50', '96%' (0.96 or
+// 96), '4 shots' (the first number, units ignored), '1 million', 'four', 'twenty-four', 'a million'.
+const NUMBER_WORDS = { zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+  eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19,
+  twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90, half: 0.5,
+  hundred: 100, thousand: 1e3, million: 1e6, billion: 1e9 };
+const SCALE_WORDS = { hundred: 100, thousand: 1e3, k: 1e3, million: 1e6, billion: 1e9 };
 export function numberCandidates(raw) {
-  let s = String(raw ?? '').trim().replace(/\s+/g, '').replace(/[−–]/g, '-');
-  const pct = s.endsWith('%'); if (pct) s = s.slice(0, -1);
+  const text = String(raw ?? '').trim().toLowerCase().replace(/[−–]/g, '-');
   const num = (t) => {
     if (/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(t)) return Number(t.replace(/,/g, ''));
     if (/^-?\d*,\d+$/.test(t)) return Number(t.replace(',', '.'));
     return t === '' ? NaN : Number(t);
   };
-  const frac = s.match(/^(-?[\d.,]+)\/([\d.,]+)$/);
-  const n = frac ? num(frac[1]) / num(frac[2]) : num(s);
-  if (!Number.isFinite(n)) return [];
-  return pct ? [n / 100, n] : [n];
+  const parse = (t) => {
+    const pct = t.endsWith('%'); if (pct) t = t.slice(0, -1);
+    const frac = t.match(/^(-?[\d.,]+)\/([\d.,]+)$/);
+    const n = frac ? num(frac[1]) / num(frac[2]) : num(t);
+    return !Number.isFinite(n) ? [] : pct ? [n / 100, n] : [n];
+  };
+  const whole = parse(text.replace(/\s+/g, ''));
+  if (whole.length) return whole;
+  // the first number in the text, with a scale word right after it ('1 million', '2k')
+  const m = text.match(/-?\d[\d.,]*(?:\/\d[\d.,]*)?%?/);
+  if (m) {
+    const after = text.slice(m.index + m[0].length).match(/^\s*([a-z]+)/);
+    const k = after ? SCALE_WORDS[after[1]] ?? 1 : 1;
+    return parse(m[0].replace(/[.,]$/, '')).map((n) => n * k);
+  }
+  // number words
+  let total = 0, cur = 0, any = false;
+  for (const w of text.split(/[^a-z]+/).filter(Boolean)) {
+    if ((w === 'a' || w === 'an') && !any) { cur = 1; continue; }
+    const v = NUMBER_WORDS[w];
+    if (v === undefined) continue;
+    any = true;
+    if (v === 100) cur = (cur || 1) * 100;
+    else if (v >= 1e3) { total += (cur || 1) * v; cur = 0; }
+    else cur += v;
+  }
+  return any ? [total + cur] : [];
 }
 const closeTo = (raw, answer, tolerance) => {
   const tol = tolerance ?? Math.max(1e-9, Math.abs(answer) * 1e-3);
@@ -157,8 +185,9 @@ export async function createRegionScene(ctx, regionId) {
       if (ok) await onSolved(next);
       else if ((next.type === 'explain' || next.type === 'minigame' || next.type === 'quiz') && next.retry) {
         // after an explain bubble: nothing if it closed before any grade, and never the reply it just showed
-        const lines = next.type !== 'explain' ? [].concat(next.retry)
-          : explainFeedback ? [].concat(next.retry).filter((l) => !explainFeedback.includes(String(l).trim())) : [];
+        const lines = next.type === 'minigame' ? (minigamePlayed ? [].concat(next.retry) : [])
+          : next.type !== 'explain' ? [].concat(next.retry)
+            : explainFeedback ? [].concat(next.retry).filter((l) => !explainFeedback.includes(String(l).trim())) : [];
         if (lines.length) await speak(id, lines);
       }
       return;
@@ -262,10 +291,12 @@ export async function createRegionScene(ctx, regionId) {
       try { handle = (mod.default || mod).mount(host, { title: c.title, ...(c.spec || {}) }, { onWin: () => finish(true), onClose: () => finish(false), sfx }); }
       catch (e) { console.error(e); finish(false); }
     });
+    minigamePlayed = host.__mg?.outcome != null; // a round reached FINISH (won or lost)
     try { handle?.destroy?.(); } catch (e) { console.error(e); }
     closeModal(host); host.remove();
     return result;
   }
+  let minigamePlayed = false;
 
   // a villager's questions: every answer must be right (a wrong one ends the round; ask again later)
   async function runQuiz(c, giverId) {
@@ -373,7 +404,7 @@ export async function createRegionScene(ctx, regionId) {
       for (const { mesh } of stations.values()) mesh.userData.celebrate?.();
       sfx('ding');
       await say(region.story?.resolution || ['The region is at peace.'], { style: 'narration' });
-      spawnArtefact(c.giver);
+      spawnArtefact(null); // the resolution hands it to you, so it appears by your feet
     }
   }
 
@@ -460,7 +491,7 @@ export async function createRegionScene(ctx, regionId) {
   function spawnArtefact(nearId) {
     if (st.artefact) return;
     const anchorName = people.get(nearId)?.data.anchor || stations.get(nearId)?.data.anchor || 'lane-mid';
-    const a = ANCHORS[anchorName] || ANCHORS['lane-mid'];
+    const a = nearId === null ? [player.pos.x, player.pos.y, player.pos.z] : (ANCHORS[anchorName] || ANCHORS['lane-mid']);
     const [x, y, z] = spawnSpot(a);
     const mesh = buildArtefact(regionId);
     mesh.position.set(x, y, z);

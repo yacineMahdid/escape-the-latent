@@ -92,6 +92,8 @@ export async function ask(question, options, { speaker = null, style = 'npc', ne
   if (speaker && st.tag !== null) { const tag = document.createElement('div'); tag.className = 'dlg-tag'; tag.textContent = speaker.name || speaker; tag.style.background = speaker.color || st.tag; box.appendChild(tag); }
   const text = document.createElement('div'); text.className = 'dlg-text'; text.textContent = question; box.appendChild(text);
   const row = document.createElement('div'); row.className = 'dlg-choices' + (options.some((o) => String(o).length > 28) ? ' dlg-choices-long' : ''); box.appendChild(row);
+  // hover only counts once the pointer moves: a choice under a resting cursor must not look pre-picked
+  box.addEventListener('pointermove', () => box.classList.add('dlg-pointer'), { once: true });
   root().appendChild(box);
   try {
     return await new Promise((resolve) => {
