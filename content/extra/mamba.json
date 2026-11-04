@@ -173,7 +173,6 @@
       },
       "design": "A side-scrolling race. The player rides Noodle's head down the road toward Penny's post office while Kayvee races in the back lane with his cart. Grains roll up to Noodle's mouth one tile at a time: Space gulps, ↑ shouts. Gulp the beads (his belly window turns that colour), let sand and ums slide by, and shout at every bell: Noodle calls out whatever is in his belly. A right bell rings ✓; gulping junk, shouting at nothing, or a wrong or missed bell makes Noodle hiccup and stop for a moment. Kayvee keeps every grain: he starts fast, but his cart grows and he digs through all of it at every bell, so he slows down. A race strip on top shows both racers. First to the post office wins (about 40 s; three hand-made roads in turn). The rules card shows spec.goal and spec.controls.",
       "paperLink": "§3.1 · Fig. 2 · §3.5.2 · §4.1.1 · §4.5",
-      "worldEffect": "Kayvee sits on his cart and starts sorting: KEEP, TOSS, TOSS, TOSS...",
       "intro": [
         "A race to Penny's post! My cart against that snake's one tiny belly.",
         "I keep EVERY grain, so I never miss a bell. Ride his head. Tell him when!"
@@ -245,7 +244,6 @@
         }
       ],
       "paperLink": "§4.1.2 · Table 2 · §4.3.2 · Fig. 5",
-      "worldEffect": "Tumble draws the road in the sand. It runs right off the edge.",
       "intro": [
         "Where does the road END? Your Cursed Book knows. Do you?",
         "Three questions. All right in one go!"
@@ -266,16 +264,19 @@
       "title": "Parcel Day",
       "giver": "penny",
       "requires": [
-        "c4"
+        "c4",
+        "m1",
+        "q1"
       ],
       "environment": "parcel-day",
       "spec": {
         "goal": "Parcel Day: each 🔔 hears only its own parcel",
-        "progress": "Parcel Day: {ok}/5 🔔 · ◯ {marbles} left",
-        "progressNote": "api.onProgress replaces the whole HUD task line, so the progress text carries the name. Call it after every placement and after every run; {ok} is 0 before the first run.",
+        "progressBefore": "Parcel Day: ◯ {marbles} left · ring the dispatch bell",
+        "progress": "Parcel Day: {ok}/5 bells right · ◯ {marbles} left",
+        "progressNote": "api.onProgress replaces the whole HUD task line, so each text carries the name. Until the first run the HUD keeps the goal; a placement before any run shows progressBefore; every run ends with progress. {marbles} reads '2 marbles', '1 marble' or '0 marbles'.",
         "reminder": [
-          "Parcels are by Noodle. Ring the dispatch bell to send him off.",
-          "Empty parcels get NOTHING. Not somebody else's bead!"
+          "Ring the dispatch bell by Noodle's parcels to send him off.",
+          "Empty parcels get NOTHING. Not somebody else's bead! Try the ribbons."
         ],
         "where": "Main path left of the stream (y 0), along the front of the path strip: from in front of Noodle (lane-left, x -21) to just before Tumble (lane-mid, x -6). Positions are [x, y, z] world units; the player is 1.9 tall. The camera looks from +z and low (about 13° down, about 22 units wide), so every prop stands up off the ground. The fences at z 3.0 (x -31..-26 and -4..3) would hide low props, so the row stays between them. The stage lanterns at (-26, 2.9) and (-18, 2.9) (there from the 2nd solved challenge on) stand just in front of the row: leave them. Nudge anything that clips.",
         "row": {
@@ -512,12 +513,14 @@
         "props": {
           "wrapping": "Each parcel's slots sit on one flat parcel of kraft wrapping paper (top #b8834a with fibres and two fold lines, sides #7e5228; 0.06 thick, 0.5 deep, reaching 0.36 past its first and last slot) with a white string along its back, tied round both ends. (Was #c9a26b, 0.04 thick: it vanished into the desert path.)",
           "sand": "a small heap: cone r 0.17, h 0.13, #d9b87a, a few darker dots",
-          "bead": "a faceted gem (octahedron r 0.15) on a tiny cream paper stand 0.25 tall, in the c1 colours (ruby #e61f33, lapis #2659e6, emerald #1abf59), each with its own cut as in m1 Collider circle r 0.1.",
-          "um": "an upright paper speech bubble (0.36 × 0.26, white, ink outline) on a stick 0.3 tall, 'um' in grey (canvas texture), facing +z Collider circle r 0.1.",
+          "bead": "a faceted gem (octahedron r 0.15) on a tiny cream paper stand 0.25 tall, in the c1 colours (ruby #e61f33, lapis #2659e6, emerald #1abf59), each with its own cut as in m1. Collider circle r 0.14.",
+          "um": "an upright paper speech bubble (0.36 x 0.26, white, ink outline) on a stick 0.3 tall, 'um' in grey (canvas texture), facing +z. Collider circle r 0.14.",
           "bell": "a thin wooden post (r 0.04, 0.95 tall, #6a4a2a) standing 0.3 right of its bell slot, at the right end of the parcel (clear of the stage lantern at x -18, which hid Tumble's card), with a small black bell on its parcel side; on top a round paper portrait card (0.6 wide, facing +z) of the owner (species and colours from the region's inhabitants) with a name plate (0.84 × 0.25, ink on cream) across its lower edge. Collider circle r 0.15. (A 0.44 card with 16 px text was unreadable from the game camera: about 30 px on a 1280 × 720 screen.)",
           "ribbon": "a red ribbon bow (#e8566a) lying in the gap between two strips, and a faint dashed white circle (r 0.3) on the ground: the spot",
           "marble": "a clear glass sphere on the spot: r 0.16, #e8f6ff, transparent (opacity 0.5), a white glint, and an ink outline ring (a camera-facing sprite): plain clear glass was invisible on the sandy path",
-          "sandPinch": "a sand heap on the spot, like the sand slots but a little wider"
+          "sandPinch": "a sand heap on the spot, like the sand slots but a little wider",
+          "scale": "Beads (stand and gem), ums, the clear marble and the pinch of sand are drawn 1.4x the sizes below, slot sand 1.15x: at 1.4x they read from the game camera (gems about 26 px at 1280 x 720). Colliders grow with them.",
+          "placing": "A new marble or pinch of sand drops into its spot from about 2.3 units up (0.5 s, a small bounce), so it shows above the player standing in front of the spot."
         },
         "menu": {
           "interactable": {
@@ -527,16 +530,25 @@
             "promptHeight": 1.4
           },
           "question": "Between {a}'s and {b}'s parcels:",
-          "options": [
-            "◯ Clear marble ({n} left)",
-            "∴ Pinch of sand",
-            "Nothing",
-            "Leave"
-          ],
+          "put": {
+            "marble": "◯ Clear marble ({n} left)",
+            "sand": "∴ Pinch of sand"
+          },
+          "take": {
+            "marble": "Take the marble back",
+            "sand": "Sweep the sand away"
+          },
+          "keep": {
+            "none": "Leave it empty",
+            "marble": "Keep the marble",
+            "sand": "Keep the sand"
+          },
+          "empty": "No clear marbles left.",
           "rules": [
             "w.ask(question, options) with {a} and {b} the owners' names. Each spot holds one thing: nothing, a marble or a pinch of sand; a choice replaces what is there.",
-            "Clear marble with none left and none on this spot: w.toast('No clear marbles left.'), no change.",
-            "Leave: no change. After any change: w.sfx('paper'), update the prop, api.onProgress(progress)."
+            "Options follow what the spot holds, and the last one always changes nothing (Escape picks it): empty: put.marble, put.sand, keep.none; marble: put.sand, take.marble, keep.marble; sand: put.marble, take.sand, keep.sand.",
+            "Clear marble with none left: w.toast(empty), no change.",
+            "After any change: w.sfx('paper'), the prop drops in (props.placing), api.onProgress(progressBefore before the first run, else progress)."
           ],
           "note": "Approach a ribbon from the front (z > 2.4): R1 is close to Noodle's own talk prompt, and the nearest prompt wins."
         },
@@ -549,16 +561,16 @@
             0,
             0.55
           ],
-          "radius": 1.1,
+          "radius": 1.6,
           "promptHeight": 1.9,
           "collider": 0.25,
           "look": "a brass handbell (#e6b84a) hanging from a little wooden post with an arm (1.3 tall) and a red pennant",
-          "why": "It stands behind the middle of the row, so the camera (centred on the player) sees the whole road during the run.",
+          "why": "It stands behind the middle of the row, where the main path passes it (its prompt reaches 1.6 units, up to the back of the parcels).",
           "onInteract": "Await the whole delivery run, then the result. walkscene keeps the scene busy meanwhile, so the player stands and watches and nothing changes mid-run.",
-          "watch": "During a run the player steps (0.4 s, round the bell post, not through it) to just behind the dispatch bell, x -16, z -0.12: the follow camera then frames the whole row, and the player is out of Noodle's way."
+          "watch": "During a run the player steps (0.4 s, round the bell post, not through it) to just behind the dispatch bell, x -16, z -0.12, out of Noodle's way."
         },
         "noodle": {
-          "mesh": "w.villager('noodle'). Remember his position; put him back at his anchor after the run and in destroy(). If null, use a green capsule stand-in.",
+          "mesh": "w.villager('noodle') (it also holds him at his anchor until the puzzle ends). Remember his position; put him back at his anchor after the run and in destroy(). If null, use a green capsule stand-in. w.villager('tumble') holds Tumble too: he would otherwise stroll onto Penny's parcel.",
           "belly": "Add a small sphere (r 0.17) as a child of Noodle's mesh at local (0, 0.62, 0.62), emissive in the belly's colour, hidden while the belly is empty. Remove it in destroy().",
           "path": "Glide from his anchor (w.anchors['lane-left'] = [-21, 0, 1.4]) to [-25.3, 0, 1.45] (0.8 s, small bob), then slither right along z 1.45 at 1.6 units/s to x -7.2, wait 0.6 s, glide back to the anchor (1.8 s). About 20 s in all.",
           "process": "When the mesh's x passes a slot's x - 0.12, handle that slot once, in order. A bell is handled where he stops for it, at its x - 0.45 (the slot before a bell is always 0.82 earlier, so the order holds): his glowing belly then shows beside the owner's card instead of behind it.",
@@ -597,7 +609,7 @@
         },
         "result": {
           "ok": "ok = number of ✓ bells (of 5); then api.onProgress(progress).",
-          "win": "ok = 5: api.onSolved() (the region then plays the success lines, removes the puzzle and, if this was the last challenge, plays the resolution).",
+          "win": "ok = 5: the five bells ring at once and Noodle hops (1.4 s), the row packs itself away (0.5 s), then api.onSolved() (the region then plays the success lines and, as this is the finale, the resolution).",
           "else": "w.speak('penny', [count, details])",
           "count": {
             "one": "One mix-up!",
@@ -615,20 +627,34 @@
           "why": "Tumble's and Umberto's parcels hold no bead, so without help Noodle still has the previous parcel's bead (Kayvee's ruby, Doc Marrow's lapis) at their bells. Sand cannot help: Noodle lets sand slide and keeps his belly across any amount of it. A clear marble is gulped like any bead, and a gulp replaces the whole belly, here with nothing. The other ribbons need nothing: the next parcel's own bead replaces the belly anyway. With exactly 2 marbles only R1 + R3 wins (checked over all 81 placements)."
         },
         "destroy": "Remove every mesh, sprite, prop, collider and interactable, and Noodle's belly sphere; put Noodle's mesh back at his anchor (also mid-run); unsubscribe from w.onUpdate; delete window.__etl.parcelDay.",
-        "testHooks": "Set it.id on every interactable ('R1'..'R4', 'dispatch'), so tests can find them in window.__etl.ws.interactables (labels 'Ribbon', 'Dispatch bell'). While mounted, keep window.__etl.parcelDay = { placed: { R1..R4: 'none' | 'sand' | 'marble' }, marbles, running, last: [{ owner, heard, ok }] }. window.__etl.parcelDay.speed (default 1) is a test-only time scale for the run.",
-        "rule": "Section 3.5.2, Boundary Resetting: when independent sequences are stitched together (for example documents packed end to end to use the hardware better), LTI models bleed information from one into the next, while a selective SSM can reset its state at the boundary (Δ_t → ∞, or g_t → 1 in Theorem 1). Penny packs parcels end to end to save trips; an empty parcel shows the bleed (Noodle shouts the previous parcel's bead). The player must find the reset: sand is a grain Noodle ignores with a tiny step, so his belly persists across it (selection remembers what matters across any amount of noise), while a clear marble is taken in with a big gulp that carries nothing and wipes the belly: a boundary token. Umberto's parcel adds Variable Spacing: ums are fillers to let slide, not beads. Playing well = a reset exactly at the boundaries where the old belly would leak into the next parcel."
+        "testHooks": "Set it.id on every interactable ('R1'..'R4', 'dispatch'), so tests can find them in window.__etl.ws.interactables (labels 'Ribbon', 'Dispatch bell'). While mounted, keep window.__etl.parcelDay = { placed: { R1..R4: 'none' | 'sand' | 'marble' }, marbles, running, runs, hurry, last: [{ owner, heard, ok }] }. window.__etl.parcelDay.speed (default 1) is a test-only extra time scale for the run.",
+        "rule": "Section 3.5.2, Boundary Resetting: when independent sequences are stitched together (for example documents packed end to end to use the hardware better), LTI models bleed information from one into the next, while a selective SSM can reset its state at the boundary (Δ_t → ∞, or g_t → 1 in Theorem 1). Penny packs parcels end to end to save trips; an empty parcel shows the bleed (Noodle shouts the previous parcel's bead). The player must find the reset: sand is a grain Noodle ignores with a tiny step, so his belly persists across it (selection remembers what matters across any amount of noise), while a clear marble is taken in with a big gulp that carries nothing and wipes the belly: a boundary token. Umberto's parcel adds Variable Spacing: ums are fillers to let slide, not beads. Playing well = a reset exactly at the boundaries where the old belly would leak into the next parcel.",
+        "camera": {
+          "pitch": 11,
+          "fov": 32,
+          "rule": "The run shot frames the whole road, from Noodle's start (x -25.3) to Penny's post with its flag (about x -6.4), plus 0.5 units each side, for the screen's real aspect: w.camera.to(pos, look) with the camera 11 degrees above the look point (x centre, y 1.45, z row.z - 0.3), as far back as that width needs (about 20 units at 16:9, 27 at 4:3). It holds through the run and Penny's verdict, then w.camera.back(). The same shot shows the row popping up when the puzzle starts while the player is far from it (fly 0.9 s, hold 1.6 s, back 0.9 s). destroy() hands the camera back."
+        },
+        "run": {
+          "replaySpeed": 2,
+          "hurrySpeed": 4,
+          "hurryHint": "Hold Space to hurry Noodle",
+          "rule": "The first run plays at speed 1 (about 22 s). Later runs play at replaySpeed. Holding Space, E or Enter (a fresh press during the run, not the one that rang the bell) or the mouse button runs it at hurrySpeed. The hint is a toast at the start of the first replay. If a hurry key is still held when the run ends, Penny waits for its release before her verdict (a held key would skip her lines)."
+        }
       },
-      "design": "The finale, on the road in front of Noodle. Penny has packed five parcels end to end (Kayvee, Tumble, Doc Marrow, Umberto, Penny): each a strip of wrapping paper with its grains and its owner's bell at the end, with a ribbon between parcels. Ring the dispatch bell and Noodle slithers the whole row, gulping beads and shouting at each bell whatever is in his belly. Tumble's and Umberto's parcels hold no bead, so they hear the previous parcel's bead: mix-ups. At each ribbon the player may leave a clear marble (2 in all) or a pinch of sand. Sand changes nothing; a marble is gulped like a bead and leaves his belly empty. With the 2 marbles before the two empty parcels every bell is right. Unlimited runs; the HUD keeps count.",
+      "design": "The finale (after the race and Tumble's questions), on the road in front of Noodle. Penny has packed five parcels end to end (Kayvee, Tumble, Doc Marrow, Umberto, Penny): each a strip of wrapping paper with its grains and its owner's bell at the end, with a ribbon between parcels. Ring the dispatch bell and Noodle slithers the whole row, gulping beads and shouting at each bell whatever is in his belly; the camera frames the whole road. Tumble's and Umberto's parcels hold no bead, so they hear the previous parcel's bead: mix-ups. At each ribbon the player may leave a clear marble (2 in all) or a pinch of sand. Sand changes nothing; a marble is gulped like a bead and leaves his belly empty. With the 2 marbles before the two empty parcels every bell is right. Unlimited runs, faster after the first; the HUD keeps count.",
       "paperLink": "§3.5.2 (Boundary Resetting, Variable Spacing, Δ) · §3.1 · Thm. 1",
-      "worldEffect": "Five bells ring at once. Tumble finds his bead. In his own pocket.",
       "intro": [
-        "First real delivery day! I pack every parcel end to end. Saves trips.",
+        "First real delivery day! I pack every parcel end to end, by Noodle. Saves trips.",
         "At each parcel's bell, Noodle shouts its last bead. Some parcels are EMPTY.",
-        "Last time Tumble heard Kayvee's ruby! No mix-ups today. Parcels are by Noodle."
+        "Last time Tumble heard Kayvee's ruby! Ring the dispatch bell to send Noodle off."
       ],
       "reminder": [
-        "Parcels are by Noodle. Ring the dispatch bell to send him off.",
-        "Empty parcels get NOTHING. Not somebody else's bead!"
+        "Ring the dispatch bell by Noodle's parcels to send him off.",
+        "Empty parcels get NOTHING. Not somebody else's bead! Try the ribbons."
+      ],
+      "locked": [
+        "Post office. My old stamp prints a road all at once, every grain alike.",
+        "Parcel Day? Not before the scanner, my stamp, Kayvee's race AND Tumble's questions."
       ],
       "success": [
         "Five bells, five right answers. Not one mix-up!",
@@ -637,7 +663,6 @@
     }
   ],
   "book": {
-    "note": "For content/regions/mamba.json book.guard / book.offlineHints when this pack is merged: the server reads the book's guard only from the region file, and the game ignores this key.",
     "guard": [
       "Do not give, hint at or confirm the answers to Tumble's road questions: in the Induction Heads test Mamba, trained on 256 tokens, stays perfect up to about a million (2^20, '4000x longer'); no other model lasts beyond 2x its training length; on DNA, Mamba gets better and better with longer context up to 1M (HyenaDNA gets worse). Never say which option of his questions is right.",
       "Do not say how Noodle can forget between Penny's packed parcels (a colourless bead such as a clear marble, gulped at a ribbon, wipes his belly; sand does not), or which ribbons need one (before Tumble's and before Umberto's parcel)."

@@ -7,15 +7,17 @@
 // mix-ups. Tumble's and Umberto's parcels hold no bead, so they hear the previous parcel's bead. At each
 // ribbon the player may leave one of 2 clear marbles or a pinch of sand: sand changes nothing (Noodle keeps
 // his belly across any amount of it), a marble is gulped like a bead and leaves the belly empty. The only
-// win is marbles on R1 and R3 (every placement checked). Unlimited runs.
+// win is marbles on R1 and R3 (every placement checked). Unlimited runs: the first plays at speed 1, later ones
+// faster, and holding Space / E / Enter or the mouse button hurries any run. A camera shot frames the whole road
+// for each run (and shows the row popping up at the start); Noodle and Tumble are held at home meanwhile.
 // The paper (Mamba, Section 3.5.2, Boundary Resetting): sequences packed end to end (documents packed to use
 // the hardware better) bleed into each other unless the selective state resets at the boundary (Δ_t → ∞, or
 // g_t → 1 in Theorem 1). The clear marble is that boundary token: a big gulp that carries nothing. The sand
 // shows that selection holds the state across ignored noise; Umberto's ums are Variable Spacing.
-// Spec: content/extra/mamba.json, challenge e1 (positions, props, menu, run, judging, text).
+// Spec: content/extra/mamba.json, challenge e1 (positions, props, menu, run, camera, judging, text).
 // Test hooks: interactables have it.id 'R1'..'R4' (label 'Ribbon') and 'dispatch' (label 'Dispatch bell');
-// while mounted, window.__etl.parcelDay = { placed, marbles, running, last, speed } (speed: a test-only time
-// scale for the run, 1 by default). deliveries(spec, placed) is the judge, exported for checks.
+// while mounted, window.__etl.parcelDay = { placed, marbles, running, runs, hurry, last, speed } (speed: a
+// test-only extra time scale for the run, 1 by default). deliveries(spec, placed) is the judge, exported for checks.
 import { api as game } from '../api.js';
 
 const INK = '#2b2233';
@@ -28,6 +30,7 @@ const clamp01 = (u) => Math.min(1, Math.max(0, u));
 const easeBack = (u) => { const c = 1.9; const v = clamp01(u) - 1; return 1 + (c + 1) * v * v * v + c * v * v; };
 const easeOut = (u) => 1 - (1 - clamp01(u)) ** 3;
 const easeInOut = (u) => { const v = clamp01(u); return v < 0.5 ? 2 * v * v : 1 - (-2 * v + 2) ** 2 / 2; };
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 const hexRgb = (h) => { const n = parseInt(String(h).replace('#', ''), 16) || 0; return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
 const mixHex = (a, b, t) => { const A = hexRgb(a), B = hexRgb(b); return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(',')})`; };
 
@@ -75,6 +78,12 @@ const RUN = { start: [-25.3, 1.45], z: 1.45, speed: 1.6, end: -7.2, toStart: 0.8
 const FACE = { left: -0.75, right: 0.6, front: 0.3 }; // rotation.y while gliding left, slithering right, shouting
 const STRETCH = 1.2;   // he stretches up to shout: his face then clears the stage lantern in front of Tumble's bell
 const HEAD = { y: 1.98, top: 0.36 }; // the snake villager's head centre and half height (engine/villagers.js)
+const PROP = 1.4;      // beads, ums, the clear marble and the pinch of sand: big enough to read from the game camera
+const SLOT_SAND = 1.15;
+// The run shot (spec.camera): the whole road for the screen's aspect, a little above it. FOV is the diorama
+// camera's vertical field of view (game/walkscene.js).
+const SHOT = { fov: 32, pitch: 11, lookY: 1.45, lookDz: -0.3, margin: 0.5, fly: 900, back: 900, reveal: 1.6 };
+const HURRY_KEYS = new Set(['Space', 'KeyE', 'Enter']);
 
 function rr(g, x, y, w, h, r) {
   const q = Math.min(r, w / 2, h / 2);
@@ -273,17 +282,26 @@ export default {
 
     const placed = Object.fromEntries(ribbons.map((r) => [r.id, 'none']));
     const marblesLeft = () => STOCK - Object.values(placed).filter((v) => v === 'marble').length;
-    let lastOk = 0, last = [], running = false, solved = false, destroyed = false;
-    const progress = () => fill(spec.progress || 'Parcel Day: {ok}/5 🔔 · ◯ {marbles} left', { ok: lastOk, marbles: marblesLeft() });
+    let lastOk = 0, last = [], running = false, solved = false, destroyed = false, runs = 0;
+    // the HUD line: before the first run the marbles and what to do next, after it the score
+    const progress = () => fill(runs ? (spec.progress || 'Parcel Day: {ok}/5 bells right · ◯ {marbles} left')
+      : (spec.progressBefore || 'Parcel Day: ◯ {marbles} left · ring the dispatch bell'),
+    { ok: lastOk, marbles: plural(marblesLeft(), 'marble', 'marbles') });
+    // run speed: the first run at 1, replays faster; holding a hurry key (or the mouse button) faster still
+    const runCfg = spec.run || {};
+    const REPLAY = Number(runCfg.replaySpeed) || 2, HURRY = Number(runCfg.hurrySpeed) || 4;
+    let base = 1, hurry = false;
     const hook = {
       get placed() { return { ...placed }; },
       get marbles() { return marblesLeft(); },
       get running() { return running; },
+      get runs() { return runs; },
+      get hurry() { return hurry; },
       get last() { return last.map((r) => ({ owner: r.owner, heard: r.heard, ok: r.ok })); },
       speed: 1,
     };
     if (window.__etl) window.__etl.parcelDay = hook;
-    const timeScale = () => Math.min(20, Math.max(0.25, Number(hook.speed) || 1));
+    const timeScale = () => Math.min(40, Math.max(0.25, (Number(hook.speed) || 1) * (running ? Math.max(base, hurry ? HURRY : 0) : 1)));
 
     const root = new THREE.Group(); root.name = 'parcel-day';
     w.scene.add(root);
@@ -409,20 +427,21 @@ export default {
     }
     for (const s of slots) {
       if (s.tok === 'ribbon' || s.tok === 'bell') continue;
-      const g = group(root, s.x, STRIP_Y, row.z);
+      const g0 = group(root, s.x, STRIP_Y, row.z); // popped in at the start (its scale animates)
+      const g = group(g0); g.scale.setScalar(s.tok === 'sand' ? SLOT_SAND : PROP);
       if (s.tok === 'sand') sandHeap(g, 0, 0, 0);
       else if (BEADS[s.tok]) {
         mesh(G.stand, paperM, 0, 0.1, 0, g); mesh(G.cup, paperM, 0, 0.215, 0, g);
         const gem = mesh(gemGeo[BEADS[s.tok].cut], gemM[s.tok], 0, 0.36, 0.01, g);
         gem.rotation.x = -0.32;
         slotObj.set(s.i, { gem });
-        colliders.push(w.addCollider({ type: 'circle', x: s.x, z: row.z, r: 0.1 }));
+        colliders.push(w.addCollider({ type: 'circle', x: s.x, z: row.z, r: 0.1 * PROP }));
       } else if (s.tok === 'um') {
         mesh(G.stick, woodLight, 0, 0.15, 0, g);
         const um = group(g, 0, 0.3, 0);
         mesh(G.um, umM, 0.02, 0.15, 0.01, um).rotation.x = -0.12;
         slotObj.set(s.i, { um });
-        colliders.push(w.addCollider({ type: 'circle', x: s.x, z: row.z, r: 0.1 }));
+        colliders.push(w.addCollider({ type: 'circle', x: s.x, z: row.z, r: 0.1 * PROP }));
       }
     }
 
@@ -480,12 +499,15 @@ export default {
         const tl = mesh(G.tail, red, s * 0.04, -0.075, 0.005, bow); tl.rotation.z = s * 0.42;
       }
       mesh(G.knot, red, 0, 0, 0.01, bow);
-      const marble = group(g, 0, 0, 0.02);
+      // the marble and the pinch of sand sit in scaled holders: their own scale and height animate
+      const mHold = group(g, 0, 0, 0.02); mHold.scale.setScalar(PROP);
+      const marble = group(mHold);
       const ball = mesh(G.marble, marbleM, 0, 0.165, 0, marble); ball.renderOrder = 2;
       const rim = new THREE.Sprite(ringM); rim.scale.set(0.36, 0.36, 1); rim.position.set(0, 0.165, 0.01); rim.renderOrder = 3; marble.add(rim);
       mesh(G.glint, glintM, -0.055, 0.235, 0.12, marble);
       marble.visible = false;
-      const sand = group(g, 0, 0.012, 0.02); sandHeap(sand, 0, 0, 0, 1.25); sand.visible = false;
+      const sHold = group(g, 0, 0.012, 0.02); sHold.scale.setScalar(PROP);
+      const sand = group(sHold); sandHeap(sand, 0, 0, 0, 1.25); sand.visible = false;
       g.traverse((o) => { if (o.isMesh && o.material !== spotM && o.material !== marbleM) o.castShadow = true; });
       const it = w.addInteractable({
         id: r.id, label: mi.label || 'Ribbon', icon: mi.icon || '🎀',
