@@ -243,9 +243,10 @@ so it matches the villagers. Every mesh `castShadow = true`.
       "spec": { /* everything the puzzle module needs: data, rules, win condition */ },
       "design": "plain-language description of the mechanic, controls and win condition",
       "paperLink": "which section/equation/table of the paper this tests",
-      "worldEffect": "what visibly changes in the diorama when solved",
+      "worldEffect": "what visibly changes in the diorama when solved (narrated as is: only what appears)",
       "intro": ["giver lines that pose the puzzle"],
-      "success": ["lines after solving"]
+      "success": ["lines after solving"],
+      "locked": ["optional: what the giver says while this challenge's requirements are not met"]
     },
     {
       "id": "c2",
