@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Humans gallery</title>
+<script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js" } }</script>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #f6efdc; font: 12px "Trebuchet MS", Verdana, sans-serif; color: #2b2233; }
+  canvas { display: block; width: 100%; height: 100%; }
+  .lbl { position: fixed; transform: translateX(-50%); opacity: .5; pointer-events: none; white-space: nowrap; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="labels"></div>
+<script type="module">
+// Turntable gallery of humans.js models.
+//   /dev/humans.html            12 varied players + Grumm in every expression + Grumm behind the lab desk
+//   ?spin=0                     freeze the turntable (3/4 view, or ?angle=<rad>)
+//   ?walk=1&facing=1            walk cycle (facing -1 | 0 | 1)
+//   ?face=1                     close-up on the faces
+//   ?random=<seed>              random characters instead of the curated set
+//   ?chars=<JSON array>         up to 12 specific characters (the rest stay curated)
+//   ?still=1                    render a few frames, then stop (cheap screenshots)
+//   ?only=<cell index>          one cell, full window (0-11 players, 12-15 Grumm, 16 lab view); ?zoom=<k> moves the camera closer
+// window.__ready is set after the first frame (for screenshots).
+import * as THREE from 'three';
+import { buildHuman, buildScientist, randomCharacter } from '/js/engine/humans.js';
+
+const q = new URLSearchParams(location.search);
+const spin = q.get('spin') !== '0';
+const angle = q.has('angle') ? Number(q.get('angle')) : 0.32;
+const walking = q.get('walk') === '1';
+const facing = Number(q.get('facing') || 0);
+const face = q.get('face') === '1';
+const only = q.has('only') ? Number(q.get('only')) : -1;
+const zoom = Number(q.get('zoom') || 1);
+const still = q.get('still') === '1';
+
+const CURATED = [
+  { hairStyle: 'short', hairColor: '#3b2a20', skin: '#e8b796', topStyle: 'tee', topColor: '#4f86d8', accessory: 'cap' },
+  { hairStyle: 'buzz', hairColor: '#1f1a1f', skin: '#8a5636', topStyle: 'hoodie', topColor: '#ff9a4a', facialHair: 'beard', bottomColor: '#3a3a5a' },
+  { hairStyle: 'long', hairColor: '#e9c46a', skin: '#ffe3d0', topStyle: 'dress', topColor: '#ff7ab8', accessory: 'bow', freckles: true, eyeColor: '#3a6fb0', shoeColor: '#e8566a' },
+  { hairStyle: 'bob', hairColor: '#1f1a1f', skin: '#d9a27c', topStyle: 'sweater', topColor: '#3ec7b5', glasses: 'round', accessory: 'earrings', bottomColor: '#6a4a3a' },
+  { hairStyle: 'ponytail', hairColor: '#d2803c', skin: '#f8d2b4', topStyle: 'shirt', topColor: '#ffd35a', accessory: 'headband', freckles: true, eyeColor: '#3f8a5a', bottomColor: '#4f86d8', shoeColor: '#fffdf6' },
+  { hairStyle: 'curly', hairColor: '#6b4426', skin: '#c68a62', topStyle: 'tee', topColor: '#e8566a', glasses: 'square', facialHair: 'mustache', bottomColor: '#2b2233' },
+  { hairStyle: 'bun', hairColor: '#3b2a20', skin: '#6a3f28', topStyle: 'dress', topColor: '#3ec7b5', accessory: 'earrings', bottomColor: '#ffd35a', shoeColor: '#fffdf6' },
+  { hairStyle: 'spiky', hairColor: '#e9c46a', skin: '#f8d2b4', topStyle: 'hoodie', topColor: '#b39cff', facialHair: 'stubble', bottomColor: '#3a3a5a', shoeColor: '#e8566a' },
+  { hairStyle: 'afro', hairColor: '#1f1a1f', skin: '#8a5636', topStyle: 'sweater', topColor: '#ffd35a', glasses: 'round', bottomColor: '#4f86d8' },
+  { hairStyle: 'braids', hairColor: '#3b2a20', skin: '#a86d48', topStyle: 'shirt', topColor: '#7bcd5d', accessory: 'bow', bottomColor: '#6a4a3a' },
+  { hairStyle: 'bald', hairColor: '#b9b4b0', skin: '#ffe3d0', topStyle: 'sweater', topColor: '#6a4a3a', glasses: 'square', facialHair: 'beard', bottomColor: '#3a3a5a', shoeColor: '#2b2233' },
+  { hairStyle: 'long', hairColor: '#ff8fc0', skin: '#c68a62', topStyle: 'hoodie', topColor: '#8fd3ff', accessory: 'beanie', bottomColor: '#fffdf6', shoeColor: '#4f86d8' },
+];
+let chars = CURATED;
+if (q.has('chars')) {
+  try { chars = JSON.parse(q.get('chars')).slice(0, 12); } catch { /* keep the curated set */ }
+  while (chars.length < 12) chars.push(CURATED[chars.length]);
+} else if (q.has('random')) {
+  let s = Number(q.get('random')) || 1;
+  const rand = () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+  chars = Array.from({ length: 12 }, () => randomCharacter(rand));
+}
+
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setClearColor(0xf6efdc, 1);
+
+const scene = new THREE.Scene();
+scene.add(new THREE.HemisphereLight(0xfff8ee, 0x8a9a6a, 1.55));
+const sun = new THREE.DirectionalLight(0xfff0d8, 1.9);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+sun.shadow.bias = -0.0005;
+scene.add(sun, sun.target);
+const paper = new THREE.MeshStandardMaterial({ color: 0xfffdf6, roughness: 0.95 });
+const ink = new THREE.MeshStandardMaterial({ color: 0x2b2233, roughness: 0.9 });
+function pedestal(r) {
+  const g = new THREE.Group();
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.06, 48), paper); top.position.y = -0.03; top.receiveShadow = true; g.add(top);
+  const rim = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.03, r * 1.03, 0.05, 48), ink); rim.position.y = -0.07; g.add(rim);
+  return g;
+}
+
+const cells = [];
+const humanCam = () => (face ? { fov: 24, pos: [0, 1.55, 4.2], look: [0, 1.4, 0] } : { fov: 30, pos: [0, 1.3, 6.4], look: [0, 0.98, 0] });
+chars.forEach((c, i) => {
+  const g = new THREE.Group();
+  const m = buildHuman(c);
+  g.add(m, pedestal(1.0));
+  scene.add(g);
+  cells.push({ kind: 'human', group: g, model: m, cam: humanCam(), label: `${c.hairStyle} · ${c.topStyle}${c.accessory && c.accessory !== 'none' ? ' · ' + c.accessory : ''}${c.glasses && c.glasses !== 'none' ? ' · ' + c.glasses : ''}${c.facialHair && c.facialHair !== 'none' ? ' · ' + c.facialHair : ''}`, seed: i * 0.7 });
+});
+for (const expr of ['grumpy', 'neutral', 'surprised', 'talking']) {
+  const g = new THREE.Group();
+  const m = buildScientist();
+  m.userData.setExpression(expr);
+  g.add(m, pedestal(4.2));
+  scene.add(g);
+  cells.push({ kind: 'grumm', group: g, model: m, expr, cam: face ? { fov: 24, pos: [0, 8.4, 20], look: [0, 7.6, 0] } : { fov: 30, pos: [0, 6.2, 34], look: [0, 5.1, 0] }, label: expr, seed: 0 });
+}
+
+// lab framing: Grumm behind the giant desk (top at y=5.4..5.85), seen from the lab camera
+const lab = new THREE.Group();
+{
+  const L = (c) => new THREE.MeshLambertMaterial({ color: c });
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(80, 40), L(0xc89a6a)); floor.rotation.x = -Math.PI / 2; floor.position.z = 2; floor.receiveShadow = true; lab.add(floor);
+  const wall = new THREE.Mesh(new THREE.PlaneGeometry(80, 40), L(0xe9dcc0)); wall.position.set(0, 20, -12); wall.receiveShadow = true; lab.add(wall);
+  const desk = new THREE.Mesh(new THREE.BoxGeometry(24, 0.9, 6.4), L(0xb07a48)); desk.position.set(0, 5.4, -7.6); desk.castShadow = desk.receiveShadow = true; lab.add(desk);
+  for (const x of [-11, 11]) for (const z of [-10.2, -5.0]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(1, 5, 1), L(0xb07a48)); leg.position.set(x, 2.5, z); leg.castShadow = true; lab.add(leg); }
+  const books = [0xe8566a, 0x4f86d8, 0xffd35a, 0x3ec7b5, 0xb39cff];
+  books.forEach((c, i) => { const b = new THREE.Mesh(new THREE.BoxGeometry(4.2 - i * 0.2, 0.7, 3), L(c)); b.position.set(-8 + (i % 2) * 0.3, 6.2 + i * 0.72, -8.4); b.castShadow = true; lab.add(b); });
+  const mug = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 0.9, 2.2, 24), L(0xfff6e6)); mug.position.set(8.5, 7.0, -7.2); lab.add(mug);
+  for (let i = 0; i < 6; i++) { const p = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.04, 3.4), L(0xfffdf6)); p.position.set(-1 + i * 0.6, 5.88 + i * 0.05, -6.4 - (i % 3) * 0.3); p.rotation.y = (i - 3) * 0.12; lab.add(p); }
+  const g = buildScientist(); g.position.set(0, 0, -10.2); lab.add(g);
+  const pl = buildHuman(chars[0]); pl.position.set(-2, 0, 3.2); lab.add(pl);
+  scene.add(lab);
+  cells.push({ kind: 'lab', group: lab, model: g, player: pl, cam: { fov: 40, pos: [0, 6.4, 21.5], look: [0, 5.6, -4] }, label: 'lab view', seed: 0 });
+}
+
+const cameras = cells.map((c) => new THREE.PerspectiveCamera(c.cam.fov, 1, 0.1, 400));
+const labels = document.getElementById('labels');
+const labelEls = cells.map((c) => { const d = document.createElement('div'); d.className = 'lbl'; d.textContent = c.label; labels.appendChild(d); return d; });
+
+function layout() {
+  const W = window.innerWidth, H = window.innerHeight;
+  const rects = [];
+  if (only >= 0) return cells.map((c, i) => (i === only ? [0, 0, W, H] : [0, 0, 0, 0]));
+  const topH = Math.round(H * 0.56), cw = W / 6, ch = topH / 2;
+  for (let i = 0; i < 12; i++) rects.push([(i % 6) * cw, Math.floor(i / 6) * ch, cw, ch]);
+  const bw = (W * 0.58) / 4;
+  for (let i = 0; i < 4; i++) rects.push([i * bw, topH, bw, H - topH]);
+  rects.push([W * 0.58, topH, W * 0.42, H - topH]);
+  return rects;
+}
+
+let rects = layout();
+function resize() { renderer.setSize(window.innerWidth, window.innerHeight, false); rects = layout(); }
+window.addEventListener('resize', resize);
+resize();
+
+const clock = new THREE.Clock();
+let t = 0, frames = 0;
+function frame() {
+  const dt = Math.min(clock.getDelta(), 1 / 20);
+  t += dt;
+  const W = window.innerWidth, H = window.innerHeight;
+  renderer.setScissorTest(true);
+  renderer.setClearColor(0xf6efdc, 1);
+  renderer.clear();
+  cells.forEach((c, i) => {
+    if (only >= 0 && i !== only) return;
+    // animate
+    if (c.kind === 'human') c.model.userData.animate(dt, { moving: walking, speed: 1, facing });
+    else if (c.kind === 'grumm') c.model.userData.animate(dt, { talking: c.expr === 'talking' });
+    else { c.model.userData.animate(dt, { talking: false }); c.player.userData.animate(dt, { moving: walking, facing: facing || 1 }); }
+    if (c.kind !== 'lab') c.group.rotation.y = spin ? t * 0.6 + c.seed : angle;
+    // only this cell's group is visible while it renders
+    cells.forEach((o) => { o.group.visible = o === c; });
+    const [x, y, w, h] = rects[i];
+    const cam = cameras[i];
+    cam.aspect = w / h; cam.updateProjectionMatrix();
+    cam.position.set(...c.cam.pos); cam.position.lerp(new THREE.Vector3(...c.cam.look), 1 - 1 / zoom); cam.lookAt(...c.cam.look);
+    const big = c.kind !== 'human';
+    const s = c.kind === 'lab' ? 30 : big ? 7 : 2.4;
+    sun.position.set(-14, 26, 22).normalize().multiplyScalar(c.kind === 'lab' ? 40 : big ? 30 : 10).add(new THREE.Vector3(0, c.kind === 'lab' ? 0 : 0, c.kind === 'lab' ? -6 : 0));
+    sun.target.position.set(0, 0, c.kind === 'lab' ? -6 : 0);
+    Object.assign(sun.shadow.camera, { left: -s, right: s, top: s, bottom: -s, near: 0.5, far: c.kind === 'lab' ? 120 : big ? 80 : 30 });
+    sun.shadow.camera.updateProjectionMatrix();
+    renderer.setViewport(x, H - y - h, w, h);
+    renderer.setScissor(x, H - y - h, w, h);
+    renderer.render(scene, cam);
+    labelEls[i].style.left = `${x + w / 2}px`;
+    labelEls[i].style.top = `${y + h - 16}px`;
+  });
+  frames++;
+  if (frames === 3) window.__ready = true;
+  if (still && frames >= 3) return;
+  requestAnimationFrame(frame);
+}
+frame();
+</script>
+</body>
+</html>

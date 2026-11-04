@@ -281,6 +281,38 @@ function curtainGeo(F, { phi0, phi1, yTop, yBot, k0 = 1.07, k1 = 1.13, segU = 48
 const teardropGeo = (len, rad) => new THREE.LatheGeometry(
   profile([[0, 0], [rad * 0.75, -len * 0.08], [rad, -len * 0.32], [rad * 0.8, -len * 0.62], [rad * 0.35, -len * 0.88], [0, -len]], 20), 20);
 
+// a tube along a curve whose radius follows radius(u), u in [0,1] (ponytail, curls)
+function taperTubeGeo(curve, radius, segs = 24, radial = 12) {
+  const frames = curve.computeFrenetFrames(segs, false);
+  const pos = [], nor = [], idx = [];
+  for (let i = 0; i <= segs; i++) {
+    const u = i / segs, P = curve.getPointAt(u), r = Math.max(0.0005, radius(u));
+    const N = frames.normals[i], B = frames.binormals[i];
+    for (let j = 0; j <= radial; j++) {
+      const a = (j / radial) * TAU, c = Math.cos(a), s = Math.sin(a);
+      const nx = c * N.x + s * B.x, ny = c * N.y + s * B.y, nz = c * N.z + s * B.z;
+      pos.push(P.x + r * nx, P.y + r * ny, P.z + r * nz);
+      nor.push(nx, ny, nz);
+    }
+  }
+  for (let i = 0; i < segs; i++) for (let j = 0; j < radial; j++) {
+    const a = i * (radial + 1) + j, b = a + radial + 1;
+    idx.push(a, b, a + 1, b, b + 1, a + 1);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setIndex(idx);
+  return g;
+}
+
+// thin arm hugging an ellipsoid surface from azimuth phi0 to phi1 at polar angle th (glasses temples)
+function surfaceArc(F, phi0, phi1, th, k, radius) {
+  const pts = [];
+  for (let i = 0; i <= 8; i++) pts.push(F.at(phi0 + ((phi1 - phi0) * i) / 8, th, k));
+  return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 12, radius, 6);
+}
+
 function roundRectShape(w, h, r) {
   const s = new THREE.Shape();
   const x = -w / 2, y = -h / 2;
@@ -378,8 +410,8 @@ export function buildHuman(params = {}) {
     // hood lying on the shoulders + kangaroo pocket + drawstrings
     const hood = add(torso, new THREE.TorusGeometry(0.19, 0.075, 10, 28), top, 0, 1.0, -0.06); hood.rotation.x = PI / 2 + 0.25; hood.scale.set(1.05, 1.0, 1.0);
     add(torso, new THREE.SphereGeometry(0.2, 18, 12), top, 0, 0.98, -0.2).scale.set(1.15, 0.75, 0.75);
-    const pocket = add(torso, roundRectGeo(0.32, 0.13, 0.05, 0.03), trimM, 0, 0.62, 0.255); pocket.rotation.x = -0.08;
-    for (const sx of [-1, 1]) { const s = add(torso, new THREE.CapsuleGeometry(0.011, 0.12, 4, 6), M.std('#fffdf6'), sx * 0.05, 0.87, 0.215); s.rotation.x = -0.35; }
+    const pocket = add(torso, roundRectGeo(0.32, 0.13, 0.05, 0.03), trimM, 0, 0.62, 0.86 * radiusAt(torsoPts, 0.62) + 0.01); pocket.rotation.x = -0.08;
+    for (const sx of [-1, 1]) { const s = add(torso, new THREE.CapsuleGeometry(0.011, 0.12, 4, 6), M.std('#fffdf6'), sx * 0.05, 0.87, 0.86 * radiusAt(torsoPts, 0.87) + 0.012); s.rotation.x = -0.35; }
   } else if (p.topStyle === 'sweater') {
     add(torso, new THREE.TorusGeometry(0.14, 0.035, 8, 26), trimM, 0, 1.0, 0.0).rotation.x = PI / 2 - 0.15;
     add(torso, revolveGeo(profile([[0.302, 0.70], [0.302, 0.78]], 2), { seg: 40, sz: 0.87 }).scale(1.03, 1, 1.03), M.std(luma(p.topColor) > 0.7 ? '#e8566a' : '#fffdf6', { side: DS }));
@@ -392,7 +424,7 @@ export function buildHuman(params = {}) {
       const flap = add(torso, new THREE.ExtrudeGeometry(s, { depth: 0.02, bevelEnabled: false }), collarM, sx * 0.012, 1.01, 0.12);
       flap.rotation.x = -0.75;
     }
-    for (let i = 0; i < 3; i++) add(torso, new THREE.SphereGeometry(0.018, 8, 6), M.std('#fffdf6'), 0, 0.88 - i * 0.12, 0.262 - i * 0.005 + (i === 0 ? -0.02 : 0)).scale.z = 0.5;
+    for (let i = 0; i < 3; i++) { const y = 0.88 - i * 0.12; add(torso, new THREE.SphereGeometry(0.018, 8, 6), M.std('#fffdf6'), 0, y, 0.86 * radiusAt(torsoPts, y) + 0.004).scale.z = 0.5; }
     add(torso, roundRectGeo(0.09, 0.08, 0.02, 0.012), trimM, 0.13, 0.82, 0.22).rotation.set(-0.25, 0.42, 0);
   } else if (dress) {
     const skirtPts = profile([[0.27, 0.74], [0.3, 0.64], [0.38, 0.5], [0.46, 0.36], [0.5, 0.28], [0.48, 0.24]], 16);
@@ -452,13 +484,19 @@ export function buildHuman(params = {}) {
     for (const sx of [-1, 1]) F.put(add(head, new THREE.SphereGeometry(0.05, 14, 10), hairM), sx * 0.048, -0.158, 0.006, sx * 0.3).scale.set(1.5, 0.62, 0.6);
   }
   if (p.facialHair === 'beard' || p.facialHair === 'stubble') {
-    const beardTop = hairline([[0, 0.71], [0.35, 0.67], [0.75, 0.6], [1.2, 0.54], [1.5, 0.5]]);
+    const beardTop = hairline([[0, 0.73], [0.35, 0.7], [0.75, 0.65], [1.15, 0.56], [1.5, 0.5]]);
     const geo = shellGeo(F, {
       phi0: -1.55, phi1: 1.55, top: beardTop, bottom: () => 0.93 * PI, segU: 40, segV: 8,
       k: p.facialHair === 'beard' ? (phi, th) => 1.035 + 0.07 * smooth(0.7 * PI, 0.88 * PI, th) * Math.cos(phi) ** 2 : 1.006,
       rim: p.facialHair === 'beard' ? 0.96 : 0,
     });
-    add(head, geo, p.facialHair === 'beard' ? hairM : M.basic(shade(p.hairColor, -0.1), 0.32));
+    const beardM = luma(p.hairColor) > 0.55 ? M.std(shade(p.hairColor, -0.1), { r: 0.75, side: DS }) : hairM;
+    add(head, geo, p.facialHair === 'beard' ? beardM : M.basic(mix(p.hairColor, '#2b2233', 0.35), 0.38));
+    if (p.facialHair === 'beard') {
+      const chin = add(head, new THREE.SphereGeometry(0.13, 14, 10), beardM);
+      chin.position.copy(F.at(0, 0.86 * PI, 1.08));
+      chin.scale.set(1.5, 1.05, 0.9);
+    }
   }
 
   // ---- hair
@@ -475,9 +513,7 @@ export function buildHuman(params = {}) {
       else add(g, frameGeo(0.205, 0.155, 0.04, 0.026, 0.022), fm);
       add(g, p.glasses === 'round' ? new THREE.CircleGeometry(0.08, 24) : new THREE.PlaneGeometry(0.16, 0.11), lens, 0, 0, -0.004);
       // temple arm back to the ear
-      const a = F.at(sx * 0.62, 0.5 * PI, 1.02), b = F.at(sx * 1.5, 0.5 * PI, 1.04);
-      const arm = add(head, new THREE.CylinderGeometry(0.009, 0.009, a.distanceTo(b), 6), fm, (a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
-      aim(arm, b.clone().sub(a));
+      add(head, surfaceArc(F, sx * 0.62, sx * 1.38, 0.5 * PI, 1.04, 0.009), fm);
     }
     const bridge = F.put(add(head, new THREE.TorusGeometry(0.045, 0.011, 6, 12, PI), fm), 0, 0.005, 0.055);
     bridge.scale.set(1, 0.6, 1);
@@ -592,14 +628,19 @@ function buildHair(p, head, F, M, hairM, rand) {
   } else if (style === 'ponytail') {
     const fringe = (phi) => -0.04 * smooth(-0.9, 0.4, phi) * smooth(0.9, 0.5, phi) - 0.02 * (0.5 + 0.5 * Math.cos(phi * 8)) * smooth(0.9, 0.2, Math.abs(phi));
     H(shellGeo(F, { bottom: hairline([[0, 0.36], [0.6, 0.38], [1.15, 0.48], [1.35, 0.56], [1.6, 0.46], [2.2, 0.6], [PI, 0.66]], fringe), k: puffTop(1.05, 0.04) }));
-    const anchor = F.at(PI, 0.3 * PI, 1.06);
-    const tie = add(head, new THREE.TorusGeometry(0.075, 0.032, 8, 18), M.std(accent('bow', p)));
+    const at = [2.2, 0.3 * PI];
+    const anchor = F.at(at[0], at[1], 1.05);
+    const tie = add(head, new THREE.TorusGeometry(0.075, 0.034, 8, 18), M.std(accent('bow', p)));
     tie.position.copy(anchor);
-    aim(tie, F.normal(PI, 0.3 * PI)).rotateX(PI / 2);
-    const tail = grp(head, anchor.x, anchor.y, anchor.z - 0.02);
-    add(tail, teardropGeo(0.62, 0.15), hairM, 0, 0.02, 0).scale.set(1, 1, 0.85);
-    tail.userData = { rz: 0.42, rx: 0.5, ph: 0, amp: 0.3 };
-    tail.rotation.set(0.5, 0, 0.42);
+    aim(tie, F.normal(at[0], at[1])).rotateX(PI / 2);
+    const tail = grp(head, anchor.x, anchor.y, anchor.z);
+    const path = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0, 0, 0), new THREE.Vector3(0.1, -0.01, -0.07), new THREE.Vector3(0.19, -0.16, -0.1),
+      new THREE.Vector3(0.21, -0.42, -0.07), new THREE.Vector3(0.16, -0.68, -0.02),
+    ]);
+    const tailR = (u) => (u < 0.3 ? 0.075 + (0.165 - 0.075) * Math.sin((u / 0.3) * PI / 2) : 0.165 * Math.cos(((u - 0.3) / 0.7) * PI / 2) ** 0.8);
+    add(tail, taperTubeGeo(path, tailR, 28, 14), hairM);
+    tail.userData = { rz: 0, rx: 0, ph: 0.5, amp: 0.22 };
     out.swing.push(tail);
     out.hatK = 1.1;
   } else if (style === 'curly') {
@@ -653,12 +694,12 @@ function buildHair(p, head, F, M, hairM, rand) {
       const dir = n.clone().add(new THREE.Vector3(0, 0.45, -0.15)).normalize();
       c.position.copy(F.at(phi, th * PI, 1.0)).addScaledVector(dir, len * 0.42);
       aim(c, dir);
-      out.hideOnHat.push(c);
+      if (th < 0.4) out.hideOnHat.push(c);
     }
     out.hatK = 1.1;
   } else if (style === 'afro') {
-    const center = new THREE.Vector3(0, 0.14, -0.13);
-    const A = ellipsoid(F.ax * 1.5, F.ay * 1.5, F.az * 1.38);
+    const center = new THREE.Vector3(0, 0.12, -0.13);
+    const A = ellipsoid(F.ax * 1.5, F.ay * 1.44, F.az * 1.38);
     const lineFn = hairline([[0, 0.25], [0.55, 0.3], [1.0, 0.45], [1.35, 0.6], [1.7, 0.64], [2.3, 0.7], [PI, 0.72]]);
     const shell = add(head, shellGeo(A, { bottom: lineFn, k: 1, rim: 0 }), hairM);
     shell.position.copy(center);
@@ -671,14 +712,17 @@ function buildHair(p, head, F, M, hairM, rand) {
         if (th > lineFn(phi) - 0.03 * PI) continue;
         const b = add(head, new THREE.SphereGeometry(0.15 + rand() * 0.05, 10, 8), rand() < 0.35 ? darker : hairM);
         b.position.copy(A.at(phi, th, 0.97)).add(center);
-        bumps.push(b);
+        bumps.push({ mesh: b, th });
       }
     }
     // fluffy frame around the face (hides the shell edge)
     for (let phi = -1.9; phi <= 1.9; phi += 0.19) {
       const b = add(head, new THREE.SphereGeometry(0.13, 10, 8), hairM);
       b.position.copy(A.at(phi, lineFn(phi), 0.93)).add(center);
+      bumps.push({ mesh: b, th: lineFn(phi) });
     }
+    out.curls = bumps;
+    out.hatHideTh = 0.47 * PI;
     out.hideEars = true;
     out.hatK = 1;
     out.frame = A;
@@ -724,7 +768,7 @@ function buildAccessory(kind, p, head, F, hair, M) {
   const place = (mesh, phi, th, k = 1) => { mesh.position.copy(A.at(phi, th, k)).add(c); return mesh; };
   const hatOn = () => {
     hair.hideOnHat.forEach((m) => { m.visible = false; });
-    (hair.curls || []).forEach(({ mesh, th }) => { if (th < 0.36 * PI) mesh.visible = false; });
+    (hair.curls || []).forEach(({ mesh, th }) => { if (th < (hair.hatHideTh || 0.36 * PI)) mesh.visible = false; });
   };
   if (kind === 'cap') {
     hatOn();
@@ -746,9 +790,9 @@ function buildAccessory(kind, p, head, F, hair, M) {
     const cuffM = M.std(shade(color, -0.1), { side: DS });
     add(head, shellGeo(A, { top: 0.33 * PI, bottom: 0.45 * PI, k: 1.085, rim: 0.92, segV: 4 }), cuffM).position.copy(c);
     // ribs on the cuff
-    for (let i = 0; i < 20; i++) {
-      const phi = -PI + (i / 20) * TAU;
-      const rib = add(head, new THREE.CapsuleGeometry(0.009, 0.07, 3, 5), M.std(shade(color, -0.22)));
+    for (let i = 0; i < 14; i++) {
+      const phi = -PI + ((i + 0.5) / 14) * TAU;
+      const rib = add(head, new THREE.CapsuleGeometry(0.013, 0.07, 3, 6), M.std(shade(color, -0.18)));
       rib.position.copy(A.at(phi, 0.39 * PI, 1.1)).add(c);
       aim(rib, A.normal(phi, 0.39 * PI).cross(new THREE.Vector3(Math.cos(phi), 0, -Math.sin(phi))));
     }
@@ -795,15 +839,16 @@ const puff = (base, top) => (phi, th) => base + top * Math.max(0, Math.cos(th));
 // Professor Grumm: a giant, permanently irritated scientist (~9.5 units), same toy style.
 
 const EXPRESSIONS = {
-  neutral: { browY: 0, browRot: 0.08, browS: 1, eyeY: 1, eyeX: 1, lid: 0.15 },
-  grumpy: { browY: -0.13, browRot: 0.46, browS: 1, eyeY: 0.78, eyeX: 1, lid: 0.55 },
-  surprised: { browY: 0.3, browRot: -0.2, browS: 1.12, eyeY: 1.4, eyeX: 1.22, lid: 0 },
-  talking: { browY: -0.05, browRot: 0.28, browS: 1, eyeY: 0.95, eyeX: 1, lid: 0.3 },
+  neutral: { browY: 0.02, browRot: 0.1, browS: 1, eyeY: 1, eyeX: 1, lid: 0.18, crease: 0 },
+  grumpy: { browY: -0.17, browRot: 0.55, browS: 1.05, eyeY: 0.8, eyeX: 1, lid: 0.62, crease: 1 },
+  surprised: { browY: 0.32, browRot: -0.22, browS: 1.12, eyeY: 1.4, eyeX: 1.22, lid: 0, crease: 0 },
+  talking: { browY: -0.08, browRot: 0.36, browS: 1, eyeY: 0.92, eyeX: 1, lid: 0.35, crease: 0.6 },
 };
+const LIFT = 0.15; // Grumm's upper body sits a little higher so more of him shows above the lab desk
 
 export function buildScientist() {
   const M = materials();
-  const C = { skin: '#f2c8a6', hair: '#f4f2ee', hair2: '#dcdbe2', coat: '#f8f6f0', vest: '#a8874a', shirt: '#d6e7f6', tie: '#d0453c', pants: '#4c4660', shoe: '#5a3a2a', frame: '#3a2a24' };
+  const C = { skin: '#f2c8a6', hair: '#f4f2ee', hair2: '#dcdbe2', brow: '#e2e1e8', brow2: '#c9c8d3', coat: '#f8f6f0', vest: '#a8874a', shirt: '#d6e7f6', tie: '#d0453c', pants: '#4c4660', shoe: '#5a3a2a', frame: '#3a2a24' };
   const skin = M.std(C.skin);
   const hairM = M.std(C.hair, { r: 0.9 });
   const hair2 = M.std(C.hair2, { r: 0.9 });
@@ -816,19 +861,19 @@ export function buildScientist() {
 
   // ---- legs + big round shoes
   for (const sx of [-1, 1]) {
-    add(body, new THREE.CapsuleGeometry(0.52, 1.7, 8, 16), M.std(C.pants), sx * 0.64, 1.6, 0);
+    add(body, new THREE.CapsuleGeometry(0.52, 2.0, 8, 16), M.std(C.pants), sx * 0.64, 1.75, 0);
     add(body, new THREE.SphereGeometry(0.62, 20, 14), M.std(C.shoe, { r: 0.55 }), sx * 0.68, 0.34, 0.32).scale.set(0.95, 0.55, 1.45);
     add(body, new THREE.CylinderGeometry(0.6, 0.6, 0.12, 20), M.std('#3a2418'), sx * 0.68, 0.06, 0.32).scale.set(0.95, 1, 1.45);
   }
 
   // ---- torso: shirt underneath, sweater vest with a V-neck, lab coat open at the front
-  const upper = grp(body);
+  const upper = grp(body, 0, LIFT, 0);
   const torsoPts = profile([[0, 2.5], [1.1, 2.52], [1.42, 2.85], [1.56, 3.6], [1.6, 4.4], [1.52, 5.3], [1.38, 6.1], [1.12, 6.75], [0.72, 7.15], [0.3, 7.32], [0, 7.36]], 30);
   add(upper, revolveGeo(torsoPts, { seg: 48, sz: 0.8 }), M.std(C.shirt));
   const vestPts = torsoPts.slice(1, -2).map((v) => new THREE.Vector2(v.x + 0.03, v.y));
   add(upper, revolveGeo(vestPts, { seg: 48, sz: 0.8, gap: (y) => (y > 5.55 ? (y - 5.55) * 0.95 : 0) }), M.std(C.vest, { side: DS }));
   // vest buttons
-  for (const y of [5.25, 4.75, 4.25, 3.75]) add(upper, new THREE.SphereGeometry(0.08, 10, 8), M.std('#5a3a2a'), 0, y, 0.8 * (vestRadius(vestPts, y) + 0.01)).scale.z = 0.5;
+  for (const y of [5.25, 4.75, 4.25, 3.75]) add(upper, new THREE.SphereGeometry(0.08, 10, 8), M.std('#5a3a2a'), 0, y, 0.8 * (radiusAt(vestPts, y) + 0.01)).scale.z = 0.5;
   // tie: knot + blade lying on the shirt in the V
   const tieM = M.std(C.tie, { r: 0.6 });
   const knot = add(upper, new THREE.SphereGeometry(0.17, 14, 10), tieM, 0, 7.0, 0.62); knot.scale.set(1, 0.9, 0.7);
@@ -853,11 +898,11 @@ export function buildScientist() {
   // pockets + a pen
   const pocketM = M.std('#efece4', { side: DS });
   for (const sx of [-1, 1]) {
-    const pk = add(upper, roundRectGeo(0.75, 0.6, 0.12, 0.05), pocketM, sx * 0.95, 3.2, 1.25);
-    pk.rotation.y = sx * 0.62;
+    const pk = add(upper, roundRectGeo(0.75, 0.6, 0.12, 0.05), pocketM, sx * 0.97, 3.2, 1.11);
+    pk.rotation.y = sx * 0.52;
   }
   const breast = add(upper, roundRectGeo(0.5, 0.42, 0.08, 0.05), pocketM, 0.92, 5.95, 1.0);
-  breast.rotation.set(-0.1, 0.72, 0);
+  breast.rotation.set(-0.1, 0.55, 0);
   const pen = add(upper, new THREE.CylinderGeometry(0.05, 0.05, 0.55, 8), M.std('#4f86d8'), 0.85, 6.25, 1.0);
   pen.rotation.z = 0.12;
   add(upper, new THREE.SphereGeometry(0.06, 8, 6), M.std('#2b2233'), 0.82, 6.53, 1.0);
@@ -876,17 +921,20 @@ export function buildScientist() {
     add(hand, new THREE.SphereGeometry(0.42, 18, 14), skin).scale.set(1, 1.05, 0.9);
     return { sh, fore, hand };
   };
-  const right = arm(-1, [-0.55, -0.42], [-1.75, 0]);
+  const right = arm(-1, [-0.55, -0.6], [-1.75, 0]);
   const left = arm(1, [-0.15, 0.88], [0, 1.98]);
   // lecturing finger + thumb
-  const finger = add(left.hand, new THREE.CapsuleGeometry(0.12, 0.38, 6, 10), skin, -0.08, -0.48, 0.12);
-  finger.rotation.x = 0.1;
-  add(left.hand, new THREE.SphereGeometry(0.15, 10, 8), skin, -0.3, -0.15, 0.2);
+  // (in the raised hand's frame +x points toward his face and -y up along the forearm)
+  const finger = add(left.hand, new THREE.CapsuleGeometry(0.115, 0.42, 6, 10), skin, 0.15, -0.52, 0.06);
+  finger.rotation.z = -0.12;
+  add(left.hand, new THREE.SphereGeometry(0.15, 10, 8), skin, 0.36, -0.12, 0.16).scale.set(0.9, 1.3, 0.9);
+  const knuckles = add(left.hand, new THREE.CapsuleGeometry(0.12, 0.32, 6, 10), skin, -0.04, -0.2, 0.3);
+  knuckles.rotation.z = PI / 2;
   add(right.hand, new THREE.SphereGeometry(0.15, 10, 8), skin, 0.32, -0.1, 0.22);
 
   // mug in the right hand (kept upright in body space)
   root.updateMatrixWorld(true);
-  const handPos = right.hand.getWorldPosition(new THREE.Vector3());
+  const handPos = upper.worldToLocal(right.hand.getWorldPosition(new THREE.Vector3()));
   const mug = grp(upper);
   mug.position.copy(handPos).add(new THREE.Vector3(0.42, 0.42, 0.12));
   const mugM = M.std('#fffdf6', { r: 0.5 });
@@ -895,9 +943,9 @@ export function buildScientist() {
   add(mug, new THREE.CylinderGeometry(0.41, 0.41, 0.02, 24), M.std('#5a3418', { r: 0.3 }), 0, 0.46, 0);
   add(mug, new THREE.TorusGeometry(0.26, 0.08, 8, 16), mugM, -0.5, 0.02, 0).rotation.y = 0;
   const steam = [];
-  for (let i = 0; i < 3; i++) {
-    const s = add(mug, new THREE.SphereGeometry(0.13, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, depthWrite: false }), 0, 0.6, 0);
-    s.userData.off = i / 3;
+  for (let i = 0; i < 2; i++) {
+    const s = add(mug, new THREE.SphereGeometry(0.1, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, depthWrite: false }), 0, 0.6, 0);
+    s.userData.off = i / 2;
     s.castShadow = false;
     steam.push(s);
   }
@@ -916,12 +964,11 @@ export function buildScientist() {
     e.scale.set(1, 1.35, 0.5);
     eyes.push(e);
     hls.push(F.put(add(head, new THREE.SphereGeometry(0.055, 10, 8), M.basic('#ffffff')), sx * 0.5 + 0.06, 0.21, 0.05));
-    // lid: skin-coloured cap that slides over the top of the eye, tilted down toward the nose
+    // lid: a puffy skin-coloured lid above the eye that slides down (and slants) for the grump
     const lidG = grp(head);
-    F.put(lidG, sx * 0.5, 0.1, 0.015);
-    const lid = add(lidG, new THREE.SphereGeometry(0.235, 18, 10, 0, TAU, 0, PI / 2), skin, 0, 0, 0);
-    lid.rotation.x = PI / 2;
-    lid.scale.set(1, 0.45, 1);
+    F.put(lidG, sx * 0.5, 0.1, 0.02);
+    const lid = add(lidG, new THREE.SphereGeometry(0.2, 18, 12), skin);
+    lid.scale.set(1.3, 0.62, 0.32);
     lid.userData.sx = sx;
     lids.push(lid);
     // rosy cheeks
@@ -936,9 +983,7 @@ export function buildScientist() {
     add(g, new THREE.CircleGeometry(0.34, 30), M.basic('#e6f6ff', 0.2), 0, 0, -0.01);
     const glint = add(g, new THREE.PlaneGeometry(0.06, 0.22), M.basic('#ffffff', 0.55), sx * -0.15 + 0.12, 0.12, 0.012);
     glint.rotation.z = -0.6;
-    const a = F.at(sx * 0.82, 0.47 * PI, 1.02), b = F.at(sx * 1.48, 0.48 * PI, 1.03);
-    const temple = add(head, new THREE.CylinderGeometry(0.035, 0.035, a.distanceTo(b), 6), frameM, (a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
-    aim(temple, b.clone().sub(a));
+    add(head, surfaceArc(F, sx * 0.78, sx * 1.5, 0.47 * PI, 1.035, 0.035), frameM);
   }
   F.put(add(head, new THREE.TorusGeometry(0.13, 0.045, 8, 14, PI), frameM), 0, 0.14, 0.2).scale.set(1, 0.55, 1);
   // huge bushy eyebrows
@@ -948,9 +993,16 @@ export function buildScientist() {
     F.put(b, sx * 0.55, 0.62, 0.1);
     b.userData.base = b.position.clone();
     b.userData.sx = sx;
-    const tuft = [[-0.34, -0.02, 0.15], [-0.14, 0.03, 0.19], [0.08, 0.04, 0.2], [0.28, 0.0, 0.17], [0.42, -0.05, 0.12]];
-    for (const [x, y, r] of tuft) add(b, new THREE.SphereGeometry(r, 12, 9), x * sx > 0.3 ? hair2 : hairM, x * sx, y, 0).scale.set(1.15, 0.85, 0.65);
+    const tuft = [[-0.36, -0.03, 0.15], [-0.16, 0.03, 0.2], [0.07, 0.05, 0.21], [0.28, 0.01, 0.18], [0.45, -0.06, 0.13]];
+    for (const [x, y, r] of tuft) add(b, new THREE.SphereGeometry(r, 12, 9), x > 0.3 ? M.std(C.brow2, { r: 0.95 }) : M.std(C.brow, { r: 0.95 }), x * sx, y, 0).scale.set(1.15, 0.85, 0.65);
     brows.push(b);
+  }
+  // frown creases between the brows
+  const creases = [];
+  for (const sx of [-1, 1]) {
+    const c = F.put(add(head, new THREE.CapsuleGeometry(0.026, 0.2, 4, 6), M.std(shade(C.skin, -0.18))), sx * 0.1, 0.5, 0.01, sx * 0.22);
+    c.userData.sx = sx;
+    creases.push(c);
   }
   // round nose
   F.put(add(head, new THREE.SphereGeometry(0.26, 18, 14), M.std(mix(C.skin, '#e0806e', 0.32))), 0, -0.2, 0.05).scale.set(1.15, 0.95, 0.9);
@@ -975,41 +1027,42 @@ export function buildScientist() {
   add(mouths.o, new THREE.CircleGeometry(0.15, 20), M.std('#3a1420'), 0, 0, -0.01).scale.set(1, 1.2, 1);
   add(mouths.talk, new THREE.SphereGeometry(0.22, 16, 12), M.std('#4a1a28', { r: 0.6 })).scale.set(1.25, 1, 0.35);
   add(mouths.talk, new THREE.SphereGeometry(0.12, 12, 8), M.std('#ff8aa8'), 0, -0.1, 0.04).scale.set(1.2, 0.6, 0.4);
-  // wild Einstein hair: puffs on the sides and back, frizzy spikes, a few flyaway wisps on the bald top
+  // wild Einstein hair: a fluffy cloud on each side and at the back, frizzy tufts, flyaway wisps on the bald top
   const puffs = [];
-  for (const [phi, th, r] of [
-    [1.2, 0.36, 0.5], [1.55, 0.36, 0.55], [1.95, 0.38, 0.6], [2.4, 0.4, 0.62], [2.85, 0.4, 0.62],
-    [1.85, 0.56, 0.58], [2.3, 0.6, 0.62], [2.8, 0.62, 0.62], [PI, 0.42, 0.6], [PI, 0.6, 0.6],
-    [1.3, 0.25, 0.42], [2.0, 0.24, 0.5], [2.7, 0.25, 0.52],
+  for (const [phi, th, r, k] of [
+    [1.25, 0.31, 0.46, 1.0], [1.6, 0.29, 0.54, 1.02], [2.0, 0.28, 0.6, 1.04], [2.45, 0.3, 0.62, 1.04], [2.85, 0.31, 0.6, 1.02],
+    [1.95, 0.47, 0.62, 1.1], [2.35, 0.52, 0.68, 1.08], [2.8, 0.55, 0.64, 1.04],
+    [1.85, 0.64, 0.48, 1.02], [2.3, 0.68, 0.55, 1.0], [2.75, 0.7, 0.52, 0.98],
+    [1.5, 0.22, 0.38, 0.98], [2.1, 0.21, 0.44, 0.98], [2.7, 0.22, 0.46, 0.98],
+    [PI, 0.33, 0.62, 1.03], [PI, 0.52, 0.66, 1.04], [PI, 0.7, 0.55, 0.98],
   ]) {
     for (const sx of phi === PI ? [1] : [-1, 1]) {
-      const pp = add(head, new THREE.SphereGeometry(r, 14, 10), rand() < 0.3 ? hair2 : hairM);
-      pp.position.copy(F.at(sx * phi, th * PI, 1.02));
-      puffs.push([sx * phi, th]);
+      const pp = add(head, new THREE.SphereGeometry(r, 16, 12), rand() < 0.3 ? hair2 : hairM);
+      pp.position.copy(F.at(sx * phi, th * PI, k));
+      pp.scale.set(1, 0.9, 1);
+      puffs.push([sx * phi, th, k + r / 1.4]);
     }
   }
-  for (let i = 0; i < 34; i++) {
-    const [phi, th] = puffs[i % puffs.length];
-    const ph = phi + (rand() - 0.5) * 0.5, tt = th * PI + (rand() - 0.5) * 0.25;
-    const len = 0.6 + rand() * 0.5, rad = 0.16 + rand() * 0.08;
-    const n = F.normal(ph, tt).add(new THREE.Vector3((rand() - 0.5) * 0.6, 0.35 + rand() * 0.4, -0.2)).normalize();
+  // frizz: fat short tufts sticking out sideways and up
+  const sides = puffs.filter(([, th]) => th >= 0.27); // frizz on the sides and back, not on the crown
+  for (let i = 0; i < 26; i++) {
+    const [phi, th, k] = sides[(i * 7) % sides.length];
+    const ph = phi + (rand() - 0.5) * 0.35, tt = th * PI + (rand() - 0.5) * 0.2;
+    const len = 0.38 + rand() * 0.32, rad = 0.2 + rand() * 0.08;
+    const n = F.normal(ph, tt).add(new THREE.Vector3(Math.sign(Math.sin(ph)) * 0.5, rand() * 0.15, -0.15));
+    n.y *= 0.45;
+    n.normalize();
     const c = add(head, new THREE.ConeGeometry(rad, len, 8), rand() < 0.3 ? hair2 : hairM);
-    c.position.copy(F.at(ph, tt, 1.18)).addScaledVector(n, len * 0.35);
+    c.position.copy(F.at(ph, tt, k * 0.92)).addScaledVector(n, len * 0.3);
     aim(c, n);
   }
-  for (const [phi, th, len] of [[0.25, 0.1, 0.7], [-0.4, 0.12, 0.6], [0.9, 0.14, 0.55]]) {
-    const n = F.normal(phi, th * PI).add(new THREE.Vector3(0, 0.6, 0)).normalize();
-    const w = add(head, new THREE.ConeGeometry(0.08, len, 6), hairM);
-    w.position.copy(F.at(phi, th * PI, 0.98)).addScaledVector(n, len * 0.45);
-    aim(w, n);
+  // a few thin flyaway tufts on the bald crown
+  for (const [phi, th, r] of [[2.4, 0.08, 0.3], [-2.2, 0.1, 0.28], [PI, 0.12, 0.32]]) {
+    const pp = add(head, new THREE.SphereGeometry(r, 12, 9), hairM);
+    pp.position.copy(F.at(phi, th * PI, 1.02));
+    pp.scale.set(1.2, 0.7, 1.2);
   }
   F.put(add(head, new THREE.CircleGeometry(0.22, 18), M.basic('#ffffff', 0.35)), 0.35, 0.95, 0.01).scale.set(1.6, 1, 1);
-  // hair tufts in the ears (grumpy old man detail)
-  for (const sx of [-1, 1]) {
-    const c = add(head, new THREE.ConeGeometry(0.1, 0.3, 6), hairM, sx * 1.62, 0.08, 0.05);
-    c.rotation.z = -sx * 1.1;
-  }
-
   finishShadows(root);
   steam.forEach((s) => { s.castShadow = false; });
 
@@ -1029,15 +1082,13 @@ export function buildScientist() {
       e.scale.set(cur.eyeX, blinking ? 0.12 : 1.35 * cur.eyeY, 0.5);
       hls[i].visible = !blinking;
     });
+    for (const c of creases) { c.visible = cur.crease > 0.05; c.scale.set(1, Math.max(0.01, cur.crease), 1); }
     for (const lid of lids) {
-      const sx = lid.userData.sx;
-      const k = blinking ? 1 : cur.lid;
-      lid.visible = k > 0.02;
-      lid.scale.set(1.05 * cur.eyeX, 0.2 + k * 0.85, 1);
-      lid.position.y = 0.22 - k * 0.16;
-      lid.rotation.y = 0;
-      lid.parent.rotation.z = lid.parent.rotation.z; // keep F.put orientation
-      lid.rotation.z = sx * (0.25 + 0.35 * (expr === 'grumpy' ? 1 : 0)) * (k > 0.3 ? 1 : 0.3);
+      const kk = cur.lid;
+      lid.visible = kk > 0.04;
+      lid.position.y = 0.37 - kk * 0.3;
+      lid.rotation.z = lid.userData.sx * 0.34 * Math.min(1, kk * 2);
+      lid.scale.set(1.3 * cur.eyeX, 0.62, 0.32);
     }
   };
   const showMouth = () => {
@@ -1082,16 +1133,17 @@ export function buildScientist() {
     // steam
     for (const s of steam) {
       const u = (t * 0.45 + s.userData.off) % 1;
-      s.position.set(Math.sin(u * 7 + s.userData.off * 9) * 0.12, 0.55 + u * 1.3, 0);
-      s.scale.setScalar(0.6 + u * 1.2);
-      s.material.opacity = 0.55 * Math.sin(u * PI);
+      s.position.set(-0.35 * u + Math.sin(u * 7 + s.userData.off * 9) * 0.06, 0.55 + u * 0.6, 0.1);
+      s.scale.setScalar(0.7 + u * 0.8);
+      s.material.opacity = 0.4 * Math.sin(u * PI);
     }
   };
   root.userData.setExpression('grumpy');
   return root;
 }
 
-function vestRadius(pts, y) {
+// radius of a sampled profile at height y
+function radiusAt(pts, y) {
   for (let i = 1; i < pts.length; i++) {
     const a = pts[i - 1], b = pts[i];
     if ((a.y - y) * (b.y - y) <= 0) { const u = (y - a.y) / (b.y - a.y || 1); return a.x + (b.x - a.x) * u; }
