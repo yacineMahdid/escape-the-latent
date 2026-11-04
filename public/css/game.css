@@ -148,3 +148,24 @@ html, body { margin: 0; height: 100%; background: #1b1424; overflow: hidden; fon
 .dlg-choices-long { flex-direction: column; align-items: stretch; }
 .dlg-choices-long .etl-btn { text-align: left; border-radius: 14px; font-weight: normal; font-size: 16px; }
 .dlg-input { font: 18px var(--font-ui); padding: 8px 14px; border: 3px solid var(--ink); border-radius: 12px; min-width: 220px; flex: 1; background: #fff; }
+
+/* ---------------- minimal-text tweaks ---------------- */
+.hud-icon { font-size: 22px; padding: 4px 12px; line-height: 1.2; }
+.hud-task { font-size: 20px; padding: 2px 10px; cursor: help; }
+.hud .pulse, .pulse { animation: pulse 0.7s ease-in-out 6; }
+@keyframes pulse { 50% { transform: scale(1.18); background: #fff3c4; box-shadow: 0 0 0 6px rgba(255,122,184,.45); } }
+.talk-prompt { display: flex; align-items: center; gap: 6px; font-size: 18px; padding: 4px 10px 4px 6px; }
+.talk-prompt kbd { font: bold 13px var(--font-code); background: var(--paper); color: var(--ink); border-radius: 6px; padding: 1px 6px; }
+.title-btns .etl-btn { font-size: 30px; padding: 8px 40px; }
+.title-status { cursor: help; font-size: 15px; opacity: .85; }
+.pause-help { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; font-size: 20px; }
+.pause-ai { cursor: help; }
+.pause-btns .etl-btn, .ending-btns .etl-btn { font-size: 24px; padding: 6px 26px; }
+.ending-title { letter-spacing: 12px; }
+.ending-list { list-style: none; padding: 0; text-align: center; font-size: 22px; font-weight: bold; }
+.map-row { flex-direction: row; gap: 10px; align-items: baseline; }
+.map-row span { font-size: 16px; text-transform: none; letter-spacing: 0; color: var(--ink); }
+.map-info-status { font-size: 26px; }
+.map-info .etl-btn { font-size: 24px; }
+.item-get { min-width: 300px; }
+.item-get-title { font-size: 30px; }

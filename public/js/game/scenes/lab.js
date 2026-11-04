@@ -6,7 +6,7 @@ import { buildArtefact } from '../artefacts.js';
 import { getSave, updateSave, regionState } from '../save.js';
 import { say, ask, toast } from '../dialogue.js';
 import { confetti } from '../fx.js';
-import { setHud } from '../hud.js';
+import { setHud, pulseHud } from '../hud.js';
 import { api } from '../../api.js';
 import { rbox, createRng } from '../../engine/geo.js';
 import { createKit } from '../../engine/kit.js';
@@ -16,18 +16,15 @@ export const REGION_ORDER = ['attention', 'clip', 'mamba'];
 const GRUMM = { name: 'Professor Grumm', color: '#6a5acd' };
 
 const INTRO = [
-  'Oh. It\'s awake. Splendid. Another tiny assistant.',
-  'I am Professor Grumm. I collect knowledge. Mostly other people\'s, since mine is already complete.',
-  'Out that door is the Latent: famous papers that folded themselves into little worlds. Don\'t ask me why. Ask a reviewer.',
-  'You, Speck, will go in and bring knowledge back. REAL knowledge. Not vibes. Not a summary you found on a napkin.',
-  'Take this book. It whispers. It has read every word of every paper, and it will help you exactly as much as it wants to. Which is: BARELY.',
+  'Oh. It\'s awake. I am Professor Grumm. You are a Speck.',
+  'Through that door: the Latent. Famous papers, folded into little worlds.',
+  'Go in. Bring back REAL knowledge. Not vibes.',
+  'Take this book. It whispers. It helps BARELY.',
 ];
 const FINALE = [
-  'Three. THREE. A speck carried three papers\' worth of understanding up my stairs.',
-  'Do you know how many of my last assistants came back from even ONE? ...Neither do I. I stopped counting at "none".',
-  'Fine. FINE. You may call yourself my assistant. Junior. Very junior. Microscopically junior.',
-  'There is a new pile of papers on the desk tomorrow. Bigger ones. Go home, Speck.',
-  '...Good work.',
+  'Three. THREE. From a Speck.',
+  'Fine. You may call yourself my assistant. Very junior.',
+  '…Good work. Now GO HOME.',
 ];
 
 function scientistStandIn() {
@@ -158,9 +155,9 @@ export async function createLabScene(ctx) {
     const rg = await region(id);
     updateSave((s) => { s.currentTask = id; });
     if (rg) await grummSays(rg.scientist?.briefing || [`Go to ${rg.region.name}. Bring me something worth my time.`]);
-    else await grummSays(['Hmm. The map to that region is missing. Somebody ate it. Probably you.']);
+    else await grummSays(['Hmm. That map is missing. Somebody ate it.']);
     refreshHud();
-    toast('The door on the right opens the map of the Latent.', 3800);
+    pulseHud('map');
   }
 
   async function talkToGrumm() {
@@ -176,7 +173,7 @@ export async function createLabScene(ctx) {
       const rs = regionState(id);
       if (rs.artefact && !rs.returned) {
         const rg = await region(id);
-        await say([`You hand Grumm the ${rg?.artefact?.name || 'artefact'}.`], { style: 'narration' });
+        await say([`✦ ${rg?.artefact?.name || ''}`], { style: 'narration' });
         setExpr('surprised');
         await grummSays(rg?.scientist?.return || ['...Hm. Hmph. Fine.'], 'surprised');
         updateSave(() => { regionState(id).returned = true; });
@@ -189,14 +186,14 @@ export async function createLabScene(ctx) {
       }
     }
     const cur = s.currentTask || nextTask();
-    if (!cur) { await grummSays(['You again. Shouldn\'t you be off being... competent?']); return; }
+    if (!cur) { await grummSays(['You again. Go be competent elsewhere.']); return; }
     const rg = await region(cur);
-    await grummSays(rg?.scientist?.reminder || ['Why are you still here? The door, Speck. The DOOR.']);
+    await grummSays(rg?.scientist?.reminder || ['The door, Speck. The DOOR.']);
   }
 
   async function openMap() {
     const s = getSave();
-    if (!s.introSeen) { await say(['Maybe say hello to the enormous man first.'], { style: 'narration' }); return; }
+    if (!s.introSeen) { toast('👋 Grumm first', 2000); return; }
     const { openMapOverlay } = await import('./map.js');
     const choice = await openMapOverlay(ctx);
     if (choice) ctx.goto('region', choice);
@@ -205,34 +202,34 @@ export async function createLabScene(ctx) {
   async function openTaskBook() {
     const s = getSave();
     const id = s.currentTask || REGION_ORDER.find((x) => regionState(x).arrived);
-    if (!s.introSeen) { await say(['You don\'t have the book yet.'], { style: 'narration' }); return; }
+    if (!s.introSeen) { toast('📖 ?', 1500); return; }
     const rg = id ? await region(id) : null;
-    if (!rg) { toast('The book is blank. Grumm has not sent you anywhere yet.'); return; }
+    if (!rg) { toast('📖 …', 1500); return; }
     await ctx.openBook({ arxivId: rg.paper.arxivId, title: rg.paper.title }, id);
   }
 
   async function refreshHud() {
     const s = getSave();
     const cur = s.currentTask;
-    let task = s.introSeen ? '' : 'Talk to the enormous man';
+    let task = s.introSeen ? '' : 'Talk to Grumm';
     if (cur) {
       const rg = await region(cur);
       const rs = regionState(cur);
       task = rs.artefact ? `Give Grumm the ${rg?.artefact?.name || 'artefact'}` : (rg?.scientist?.taskTitle || '');
     }
-    setHud({ place: 'Professor Grumm\'s Lab', task, artefacts: s.artefacts, mapLabel: 'Map' });
+    setHud({ place: 'Lab', task, artefacts: s.artefacts, mapLabel: 'Map' });
   }
 
-  ws.addInteractable({ label: 'Talk to Professor Grumm', pos: { x: 0, y: 0, z: -3.6 }, radius: 4.2, promptHeight: 3.2, onInteract: talkToGrumm });
-  ws.addInteractable({ label: 'Open the map of the Latent', pos: { x: 12.2, y: 0, z: -3.4 }, radius: 3.4, promptHeight: 3.2, onInteract: openMap });
+  ws.addInteractable({ label: 'Grumm', icon: '💬', pos: { x: 0, y: 0, z: -3.6 }, radius: 4.2, promptHeight: 3.2, onInteract: talkToGrumm });
+  ws.addInteractable({ label: 'Map', icon: '🗺️', pos: { x: 12.2, y: 0, z: -3.4 }, radius: 3.4, promptHeight: 3.2, onInteract: openMap });
   ws.addInteractable({
-    label: 'Look at the trophy shelf', pos: { x: -12, y: 0, z: -2.2 }, radius: 2.6, promptHeight: 2.4,
+    label: 'Shelf', icon: '✦', pos: { x: -12, y: 0, z: -2.2 }, radius: 2.6, promptHeight: 2.4,
     onInteract: async () => {
       const done = REGION_ORDER.filter((id) => regionState(id).returned);
-      if (!done.length) { await say(['An empty shelf. Grumm keeps it dusted. Hopefully.'], { style: 'narration' }); return; }
+      if (!done.length) { await say(['…'], { style: 'narration' }); return; }
       const lines = [];
-      for (const id of done) { const rg = await region(id); lines.push(`${rg?.artefact?.name}: ${rg?.artefact?.description || ''}`); }
-      await say(lines, { style: 'narration' });
+      for (const id of done) { const rg = await region(id); lines.push(`✦ ${rg?.artefact?.name || id}`); }
+      await say([lines.join('   ')], { style: 'narration' });
     },
   });
 
@@ -242,10 +239,10 @@ export async function createLabScene(ctx) {
     async start() {
       const s = getSave();
       if (!s.introSeen) {
-        await ws.run(() => say(['You wake up on a very large floor. Somebody very large is looking at you.'], { style: 'narration' }));
+        await ws.run(() => say(['A very large floor. A very large man.'], { style: 'narration' }));
         await ws.run(talkToGrumm);
       } else if (REGION_ORDER.some((id) => regionState(id).artefact && !regionState(id).returned)) {
-        toast('Grumm is waiting. Give him what you found.', 3500);
+        toast('✦ → Grumm', 2500);
       }
     },
   };

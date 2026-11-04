@@ -375,3 +375,15 @@ using `check.question/rubric/passBar/offline`).
 Save (`etl-save-v1`) gains `learned: { [conceptId]: { title, record, region, at } }`.
 The book shows these on a **Learned** tab (grouped by region, newest first),
 read via `getSave().learned` from `js/game/save.js`.
+
+## Minimal text (hard rule from the player)
+
+The player wants **as little text as possible** on screen.
+
+* Prefer icons, symbols, colour and numbers over words. Buttons are an icon plus
+  at most 1-2 words (often just the icon with a `title` tooltip).
+* No instructional paragraphs, no "how to use this panel" blurbs, no status
+  sentences. One-line hints only when unavoidable (<= 60 characters).
+* Errors and states are short in-world words or icons ("✕ no ink", "…", "✓").
+* Dialogue lines <= 90 characters, at most 3 lines per block.
+* Details that are nice-to-have go in tooltips (`title`), never on the surface.

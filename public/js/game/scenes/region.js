@@ -9,10 +9,11 @@ import { buildArtefact } from '../artefacts.js';
 import { getSave, updateSave, regionState, isLearned, learn } from '../save.js';
 import { say, ask, askValue, banner, toast, itemGet } from '../dialogue.js';
 import { confetti } from '../fx.js';
-import { setHud } from '../hud.js';
+import { setHud, pulseHud } from '../hud.js';
 import { openModal, closeModal } from '../../ui/modal.js';
 import { api } from '../../api.js';
 
+const STATION_ICONS = { terminal: '⌨️', board: '📌', mailbox: '✉️', sign: '🪧', machine: '⚙️' };
 const hashSeed = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 2147483647, 7) || 11;
 
 export async function createRegionScene(ctx, regionId) {
@@ -60,7 +61,7 @@ export async function createRegionScene(ctx, regionId) {
     };
     ws.extras.push(mesh);
     world.colliders.push({ type: 'circle', x: a[0], z: a[2], r: 0.55 });
-    ws.addInteractable({ label: `Talk to ${inh.name}`, pos: { x: a[0], y: a[1], z: a[2] }, onInteract: () => talkTo(inh.id) });
+    ws.addInteractable({ label: inh.name, icon: '💬', pos: { x: a[0], y: a[1], z: a[2] }, onInteract: () => talkTo(inh.id) });
   }
   const stations = new Map();
   for (const s of region.stations || []) {
@@ -71,9 +72,9 @@ export async function createRegionScene(ctx, regionId) {
     ws.scene.add(mesh); ws.extras.push(mesh);
     stations.set(s.id, { data: s, mesh });
     world.colliders.push({ type: 'circle', x: a[0], z: a[2], r: 0.85 });
-    ws.addInteractable({ label: s.label || 'Look', pos: { x: a[0], y: a[1], z: a[2] + 0.6 }, radius: 2.2, onInteract: () => talkTo(s.id) });
+    ws.addInteractable({ label: s.label || 'Look', icon: STATION_ICONS[s.kind] || '⚙️', pos: { x: a[0], y: a[1], z: a[2] + 0.6 }, radius: 2.2, onInteract: () => talkTo(s.id) });
   }
-  ws.addInteractable({ label: 'Travel back to the lab', pos: { x: world.signpost.x, y: 0, z: world.signpost.z }, onInteract: () => leave() });
+  ws.addInteractable({ label: 'Back to the lab', icon: '✈️', pos: { x: world.signpost.x, y: 0, z: world.signpost.z }, onInteract: () => leave() });
 
   // ---------- the challenge chain ----------
   const challenges = region.challenges || [];
@@ -101,21 +102,19 @@ export async function createRegionScene(ctx, regionId) {
     // concepts the book already knows: acknowledge once, never ask again
     for (const f of fundamentals.filter((x) => x.giver === id && !solved()[x.id] && isLearned(x.concept))) {
       updateSave(() => { regionState(regionId).solved[f.id] = true; });
-      await speak(id, f.known || [`Oh! Your book already knows about ${f.title}. Never mind, then.`]);
+      await speak(id, f.known || [`📖 ✦ ${f.title}`]);
     }
     const mine = chain.filter((c) => c.giver === id);
     const next = mine.find(ready);
     if (next && next.type === 'fundamental') {
-      await speak(id, next.intro || [`${nameOf(id)} has a question about ${next.title}.`]);
+      await speak(id, next.intro || ['…?']);
       const ok = await runFundamental(next, id);
       if (ok === true) await onFundamental(next, id);
-      else if (ok === false) await speak(id, next.wrong || ['Hmm, no, that\'s not it.']);
+      else if (ok === false) await speak(id, next.wrong || ['Hmm… no.']);
       return;
     }
     if (next) {
-      await speak(id, next.intro || [`${nameOf(id)} needs your help.`]);
-      const go = await ask('Take on the challenge?', ['Let\'s do it', 'Not yet'], rec ? { speaker: { name: rec.data.name, color: colorOf(id) } } : { style: 'narration' });
-      if (go !== 0) return;
+      await speak(id, next.intro || ['…!']);
       const ok = await runChallenge(next);
       if (ok) await onSolved(next);
       else if (next.type === 'explain' && next.retry) await speak(id, next.retry);
@@ -128,9 +127,9 @@ export async function createRegionScene(ctx, regionId) {
     } else {
       const label = nameOf(id);
       const kind = stations.get(id)?.data.kind;
-      if (kind === 'sign') await say([`The sign reads: "${label}"`], { style: 'narration' });
+      if (kind === 'sign') await say([`“${label}”`], { style: 'narration' });
       else if (stations.get(id)?.data.lines) await say(stations.get(id).data.lines, { style: 'narration' });
-      else await say(pending ? [`The ${label} won't respond yet. Something else must come first.`] : [`The ${label} hums quietly.`], { style: 'narration' });
+      else await say([pending ? '🔒' : '…'], { style: 'narration' });
     }
   }
 
@@ -149,7 +148,7 @@ export async function createRegionScene(ctx, regionId) {
       }
     } catch (e) {
       console.error('challenge failed to open', e);
-      await say(['(Something in the paper folds jammed. This challenge could not open.)'], { style: 'narration' });
+      await say(['… ✕'], { style: 'narration' });
     }
     return false;
   }
@@ -159,13 +158,13 @@ export async function createRegionScene(ctx, regionId) {
     const chk = f.check || {};
     const speaker = people.get(giverId) ? { speaker: { name: nameOf(giverId), color: colorOf(giverId) } } : { style: 'narration' };
     if (chk.kind === 'choice') {
-      const opts = [...(chk.options || []), 'Let me think about it'];
+      const opts = [...(chk.options || []), '✕'];
       const i = await ask(chk.question, opts, { ...speaker, neutral: true });
       if (i === opts.length - 1) return null;
       return i === chk.answer;
     }
     if (chk.kind === 'number') {
-      const v = await askValue(chk.question, { ...speaker, placeholder: 'A number' });
+      const v = await askValue(chk.question, { ...speaker, placeholder: '#' });
       if (v === null) return null;
       const n = Number(String(v).replace(/[, ]/g, '').replace(/%$/, ''));
       if (!Number.isFinite(n)) return false;
@@ -187,13 +186,13 @@ export async function createRegionScene(ctx, regionId) {
     learn(f.concept, { title: f.title, record: f.record || '', region: region.region.name });
     confetti(50);
     await speak(giverId, f.success || ['Yes! Exactly.']);
-    toast(`📖 The Umbral Book wrote down: ${f.title}`, 3200);
+    toast(`📖 ✦ ${f.title}`, 2600); pulseHud('book');
   }
 
   async function runPuzzle(c) {
     let mod;
     try { mod = await import(`../../puzzles/${c.puzzle}.js`); }
-    catch (e) { console.error(e); await say([`(The puzzle "${c.title}" isn't built yet.)`], { style: 'narration' }); return false; }
+    catch (e) { console.error(e); await say(['🧩 ✕'], { style: 'narration' }); return false; }
     const host = document.createElement('div');
     host.className = 'puzzle-host';
     document.getElementById('ui-root').appendChild(host);
@@ -266,7 +265,7 @@ export async function createRegionScene(ctx, regionId) {
     mesh.position.set(x, a[1], z);
     ws.scene.add(mesh); ws.extras.push(mesh);
     artefactItem = ws.addInteractable({
-      label: `Take the ${region.artefact?.name || 'artefact'}`, pos: { x, y: a[1], z }, radius: 2.2,
+      label: region.artefact?.name || 'artefact', icon: '✦', pos: { x, y: a[1], z }, radius: 2.2,
       onInteract: async () => {
         ws.scene.remove(mesh); ws.extras.splice(ws.extras.indexOf(mesh), 1); ws.removeInteractable(artefactItem);
         updateSave((s) => { regionState(regionId).artefact = true; if (!s.artefacts.includes(regionId)) s.artefacts.push(regionId); });
@@ -274,13 +273,13 @@ export async function createRegionScene(ctx, regionId) {
         await itemGet(region.artefact?.name || 'Artefact', region.artefact?.description || '');
         world.setGateOpen(true);
         setHud({ task: `Bring the ${region.artefact?.name || 'artefact'} to Grumm`, artefacts: getSave().artefacts });
-        toast('Use the signpost on the far left to travel back to Grumm.');
+        toast('✦ → Grumm ⟵', 3000); pulseHud('map');
       },
     });
   }
 
   async function leave() {
-    const choice = await ask(`Leave ${region.region.name} and travel back to Professor Grumm's lab?`, ['Travel back', 'Stay']);
+    const choice = await ask('✈️ Back to the lab?', ['✓', '✕']);
     if (choice === 0) ctx.goto('lab');
   }
 
@@ -294,11 +293,11 @@ export async function createRegionScene(ctx, regionId) {
       ws.snapCamera();
     },
     async start() {
-      await banner(region.region.name, region.paper ? `${region.paper.title} · ${region.paper.year}` : '');
+      await banner(region.region.name);
       if (!st.arrived) {
         updateSave(() => { regionState(regionId).arrived = true; });
         await ws.run(() => say(region.story?.arrival || [], { style: 'narration' }));
-        toast('Press B to open the Umbral Book. The paper is inside.', 4200);
+        pulseHud('book');
       }
     },
   };

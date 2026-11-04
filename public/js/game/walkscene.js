@@ -72,7 +72,7 @@ export function createWalkScene({ engine, world, player, light, fog, background,
         if (it) {
           const p = typeof it.pos === 'function' ? it.pos() : it.pos;
           promptPos.set(p.x, (p.y ?? 0) + (it.promptHeight ?? 2.6), p.z);
-          showPrompt(`E · ${it.label}`, promptPos, camera, engine.renderer);
+          showPrompt(it.icon || '💬', promptPos, camera, engine.renderer);
           if (input.take('act')) run(() => it.onInteract());
         } else { hidePrompt(); input.take('act'); }
         if (input.take('book')) run(() => actions.book?.());

@@ -45,18 +45,18 @@ async function openBook(paper, regionId) {
     await book.open({ paper, regionId });
   } catch (e) {
     console.error(e);
-    toast('The book refuses to open. (book module missing)');
+    toast('📖 ✕', 1500);
   }
 }
 
 async function pauseMenu() {
   const wrap = document.createElement('div');
   wrap.className = 'pause-overlay';
-  wrap.innerHTML = `<div class="pause-card etl-panel"><div class="pause-title">Paused</div>
-    <div class="pause-help"><b>Move</b> arrows / WASD &nbsp; <b>Talk / use</b> E or Space &nbsp; <b>Book</b> B &nbsp; <b>Map / leave</b> M</div>
+  wrap.innerHTML = `<div class="pause-card etl-panel"><div class="pause-title">⏸</div>
+    <div class="pause-help"><span><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd> 🚶</span><span><kbd>E</kbd> 💬</span><span><kbd>B</kbd> 📖</span><span><kbd>M</kbd> 🗺️</span></div>
     <div class="pause-ai"></div>
-    <div class="pause-btns"><button class="etl-btn primary" data-a="resume">Resume</button><button class="etl-btn" data-a="title">Back to title</button><button class="etl-btn" data-a="reset">Erase save</button></div></div>`;
-  wrap.querySelector('.pause-ai').textContent = status.ai ? 'The Umbral Book is awake (Claude connected).' : 'No API key on the server: the book only mutters, and explanations are graded by keywords.';
+    <div class="pause-btns"><button class="etl-btn primary" data-a="resume" title="Resume">▶</button><button class="etl-btn" data-a="title" title="Title screen">⌂</button><button class="etl-btn" data-a="reset" title="Erase save">🗑</button></div></div>`;
+  const ai = wrap.querySelector('.pause-ai'); ai.textContent = status.ai ? '● AI' : '○ AI'; ai.title = status.ai ? 'Claude connected' : 'No ANTHROPIC_API_KEY on the server: offline book and keyword grading';
   ui.appendChild(wrap);
   const choice = await new Promise((resolve) => {
     openModal(wrap, { onEscape: () => resolve('resume') });
@@ -65,7 +65,7 @@ async function pauseMenu() {
   closeModal(wrap); wrap.remove();
   if (choice === 'title') return showTitle();
   if (choice === 'reset') {
-    const sure = await ask('Erase your save and start over? Grumm will forget you (he would love that).', ['Erase it', 'Keep it']);
+    const sure = await ask('🗑 Erase save?', ['✓', '✕']);
     if (sure === 0) { resetSave(); location.reload(); }
   }
 }
@@ -74,15 +74,15 @@ async function createEnding() {
   const scene = createBackdropScene('meadow', { cast: [['bear', 'lane-mid'], ['bunny', 'terrace-3'], ['frog', 'bridge'], ['cat', 'lane-right'], ['duck', 'terrace-2'], ['snake', 'path-to-gate']] });
   const card = document.createElement('div');
   card.className = 'ending-card etl-panel';
-  card.innerHTML = `<div class="ending-title">You escaped the Latent</div>
-    <div class="ending-sub">Three famous papers, understood for real. Grumm will never say it twice.</div>
+  card.innerHTML = `<div class="ending-title">✦ ✦ ✦</div>
     <ol class="ending-list"></ol>
-    <div class="ending-btns"><button class="etl-btn primary" data-a="lab">Back to the lab</button><button class="etl-btn" data-a="new">New game</button></div>`;
+    <div class="ending-btns"><button class="etl-btn primary" data-a="lab" title="Back to the lab">⌂</button><button class="etl-btn" data-a="new" title="New game">↺</button></div>`;
   const list = card.querySelector('.ending-list');
   for (const id of ['attention', 'clip', 'mamba']) {
     const rg = await api.region(id).catch(() => null);
     const li = document.createElement('li');
-    li.textContent = rg ? `${rg.region.name}: ${rg.paper.title} (${rg.paper.year}) · ${rg.artefact?.name || ''}` : id;
+    li.textContent = rg ? `✦ ${rg.artefact?.name || rg.region.name}` : id;
+    if (rg) li.title = `${rg.paper.title} (${rg.paper.year})`;
     list.appendChild(li);
   }
   return {
@@ -101,7 +101,7 @@ async function characterCreation(initial) {
     return await creator.open({ initial });
   } catch (e) {
     console.error(e);
-    toast('Character creator unavailable; using a default look.');
+    toast('🙂', 1200);
     return initial || {};
   }
 }
@@ -115,10 +115,8 @@ async function showTitle() {
   const card = document.createElement('div');
   card.className = 'title-card';
   card.innerHTML = `<div class="title-logo">Escape <span>the</span> Latent</div>
-    <div class="title-sub">a tiny human · a grumpy giant · famous machine learning papers</div>
     <div class="title-btns"></div>
-    <div class="title-status"></div>
-    <div class="title-foot">Papers chosen by alphaXiv votes · read them for real, the game won't help</div>`;
+    <div class="title-status"></div>`;
   ui.appendChild(card);
   const btns = card.querySelector('.title-btns');
   const mk = (label, primary, fn) => { const b = document.createElement('button'); b.className = 'etl-btn' + (primary ? ' primary' : ''); b.textContent = label; b.onclick = fn; btns.appendChild(b); return b; };
@@ -134,15 +132,15 @@ async function showTitle() {
     const last = getSave().lastScene || 'lab';
     if (last.startsWith('region:')) goto('region', last.slice(7)); else goto('lab');
   };
-  if (hasSave) mk('Continue', true, () => go(false));
-  mk(hasSave ? 'New game' : 'Start', !hasSave, async () => {
-    if (hasSave) { const sure = await ask('Start over? Your current save will be erased.', ['Start over', 'Cancel']); if (sure !== 0) return; }
+  if (hasSave) mk('▶', true, () => go(false)).title = 'Continue';
+  mk(hasSave ? '↺' : '▶', !hasSave, async () => {
+    if (hasSave) { const sure = await ask('🗑 Erase save?', ['✓', '✕']); if (sure !== 0) return; }
     go(true);
-  });
+  }).title = hasSave ? 'New game' : 'Start';
   status = await api.status().catch(() => ({ ai: false }));
-  card.querySelector('.title-status').textContent = status.ai
-    ? '● The Umbral Book is awake (Claude connected)'
-    : '○ No API key: the book will only mutter. Set ANTHROPIC_API_KEY and restart the server for the full game.';
+  const st = card.querySelector('.title-status');
+  st.textContent = status.ai ? '● AI' : '○ AI';
+  st.title = status.ai ? 'Claude connected' : 'No ANTHROPIC_API_KEY: offline book, keyword grading';
 }
 
 showTitle();

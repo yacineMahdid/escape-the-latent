@@ -10,12 +10,12 @@ export function mountHud({ onBook, onMap, onMenu } = {}) {
     bar = document.createElement('div');
     bar.className = 'hud';
     bar.innerHTML = `
-      <div class="hud-left"><div class="hud-place etl-panel"></div><div class="hud-task etl-panel"></div></div>
+      <div class="hud-left"><div class="hud-task etl-panel" title="">📜</div></div>
       <div class="hud-right">
         <div class="hud-artefacts etl-panel" title="Artefacts"></div>
-        <button class="etl-btn hud-book" title="The Umbral Book (B)">📖 Book <kbd>B</kbd></button>
-        <button class="etl-btn hud-map" title="Map (M)">🗺️ <span class="hud-map-label">Map</span> <kbd>M</kbd></button>
-        <button class="etl-btn hud-menu" title="Menu (Esc)">☰</button>
+        <button class="etl-btn hud-icon hud-book" title="Book (B)">📖</button>
+        <button class="etl-btn hud-icon hud-map" title="Map (M)">🗺️</button>
+        <button class="etl-btn hud-icon hud-menu" title="Menu (Esc)">☰</button>
       </div>`;
     root().appendChild(bar);
     bar.querySelector('.hud-book').onclick = () => handlers.onBook?.();
@@ -28,18 +28,33 @@ export function mountHud({ onBook, onMap, onMenu } = {}) {
 
 export function setHud({ place, task, artefacts, mapLabel } = {}) {
   if (!bar) return;
-  if (place !== undefined) { const el = bar.querySelector('.hud-place'); el.textContent = place || ''; el.style.display = place ? '' : 'none'; }
-  if (task !== undefined) { const el = bar.querySelector('.hud-task'); el.textContent = task || ''; el.style.display = task ? '' : 'none'; }
-  if (artefacts !== undefined) { const el = bar.querySelector('.hud-artefacts'); el.textContent = `✦ ${artefacts.length} / 3`; }
-  if (mapLabel !== undefined) bar.querySelector('.hud-map-label').textContent = mapLabel;
+  if (task !== undefined || place !== undefined) {
+    const el = bar.querySelector('.hud-task');
+    const tip = [place, task].filter(Boolean).join(' · ');
+    el.title = tip; el.style.display = tip ? '' : 'none';
+  }
+  if (artefacts !== undefined) { const el = bar.querySelector('.hud-artefacts'); el.textContent = `✦ ${artefacts.length}/3`; }
+  if (mapLabel !== undefined) { const b = bar.querySelector('.hud-map'); b.textContent = mapLabel === 'Leave' ? '✈️' : '🗺️'; b.title = mapLabel === 'Leave' ? 'Leave (M)' : 'Map (M)'; }
 }
 
 export function hideHud() { if (bar) bar.style.display = 'none'; hidePrompt(); }
 
+// Draw the eye to a HUD button instead of explaining it in words.
+export function pulseHud(which) {
+  const el = bar?.querySelector(`.hud-${which}`);
+  if (!el) return;
+  el.classList.remove('pulse'); void el.offsetWidth; el.classList.add('pulse');
+  setTimeout(() => el.classList.remove('pulse'), 4200);
+}
+
 const v = new THREE.Vector3();
-export function showPrompt(text, worldPos, camera, renderer) {
-  if (!prompt) { prompt = document.createElement('div'); prompt.className = 'etl-passive talk-prompt'; root().appendChild(prompt); }
-  prompt.textContent = text;
+export function showPrompt(icon, worldPos, camera, renderer) {
+  if (!prompt) {
+    prompt = document.createElement('div'); prompt.className = 'etl-passive talk-prompt';
+    const k = document.createElement('kbd'); k.textContent = 'E'; const i = document.createElement('span'); prompt.append(k, i);
+    root().appendChild(prompt);
+  }
+  prompt.lastChild.textContent = icon;
   v.copy(worldPos).project(camera);
   const r = renderer.domElement.getBoundingClientRect();
   prompt.style.left = `${r.left + (v.x * 0.5 + 0.5) * r.width}px`;

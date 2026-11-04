@@ -28,10 +28,10 @@ export async function openMapOverlay() {
   wrap.className = 'map-overlay';
   wrap.innerHTML = `
     <div class="map-card etl-panel">
-      <div class="map-head"><div><div class="map-title">The Latent</div><div class="map-sub">as sketched (badly) by Prof. Grumm</div></div>
-      <button class="etl-btn map-close">Close <kbd>Esc</kbd></button></div>
+      <div class="map-head"><div class="map-title">The Latent</div>
+      <button class="etl-btn hud-icon map-close" title="Close (Esc)">✕</button></div>
       <div class="map-body"><svg class="map-svg" viewBox="0 0 1000 640"></svg>
-      <div class="map-info"><div class="map-info-empty">Pick a place on the map.</div></div></div>
+      <div class="map-info"><div class="map-info-empty">…</div></div></div>
     </div>`;
   document.getElementById('ui-root').appendChild(wrap);
   const svg = wrap.querySelector('svg');
@@ -75,25 +75,25 @@ export async function openMapOverlay() {
   openModal(wrap, { onEscape: () => close(null) });
   wrap.querySelector('.map-close').onclick = () => close(null);
 
-  function row(label, value) { const d = document.createElement('div'); d.className = 'map-row'; const a = document.createElement('span'); a.textContent = label; const b = document.createElement('b'); b.textContent = value; d.append(a, b); return d; }
+  function row(icon, value, tip) { const d = document.createElement('div'); d.className = 'map-row'; if (tip) d.title = tip; const a = document.createElement('span'); a.textContent = icon; const b = document.createElement('b'); b.textContent = value; d.append(a, b); return d; }
 
   function showRegion(id) {
     Object.values(pins).forEach((p) => p.classList.remove('sel')); pins[id]?.classList.add('sel');
     const rg = regions[id]; const rs = regionState(id);
     info.innerHTML = '';
     const h = document.createElement('div'); h.className = 'map-info-title'; h.textContent = rg?.region?.name || id; info.appendChild(h);
-    const tg = document.createElement('div'); tg.className = 'map-info-tag'; tg.textContent = rg?.region?.tagline || ''; info.appendChild(tg);
+    h.title = rg?.region?.tagline || '';
     if (rg?.paper) {
-      info.appendChild(row('Paper', rg.paper.title));
-      info.appendChild(row('Authors', `${rg.paper.authors}, ${rg.paper.year}`));
-      info.appendChild(row('arXiv', rg.paper.arxivId));
-      const votes = row('alphaXiv votes', '…'); info.appendChild(votes);
-      api.paperMeta(rg.paper.arxivId).then((m) => { votes.querySelector('b').textContent = m?.votes != null ? m.votes.toLocaleString() : 'n/a'; }).catch(() => { votes.querySelector('b').textContent = 'n/a'; });
+      info.appendChild(row('📄', rg.paper.title, `${rg.paper.authors} · arXiv ${rg.paper.arxivId}`));
+      info.appendChild(row('🗓', String(rg.paper.year)));
+      const votes = row('▲', '…', 'alphaXiv votes'); info.appendChild(votes);
+      api.paperMeta(rg.paper.arxivId).then((m) => { votes.querySelector('b').textContent = m?.votes != null ? m.votes.toLocaleString() : '–'; }).catch(() => { votes.querySelector('b').textContent = '–'; });
     }
-    const status = rs.returned ? 'Done. Grumm has the artefact.' : save.currentTask === id ? (rs.artefact ? 'Artefact found. Bring it to Grumm!' : 'Grumm sent you here.') : 'Grumm has not sent you here yet.';
-    const st = document.createElement('div'); st.className = 'map-info-status'; st.textContent = status; info.appendChild(st);
+    const st = document.createElement('div'); st.className = 'map-info-status';
+    st.textContent = rs.returned ? '✓' : save.currentTask === id ? (rs.artefact ? '✦ → Grumm' : '📍') : '🔒';
+    info.appendChild(st);
     const canGo = rs.returned || save.currentTask === id;
-    const go = document.createElement('button'); go.className = 'etl-btn primary'; go.textContent = canGo ? `Travel to ${rg?.region?.name || id}` : 'Locked'; go.disabled = !canGo || !rg;
+    const go = document.createElement('button'); go.className = 'etl-btn primary'; go.textContent = canGo ? '✈️' : '🔒'; go.title = canGo ? `Travel to ${rg?.region?.name || id}` : 'Locked'; go.disabled = !canGo || !rg;
     go.onclick = () => close(id);
     info.appendChild(go);
   }
@@ -101,12 +101,11 @@ export async function openMapOverlay() {
   function showTeaser(t) {
     Object.values(pins).forEach((p) => p.classList.remove('sel'));
     info.innerHTML = '';
-    const h = document.createElement('div'); h.className = 'map-info-title'; h.textContent = 'Uncharted'; info.appendChild(h);
-    info.appendChild(row('Rumoured paper', t.name));
-    info.appendChild(row('arXiv', t.id));
-    const votes = row('alphaXiv votes', '…'); info.appendChild(votes);
-    api.paperMeta(t.id).then((m) => { votes.querySelector('b').textContent = m?.votes != null ? m.votes.toLocaleString() : 'n/a'; }).catch(() => { votes.querySelector('b').textContent = 'n/a'; });
-    const st = document.createElement('div'); st.className = 'map-info-status'; st.textContent = 'Fog. Grumm mutters that this one is "next season".'; info.appendChild(st);
+    const h = document.createElement('div'); h.className = 'map-info-title'; h.textContent = '?'; info.appendChild(h);
+    info.appendChild(row('📄', t.name, `arXiv ${t.id}`));
+    const votes = row('▲', '…', 'alphaXiv votes'); info.appendChild(votes);
+    api.paperMeta(t.id).then((m) => { votes.querySelector('b').textContent = m?.votes != null ? m.votes.toLocaleString() : '–'; }).catch(() => { votes.querySelector('b').textContent = '–'; });
+    const st = document.createElement('div'); st.className = 'map-info-status'; st.textContent = '🔒'; info.appendChild(st);
   }
 
   return result;
