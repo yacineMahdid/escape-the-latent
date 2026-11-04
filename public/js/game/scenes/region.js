@@ -5,7 +5,7 @@ import { buildVillager } from '../../engine/villagers.js';
 import { createPlayer } from '../player.js';
 import { createWalkScene, dioramaCamera } from '../walkscene.js';
 import { buildStation } from '../stations.js';
-import { buildArtefact } from '../artefacts.js';
+import { buildArtefact, theName } from '../artefacts.js';
 import { getSave, updateSave, regionState, isLearned, learn } from '../save.js';
 import { say, ask, askValue, banner, toast, itemGet } from '../dialogue.js';
 import { confetti } from '../fx.js';
@@ -272,7 +272,7 @@ export async function createRegionScene(ctx, regionId) {
         confetti(140);
         await itemGet(region.artefact?.name || 'Artefact', region.artefact?.description || '');
         world.setGateOpen(true);
-        setHud({ task: `Bring the ${region.artefact?.name || 'artefact'} to Grumm`, artefacts: getSave().artefacts });
+        setHud({ task: `Bring ${theName(region.artefact?.name)} to Grumm`, artefacts: getSave().artefacts });
         toast('Bring it to Grumm: signpost, far left', 3600); pulseHud('map');
       },
     });
@@ -289,7 +289,7 @@ export async function createRegionScene(ctx, regionId) {
   return {
     scene: ws.scene, camera: ws.camera, update: ws.update, dispose: ws.dispose,
     async onEnter() {
-      setHud({ place: region.region.name, task: st.artefact ? `Bring the ${region.artefact?.name} to Grumm` : (region.scientist?.taskTitle || ''), artefacts: getSave().artefacts, mapLabel: 'Leave' });
+      setHud({ place: region.region.name, task: st.artefact && !st.returned ? `Bring ${theName(region.artefact?.name)} to Grumm` : (region.scientist?.taskTitle || ''), artefacts: getSave().artefacts, mapLabel: 'Leave' });
       ws.snapCamera();
     },
     async start() {

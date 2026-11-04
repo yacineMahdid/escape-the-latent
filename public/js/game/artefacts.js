@@ -41,3 +41,6 @@ export function buildArtefact(regionId, { pedestal = true } = {}) {
   g.userData.update = (dt) => { t += dt; relic.rotation.y += dt * 0.9; relic.position.y = (pedestal ? 1.35 : 0.6) + Math.sin(t * 2) * 0.08; glow.scale.setScalar(1 + Math.sin(t * 3) * 0.06); };
   return g;
 }
+
+// "The Twin Lens" -> "the Twin Lens"; "Listening Bell" -> "the Listening Bell"
+export const theName = (n) => (n ? `the ${n.replace(/^the\s+/i, '')}` : 'the artefact');

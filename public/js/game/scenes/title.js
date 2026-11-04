@@ -1,6 +1,7 @@
-// Title screen: a composed paper diorama (villagers lined up on the path, a giant
-// Grumm looming behind the hills, paper sheets and confetti drifting) plus a
-// cut-paper logo and chunky paper buttons.
+// Title screen: a composed paper diorama (villagers lined up on the path, a
+// normal-sized Grumm looming over the tiny world like someone peering into a
+// diorama, paper sheets and confetti drifting) plus a cut-paper logo and chunky
+// paper buttons.
 import * as THREE from 'three';
 import { buildDiorama, ANCHORS } from '../../engine/diorama.js';
 import { buildVillager } from '../../engine/villagers.js';
@@ -54,7 +55,7 @@ export async function createTitleScene() {
     updaters.push((dt) => hero.userData.animate?.(dt, { moving: false, speed: 0, facing: 1 }));
   }
 
-  // Grumm, enormous, peeking over the far hills like a cardboard backdrop
+  // Grumm (normal-sized; this world is tiny) peering over the far hills
   let grumm;
   if (humans?.buildScientist) {
     grumm = humans.buildScientist();

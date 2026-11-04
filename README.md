@@ -1,10 +1,12 @@
 # Escape the Latent
 
-A cozy paper-diorama game where you, a tiny human, are sent by **Professor Grumm**,
-an enormous and permanently irritated scientist, to bring back knowledge from
-famous machine learning papers. Each paper is a little world (Paper Mario-style
-layered dioramas, Animal Crossing-style villagers) whose story *is* the paper's
-idea. You get through it by actually reading the paper.
+A cozy paper-diorama game. You are a **Speck**: a human small enough to stand on
+**Professor Grumm**'s desk. Grumm is a normal-sized, permanently irritated
+scientist (he only looks giant because you are tiny). He sends you into the
+Latent, a set of small paper worlds folded from famous machine learning papers,
+to bring back knowledge. Each world (Paper Mario-style layered dioramas, Animal
+Crossing-style villagers) has a story that *is* the paper's idea. You get
+through it by actually reading the paper.
 
 The first three papers were picked by their **alphaXiv votes**:
 

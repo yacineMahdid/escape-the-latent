@@ -6,15 +6,27 @@ contract, change this file in the same commit.
 
 ## The game in one paragraph
 
-You are a tiny human. A huge, grumpy human scientist, **Professor Grumm**, sends
-you on "impossible" errands: bring back knowledge from famous machine learning
-papers. Each paper is a **region** on a paper map, rendered as a layered paper
-diorama (Paper Mario world layout, Animal Crossing characters). Each region has a
-small, child-like story whose problem *is* the paper's core idea. You solve it by
-actually reading the paper (inside the game, in your **dark book**), then
-passing hands-on world puzzles, a Python coding challenge and an "explain it"
-conversation graded by Claude. You win an **artefact**, bring it back, and
+You are a **Speck**: a human about the height of a coffee mug. **Professor
+Grumm** is a normal-sized, grumpy human scientist; he only looks giant because
+you are tiny. The hub is his desk. He sends you on "impossible" errands into
+**the Latent**: small paper worlds folded from famous machine learning papers.
+Each paper is a **region** on a paper map, rendered as a layered paper diorama
+(Paper Mario world layout, Animal Crossing characters, everything at your
+scale). Each region has a small, child-like story whose problem *is* the
+paper's core idea. You solve it by actually reading the paper (inside the game,
+in your **dark book**), then passing hands-on world puzzles, a Python coding
+challenge and an "explain it" conversation graded by Claude. You win an **artefact**, bring it back, and
 Grumm is (grudgingly) astonished. The game does not hold your hand.
+
+### Scale (keep it consistent)
+
+- Grumm is **normal-sized**. Narration, UI and docs never call him a giant.
+  Latent villagers may call him "your giant": that is their point of view.
+- The Speck and everything in the Latent share one small scale (the player and
+  villagers are about 1.9 units tall).
+- Lab: the desk top is the walkable world at `y = 0`; the room floor is at
+  `y = -9.5`; Grumm is `buildScientist()` scaled by 2.42 (~23 units tall,
+  about 12x the Speck), standing on the floor behind the desk.
 
 ## Run it
 
@@ -47,7 +59,7 @@ public/
   js/main.js            boot + scene state machine                owner: core
   js/api.js             fetch wrappers for /api/*                 owner: core
   js/engine/            three.js world builder, biomes, villagers owner: core
-  js/engine/humans.js   human player + giant scientist models     owner: creator
+  js/engine/humans.js   human player + scientist models           owner: creator
   js/game/              save, dialogue, scenes (title/lab/map/region/ending) owner: core
   js/ui/modal.js        modal stack (pauses game input)           owner: core
   js/ui/book.js         dark book: PDF reader, notes, ask         owner: book

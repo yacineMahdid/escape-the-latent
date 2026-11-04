@@ -2,7 +2,7 @@
   "name": "escape-the-latent",
   "version": "0.1.0",
   "private": true,
-  "description": "A cozy paper-diorama game where a grumpy giant scientist sends you to bring back knowledge from famous ML papers.",
+  "description": "A cozy paper-diorama game: you are a tiny human on a grumpy scientist's desk, sent into small paper worlds to bring back knowledge from famous ML papers.",
   "type": "module",
   "scripts": {
     "start": "node server/index.js",
