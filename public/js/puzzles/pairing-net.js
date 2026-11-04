@@ -75,7 +75,7 @@ export default {
     const n = photos.length;
 
     const order = (spec.initialCaptionOrder || captions.map((c) => c.id)).slice();
-    const hung = new Set();
+    const hung = new Set(Array.isArray(spec.initialFloats) ? spec.initialFloats : []);
     const snap = (v) => {
       let best = 0; let bd = Infinity; const lv = Math.log(Math.max(1e-6, v));
       grid.forEach((g, i) => { const d = Math.abs(Math.log(g) - lv); if (d < bd) { bd = d; best = i; } });

@@ -154,6 +154,14 @@ export async function createRegionScene(ctx, regionId) {
   const nameOf = (id) => people.get(id)?.data.name || stations.get(id)?.data.label || id;
   const colorOf = (id) => people.get(id)?.data.colors?.shirt || '#ff7ab8';
 
+  // The trajectory follows what the player has learned: a basic concept already on the book's Learned pages
+  // (from another world) is simply never asked, and nobody mentions it. Its step counts as done.
+  function skipKnown() {
+    const known = fundamentals.filter((f) => !solved()[f.id] && isLearned(f.concept));
+    if (known.length) updateSave(() => { for (const f of known) regionState(regionId).solved[f.id] = true; });
+  }
+  skipKnown();
+
   async function speak(id, lines) {
     const rec = people.get(id);
     if (rec) { rec.talking = true; try { await say(lines, { speaker: { name: rec.data.name, color: colorOf(id) } }); } finally { rec.talking = false; } }
@@ -163,11 +171,7 @@ export async function createRegionScene(ctx, regionId) {
   async function talkTo(id) {
     updateSave(() => { regionState(regionId).talked[id] = true; });
     const rec = people.get(id);
-    // concepts the book already knows: acknowledge once, never ask again
-    for (const f of fundamentals.filter((x) => x.giver === id && !solved()[x.id] && isLearned(x.concept))) {
-      updateSave(() => { regionState(regionId).solved[f.id] = true; });
-      await speak(id, f.known || [`The Cursed Book already knows ${f.title}.`]);
-    }
+    skipKnown();
     const mine = chain.filter((c) => c.giver === id);
     const next = mine.find(ready);
     if (next && next.type === 'fundamental') {
@@ -390,10 +394,11 @@ export async function createRegionScene(ctx, regionId) {
       const finish = (v) => { if (!done) { done = true; resolve(v); } };
       openModal(host, { onEscape: () => finish(false) });
       try {
-        handle = (mod.default || mod).mount(host, c.spec || {}, { onSolved: () => finish(true), onClose: () => finish(false), sfx, openBook });
+        handle = (mod.default || mod).mount(host, withBoard(c), { onSolved: () => finish(true), onClose: () => finish(false), sfx, openBook });
       } catch (e) { console.error(e); finish(false); }
     });
     window.removeEventListener('keydown', onBookKey);
+    if (!result) { try { boards.set(c.id, host.__state?.()); } catch { /* no state hook */ } } else boards.delete(c.id);
     try { handle?.destroy?.(); } catch (e) { console.error(e); }
     closeModal(host); host.remove();
     return result;
@@ -402,6 +407,21 @@ export async function createRegionScene(ctx, regionId) {
     function onBookKey(e) { if (e.code === 'KeyB' && topModal() === host && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName || '')) { e.preventDefault(); openBook(); } }
   }
   let bookOpen = false;
+  // a board closed half-done opens as you left it (for the rest of this visit)
+  const boards = new Map();
+  const RESTORE = {
+    'positional-wave-loom': (st) => ({ initial: { faces: st.faces, m: st.m, join: st.join } }),
+    'decoder-peeking-fence': (st) => ({ initial: { desks: st.desks, selfStamps: st.selfStamps, crossStamps: st.crossStamps } }),
+    'selective-gulp-knobs': (st) => ({ initial: { chained: st.chained, ...st.knobs } }),
+    'pairing-net': (st, spec) => ({ initialCaptionOrder: st.order, initialFloats: st.floats, knob: { ...(spec.knob || {}), initial: st.knob }, pin: { ...(spec.pin || {}), initial: st.pin } }),
+    'name-racks': (st) => ({ initialSigns: st.signs }),
+    'mamba-vertebra-jig': (st, spec) => ({ initialFilled: st.filled, expansion: { ...(spec.expansion || {}), initial: st.E } }),
+  };
+  function withBoard(c) {
+    const spec = c.spec || {}, st = boards.get(c.id), fn = RESTORE[c.puzzle];
+    if (!st || !fn) return spec;
+    try { return { ...spec, ...fn(st, spec) }; } catch { return spec; }
+  }
 
   async function onSolved(c) {
     updateSave(() => { regionState(regionId).solved[c.id] = true; });

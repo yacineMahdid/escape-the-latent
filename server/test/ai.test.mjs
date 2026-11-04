@@ -101,6 +101,18 @@ describe('book: request shape', () => {
     assert.deepEqual(ctx.papers.calls.at(-1), ['text', '1706.03762']);
   });
 
+  it('tells the book what the reader already learned, outside the cached prefix', async () => {
+    await postJSON(ctx.srv.port, '/api/book', { regionId: 'fixture', question: 'Plain?' });
+    await postJSON(ctx.srv.port, '/api/book', { regionId: 'fixture', question: 'With pages?', learned: ['softmax', 'dot-product', 'nope', 42] });
+    const [a, b] = ctx.client.calls.slice(-2).map((c) => c.params);
+    assert.deepEqual(a.system, b.system, 'the learned list never touches the cached system prompt');
+    assert.doesNotMatch(a.messages.at(-1).content, /Learned pages/);
+    const last = b.messages.at(-1).content;
+    assert.match(last, /Already on the reader's Learned pages \(build on these; never re-explain them\): Softmax, Dot product\./);
+    assert.doesNotMatch(last, /nope|42/);
+    assert.match(last, /With pages\?/);
+  });
+
   it('keeps the cached prefix byte-identical between questions', async () => {
     await postJSON(ctx.srv.port, '/api/book', { regionId: 'fixture', question: 'First?' });
     await postJSON(ctx.srv.port, '/api/book', { regionId: 'fixture', question: 'Second, different?', history: [{ q: 'a', a: 'b' }] });

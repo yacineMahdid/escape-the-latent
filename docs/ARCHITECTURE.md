@@ -497,7 +497,9 @@ state, ...) into its story. They are small checks posed by inhabitants, always
 relevant to the region's paper and plot. When the player passes one, the
 Cursed Book of Dimensionality **records** the concept on its Learned pages, and the game never
 asks about that concept again: later regions that list the same concept treat
-it as already satisfied (the inhabitant just acknowledges it).
+it as already satisfied. The player's path adapts silently: the question is
+never posed and nobody mentions it, so its lines must never be needed to follow
+the story (a giver's next lines cannot depend on a skippable question).
 
 Global concept ids live in `content/concepts.json`:
 `[{ "id": "softmax", "title": "Softmax", "summary": "one-line canonical definition" }]`.
@@ -522,7 +524,6 @@ Region JSON gains:
     },
     "wrong": ["lines when the answer is wrong (never reveal it)"],
     "success": ["lines when right"],
-    "known": ["lines when the book already recorded this concept (the check is skipped)"],
     "record": "1-2 sentences the book writes on its Learned pages, in the book's voice"
   }
 ]

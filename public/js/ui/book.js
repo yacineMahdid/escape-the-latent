@@ -1158,7 +1158,7 @@ class AskPane {
     const history = this.items.slice(-HISTORY_SEND).map(({ q: hq, a: ha }) => ({ q: hq, a: ha }));
     let res = null;
     try {
-      res = await api.book({ regionId: this.book.regionId, question: q, selection: sel || undefined, history });
+      res = await api.book({ regionId: this.book.regionId, question: q, selection: sel || undefined, history, learned: Object.keys(getSave().learned || {}) });
     } catch (err) {
       if (err?.body?.offline) this.setOffline(true);
       res = null;

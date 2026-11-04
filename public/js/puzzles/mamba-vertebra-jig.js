@@ -44,7 +44,7 @@ export default {
     const weights = spec.weights || {};
     const Eopts = spec.expansion?.options || [1, 2, 3, 4];
     let E = spec.expansion?.initial ?? Eopts[0];
-    const filled = Object.fromEntries(slots.map((sl) => [sl.id, null]));
+    const filled = Object.fromEntries(slots.map((sl) => [sl.id, spec.initialFilled?.[sl.id] ?? null]));
     const sol = spec.solution || {};
 
     const tileEl = (t) => h('div', { class: `vj-tile vj-${t.shape || 'box'}`, title: t.label, text: t.label });

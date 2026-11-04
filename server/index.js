@@ -517,7 +517,7 @@ export function createApp({
   }
 
   async function handleBook(req, res, signal) {
-    const { regionId = null, question, selection, history } = await body(req, '/api/book');
+    const { regionId = null, question, selection, history, learned } = await body(req, '/api/book');
     if (!nonEmpty(question)) throw new HttpError(400, SAY.noQuestion);
     if (regionId !== null && typeof regionId !== 'string') throw new HttpError(400, SAY.badRegion);
     const region = regionId ? regions.getRegion(regionId) : null;
@@ -529,9 +529,23 @@ export function createApp({
       question: question.trim(),
       selection: typeof selection === 'string' ? selection : undefined,
       history: Array.isArray(history) ? history : undefined,
+      learned: conceptTitles(learned),
       signal,
     });
     return sendJSON(res, 200, result);
+  }
+
+  // concept ids from the player's Learned pages -> titles from content/concepts.json (anything else is dropped)
+  let concepts = null;
+  function conceptTitles(ids) {
+    if (!Array.isArray(ids) || !ids.length) return [];
+    if (!concepts) {
+      concepts = new Map();
+      try {
+        for (const c of JSON.parse(fs.readFileSync(path.join(contentDir, 'concepts.json'), 'utf8'))) if (c?.id && c?.title) concepts.set(c.id, c.title);
+      } catch (err) { logger.warn?.(`[book] concepts.json: ${err.message}`); }
+    }
+    return [...new Set(ids.filter((id) => typeof id === 'string').slice(0, 64).map((id) => concepts.get(id)).filter(Boolean))];
   }
 
   async function handleAvatar(req, res, signal) {

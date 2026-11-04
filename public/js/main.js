@@ -144,7 +144,10 @@ async function showTitle() {
   const btns = btnRow;
   const mk = (label, primary, fn) => { const b = document.createElement('button'); b.className = 'etl-btn' + (primary ? ' primary' : ''); b.textContent = label; b.onclick = fn; btns.appendChild(b); return b; };
   const hasSave = !!save.character;
+  let going = false;
   const go = async (fresh) => {
+    if (going) return; // a double click must not start the game twice
+    going = true;
     card.remove(); statusTag.remove();
     if (fresh) { resetSave(); import('./ui/book.js').then((b) => b.clearBookData?.()).catch(() => {}); }
     const s = getSave();

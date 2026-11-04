@@ -22,7 +22,7 @@ const regionCache = new Map();
 
 export const api = {
   status: () => json('/api/status'),
-  book: ({ regionId, question, selection, history }) => post('/api/book', { regionId, question, selection, history }),
+  book: ({ regionId, question, selection, history, learned }) => post('/api/book', { regionId, question, selection, history, learned }),
   avatar: (dataUrl) => post('/api/avatar', { image: dataUrl }),
   grade: ({ regionId, challengeId, answer }) => post('/api/grade', { regionId, challengeId, answer }),
   paperPdfUrl: (arxivId) => `/api/paper/${encodeURIComponent(arxivId)}/pdf`,

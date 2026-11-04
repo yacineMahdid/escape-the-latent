@@ -664,9 +664,6 @@
       "success": [
         "Old belly plus one new grain, again and again. It never gets bigger!"
       ],
-      "known": [
-        "Ooh, your book glows! It knows how Noodle's one belly holds a whole road? Aww."
-      ],
       "record": "A recurrent model's one small belly of memory: each step remakes it from the last state and the new input, h_t = f(h_(t-1), x_t). It never grows."
     },
     {
@@ -691,9 +688,6 @@
       ],
       "success": [
         "0.125! An eighth. Fading, fading... but never quite zero."
-      ],
-      "known": [
-        "Your book knows how a glow fades, grain by grain? Phooey. I counted for nothing."
       ],
       "record": "Multiply by the same share a (0 < a < 1) each step and a^t is left after t steps; at e^(-k) a step, e^(-kt). It dwindles, and never quite dies."
     },
@@ -725,9 +719,6 @@
       "success": [
         "n². Twice the road, four times the checking. My poor paws!"
       ],
-      "known": [
-        "Your book already knows how my checking piles up? Hmph. Back to sorting."
-      ],
       "record": "How the toil swells with n: one pass is O(n), doubling when n doubles; each against all is O(n²), and quadruples."
     },
     {
@@ -757,9 +748,6 @@
       ],
       "success": [
         "Hmph. You CAN read a stamp. Now, about that snake..."
-      ],
-      "known": [
-        "Your book reads stamps already? Hmph. Saves ink."
       ],
       "record": "One kernel, slid along the sequence: each output a weighted sum of nearby inputs, by the same weights at every position."
     }

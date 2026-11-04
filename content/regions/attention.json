@@ -993,9 +993,6 @@
       "success": [
         "Identical! Same word, same coat. And THAT's my problem."
       ],
-      "known": [
-        "Your book knows our coats already? Good. Saves a speech."
-      ],
       "record": "A learned table hands each token its coat of numbers, a vector. Same word, same coat, wherever it stands."
     },
     {
@@ -1026,9 +1023,6 @@
       "success": [
         "Exactement! Now, about their peeking…"
       ],
-      "known": [
-        "Your book knows how a look is sliced? Bon. No quiz, then."
-      ],
       "record": "Raise e to each score, then divide by the sum of those powers: e^(s_i) / Σ_j e^(s_j). The slices make one whole; the loudest takes the most."
     },
     {
@@ -1053,9 +1047,6 @@
       ],
       "success": [
         "Seven! Easy as cheese. Up to the gearbox!"
-      ],
-      "known": [
-        "Your creepy book already knows my sums? Never mind, then!"
       ],
       "record": "Multiply matching entries and add them up, a · b = Σ_i a_i b_i. It swells when two vectors point the same way, sinks below zero when they oppose."
     },
@@ -1086,9 +1077,6 @@
       ],
       "success": [
         "Quack. Old satchel, new note, squish. Fine, you know ducks."
-      ],
-      "known": [
-        "That spooky book of yours knows my satchel already? Hmph. Show-off."
       ],
       "record": "A recurrent model's one small satchel of memory. Each step remakes it from the last satchel and the new input, h_t = f(h_(t-1), x_t); it never grows."
     }

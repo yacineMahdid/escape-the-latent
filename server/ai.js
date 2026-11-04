@@ -277,7 +277,13 @@ export function bookPersona(region) {
 
 const asQuestion = (q) => `<question>\n${clip(q, 1000)}\n</question>`;
 
-export function buildBookRequest({ region, paperText, question, selection, history }) {
+// The reader's Learned pages (concept titles, from the server's own list), so the book builds on them.
+const learnedNote = (learned) => {
+  const t = (Array.isArray(learned) ? learned : []).filter((x) => typeof x === 'string' && x.trim()).slice(0, 40);
+  return t.length ? `Already on the reader's Learned pages (build on these; never re-explain them): ${t.join(', ')}.\n\n` : '';
+};
+
+export function buildBookRequest({ region, paperText, question, selection, history, learned }) {
   const past = (Array.isArray(history) ? history : [])
     .filter((h) => h && typeof h.q === 'string' && typeof h.a === 'string' && h.q.trim() && h.a.trim())
     .slice(-HISTORY_TURNS)
@@ -297,7 +303,7 @@ export function buildBookRequest({ region, paperText, question, selection, histo
     fallbacks: 'default',
     output_config: { effort: 'low', format: { type: 'json_schema', schema: BOOK_SCHEMA } },
     system: [{ type: 'text', text: bookPersona(region) }, paperBlock(paperText)],
-    messages: [...past, { role: 'user', content: `${passage}${asQuestion(question)}` }],
+    messages: [...past, { role: 'user', content: `${learnedNote(learned)}${passage}${asQuestion(question)}` }],
   };
 }
 
@@ -486,11 +492,11 @@ export function createAI({ client, env = process.env, logger = console, timeouts
     }
   }
 
-  async function book({ region, paperText, question, selection, history, signal } = {}) {
+  async function book({ region, paperText, question, selection, history, learned, signal } = {}) {
     if (!enabled || !paperText) return offlineBookAnswer(region, question, selection);
     let message;
     try {
-      message = await call('book', buildBookRequest({ region, paperText, question, selection, history }), { signal });
+      message = await call('book', buildBookRequest({ region, paperText, question, selection, history, learned }), { signal });
     } catch (err) {
       if (err.offline) return offlineBookAnswer(region, question, selection);
       throw err;

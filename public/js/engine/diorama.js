@@ -384,7 +384,7 @@ export function buildDiorama(biomeId, { seed = 11, fences = true } = {}) {
     if (B.fg === 'desert') { if (k < 0.45) tuft(x, z, 0.8 + r() * 0.4, [0xd9b44a, 0xc9a040, 0xe8c860]); else if (k < 0.75) cactus(x, -0.95, z, 0.8); else { const rk = add(new THREE.DodecahedronGeometry(0.7 + r() * 0.5, 0), L(0xc98a52), x, -0.7, z); rk.scale.y = 0.6; } }
     if (B.fg === 'dusk') { if (k < 0.5) tuft(x, z, 1 + r() * 0.3, [0x6a5a4a, 0x5a4a5a, 0x7a6a50]); else if (k < 0.78) pumpkin(x, -0.95, z, 1.6, true); else treeDead(x, -0.95, z + 0.4, 0.75); }
     if (B.fg === 'tropic') { if (k < 0.5) bigLeaves(x, z, 1.1 + r() * 0.4); else if (k < 0.75) starfish(x, z - 0.4); else tuft(x, z, 0.9, [0x3fb05a, 0x5fcf7a]); }
-    if (bankSpots.some((ax) => Math.abs(x - ax) < 1.9)) {
+    if (bankSpots.some((ax) => Math.abs(x - ax) < 3.0)) {
       const kk = 0.38; // shrink towards the spot on the ground, so loose parts (bush balls) come down too
       for (const o of root.children.slice(n0)) { o.position.set(x + (o.position.x - x) * kk, -0.95 + (o.position.y + 0.95) * kk, z + (o.position.z - z) * kk); o.scale.multiplyScalar(kk); }
     }

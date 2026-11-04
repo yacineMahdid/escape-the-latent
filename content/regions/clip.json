@@ -1181,9 +1181,6 @@
       "success": [
         "Ooh! Biggest score, biggest slice. But every caption still gets a crumb!"
       ],
-      "known": [
-        "Your book knows how scores turn into chances? Hmph! I wanted to ask that."
-      ],
       "record": "Raise e to each score, then divide by the sum of those powers. No share is ever zero; together they make one."
     },
     {
@@ -1210,9 +1207,6 @@
       "success": [
         "0.96! Almost the same way. Now, about my racks…"
       ],
-      "known": [
-        "Snap! Your book already knows how the Lens scores look-alikes."
-      ],
       "record": "The dot product divided by both lengths: the cosine of the angle between them, from −1 to 1. Length buys no likeness."
     },
     {
@@ -1238,9 +1232,6 @@
       ],
       "success": [
         "That's it! A shy guess stings a lot. A sure, right guess barely stings."
-      ],
-      "known": [
-        "Your book already knows how a poor guess stings? Good. Fewer tears."
       ],
       "record": "Minus the log of the chance given to the truth. Sure and right costs almost nothing; doubt the truth and the cost has no bound."
     },
@@ -1272,9 +1263,6 @@
       ],
       "success": [
         "8 × 512! Eight photos in, eight out. Each one squished to 512."
-      ],
-      "known": [
-        "Your book knows what shape pops out of a grid? No fair!"
       ],
       "record": "An n × d stack times a d × k grid leaves n × k. The inner sizes must agree, and are consumed."
     }
