@@ -16,9 +16,7 @@ builds on the player's Learned pages.
 
 - `npm test`: 175 server tests pass.
 - `BASE=… npm run test:puzzles`: all six board puzzles pass.
-- `BASE=… npm run test:play`: every board puzzle and artefact pickup in all three worlds passed at
-  midday; after a test-harness fix to the artefact pickup, CLIP passes again (Mamba was still
-  re-running at wrap-up).
+- `BASE=… npm run test:play`: every board puzzle and artefact pickup passes in all three worlds.
 - `BASE=… npm run test:extras`: Attendale, CLIP and Mamba pass end to end (mini-game, world puzzle,
   quiz, artefact).
 
