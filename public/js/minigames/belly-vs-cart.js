@@ -77,8 +77,9 @@ const easeBack = (t) => { const c = 1.9; return 1 + (c + 1) * (t - 1) ** 3 + c *
 
 const CONF = new WeakMap();
 export function config(spec = {}) {
-  const keyed = spec && typeof spec === 'object';
+  const keyed = !!spec && typeof spec === 'object';
   if (keyed && CONF.has(spec)) return CONF.get(spec);
+  if (!keyed) spec = {};
   const race = spec.race || {}, kv = race.kayvee || {}, dig = kv.rummage || {}, st = race.stall || {};
   const grains = {};
   for (const [id, g] of Object.entries({ ...DEF.grains, ...(spec.grains || {}) })) {
@@ -804,6 +805,13 @@ function textArt(text, size, color, outline = INK) { // a pop-up word: ink and w
     });
   });
 }
+function labelArt(text, size) { // small plain text, centred
+  return art(`label|${text}|${size}|${fontKey()}`, () => {
+    const m = measure(); m.font = `700 ${size}px ${FONT}`;
+    const w = Math.ceil(m.measureText(text).width + 8), h = Math.ceil(size * 1.6);
+    return makeSprite(w, h, w / 2, h / 2, (g) => txt(g, text, 0, 1, { size }));
+  });
+}
 function bubbleArt(text, o = {}) { // a speech bubble anchored at its tail's point; o.edge red for mistakes
   const size = o.size || 20, color = o.color || INK, edge = o.edge || INK, side = o.side || 1;
   return art(`bubble|${text}|${size}|${color}|${edge}|${side}|${fontKey()}`, () => {
@@ -889,12 +897,12 @@ function react(S, C, e, ctx) { // what the player sees and hears for each race e
     case 'blech':
       sfx('buzz'); setMood(F, 'blech', e.stall); F.swallow.push({ tok: 'mush', age: -0.05 });
       burst(F, MOUTH.x + 4, MOUTH.y - 14, 14, { a0: -Math.PI * 0.9, spread: Math.PI * 0.8, v: 190, color: ['#d9b87a', '#c19a5b', '#ecd6a4'], size: 4 });
-      oops(t.kind === 'noise' ? B.blech : B.blech);
+      oops(B.blech);
       break;
     case 'clang':
       sfx('buzz'); setMood(F, 'dizzy', e.stall);
       F.bells[t.i] = { ...(F.bells[t.i] || {}), wob: 0.7 };
-      burst(F, tileX(S, t.i, T) + 11, MOUTH.y - 26, 7, { kind: 'star', color: '#ffd35a', v: 140, g: 200, size: 7, life: 0.6 });
+      burst(F, tileX(S, t.i, T) + BELL_AT.x, MOUTH.y + BELL_AT.y + 16, 7, { kind: 'star', color: '#ffd35a', v: 140, g: 200, size: 7, life: 0.6 });
       oops(B.clang);
       break;
     case 'hm': sfx('buzz'); setMood(F, 'dizzy', e.stall); oops(B.chatty); break;
@@ -903,7 +911,7 @@ function react(S, C, e, ctx) { // what the player sees and hears for each race e
       const col = colorOf(e.tok) || INK;
       say(F, 'noodle', fill(B.right, e.tok), { color: col, size: 24, life: 1 });
       F.bells[t.i] = { ...(F.bells[t.i] || {}), swing: 1.3, flagT: 0 };
-      burst(F, tileX(S, t.i, T) + 11, MOUTH.y - 40, 18, { kind: 'confetti', color: [col, '#ffd35a', '#ffffff', PINK], v: 230, g: 420, size: 6, life: 1 });
+      burst(F, tileX(S, t.i, T) + BELL_AT.x, MOUTH.y + BELL_AT.y + 10, 18, { kind: 'confetti', color: [col, '#ffd35a', '#ffffff', PINK], v: 230, g: 420, size: 6, life: 1 });
       F.speck = { pose: 'cheer', left: 0.6 };
       break;
     }
@@ -934,7 +942,7 @@ function react(S, C, e, ctx) { // what the player sees and hears for each race e
       if (kayveeOnScreen(S, T)) say(F, 'kayvee', fill(B.kayveeAnswer, e.tok), { color: colorOf(e.tok), size: 18, life: 0.9 });
       break;
     case 'pass':
-      sfx('pin'); F.pops.push({ text: B.pass, age: 0, life: 1.1, size: 64, color: '#ffd35a' });
+      sfx('pin'); F.pops.push({ text: B.pass, age: 0, life: 1.1, size: 64, color: PINK });
       if (e.first) { say(F, 'tumble', B.tumble, { life: 1.2 }); F.tumbleCheer = 1.4; }
       break;
     case 'kLead': if (kayveeOnScreen(S, T) && !F.say.kayvee) say(F, 'kayvee', B.kayveeTaunt); break;
@@ -1147,7 +1155,7 @@ function drawStrip(g, S, C, F, now) {
   const drawK = () => {
     blit(g, tinyCartArt(S.n), xk + 6, STRIP.y + 4);
     blit(g, mouseIconArt(), xk - 12, STRIP.y + 2);
-    txt(g, `🛒${S.n}`, xk - 2, STRIP.y + 21, { size: 13, color: INK });
+    blit(g, labelArt(`🛒${S.n}`, 13), xk - 2, STRIP.y + 21);
     if (S.kDig > 0) { // digging: a magnifier with a filling ring
       const p = 1 - S.kDig / (S.kDigFull || 1), mx = xk + 2, my = STRIP.y - 20;
       g.beginPath(); g.arc(mx, my, 10, 0, TAU); g.fillStyle = PAPER; g.fill(); g.lineWidth = 2; g.strokeStyle = INK; g.stroke();
@@ -1200,9 +1208,9 @@ function drawNoodle(g, S, C, F, T) { // Tumble on the tail, the body with its be
 function drawSpeck(g, S, F, colors, nd) { // the Speck rides his head, telling him when
   const pose = F.speck ? F.speck.pose : 'idle', now = F.clock;
   const sb = pose === 'cheer' ? -Math.abs(Math.sin(now * 14)) * 4 : pose === 'point' ? 1.5 : 0;
-  blit(g, speckArt(colors, pose), nd.hx - 4, nd.hy - 25 + sb);
+  blit(g, speckArt(colors, pose), nd.hx - 16, nd.hy - 24 + sb);
   if (S.stall > 0 && !S.winner) { // a hiccup: stars swirl round his head while the ring at his mouth runs out
-    for (let k = 0; k < 3; k++) { const a = now * 5 + (k * TAU) / 3; star(g, nd.hx - 2 + Math.cos(a) * 30, nd.hy - 26 + Math.sin(a) * 7, 5.5); g.fillStyle = '#ffd35a'; g.fill(); g.lineWidth = 1.4; g.strokeStyle = INK; g.stroke(); }
+    for (let k = 0; k < 3; k++) { const a = now * 5 + (k * TAU) / 3; star(g, nd.hx - 6 + Math.cos(a) * 32, nd.hy - 26 + Math.sin(a) * 7, 5.5); g.fillStyle = '#ffd35a'; g.fill(); g.lineWidth = 1.4; g.strokeStyle = INK; g.stroke(); }
   }
 }
 function drawReach(g, S) {
@@ -1224,7 +1232,7 @@ function drawFlies(g, S, C, F) { // gulped gems fly into the mouth
 function drawPuffs(g, S, T, F) { // a passed bead: a small grey ✕ puff
   for (const o of F.puffs) {
     const x = tileX(S, o.i, T), u = o.age / 0.7;
-    g.save(); g.globalAlpha = clamp01(1 - u); g.translate(x, MOUTH.y - 26 - u * 18);
+    g.save(); g.globalAlpha = clamp01(1.4 - 1.4 * u); g.translate(x + 10, MOUTH.y - 62 - u * 26); g.scale(1.35, 1.35);
     g.beginPath(); for (const [dx, dy, r] of [[-7, 2, 7], [0, -3, 9], [8, 2, 7]]) { g.moveTo(dx + r, dy); g.arc(dx, dy, r, 0, TAU); }
     g.fillStyle = '#e4dfe8'; g.fill(); g.lineWidth = 2; g.strokeStyle = 'rgba(43,34,51,.45)'; g.stroke();
     g.strokeStyle = '#7d7488'; g.lineWidth = 2.6; g.beginPath(); g.moveTo(-4, -4); g.lineTo(4, 4); g.moveTo(4, -4); g.lineTo(-4, 4); g.stroke();
@@ -1314,8 +1322,18 @@ export default {
       sfx: (n) => { try { (api.sfx || gameSfx)(n); } catch { /* sound is optional */ } },
       lastDraw: 0,
     };
-    const handle = runMinigame(container, spec, api, makeGame(ctx));
+    const game = makeGame(ctx);
+    const handle = runMinigame(container, spec, api, game);
     const canvas = container.querySelector('.mg-canvas');
+    let gone = false;
+    const redrawPreview = () => { // the kit paints the idle preview once, maybe before the web font arrived
+      const m = container.__mg;
+      if (gone || !canvas || m?.status !== 'intro' || !m.state) return;
+      const g = canvas.getContext('2d');
+      g.clearRect(0, 0, W, H);
+      game.draw(g, m.state, spec);
+    };
+    try { Promise.all([document.fonts.load(`700 20px ${FONT}`), document.fonts.ready]).then(() => setTimeout(redrawPreview, 30), () => {}); } catch { /* no font loading API */ }
     const onMove = (e) => {
       if (!canvas) return;
       const r = canvas.getBoundingClientRect();
@@ -1326,6 +1344,7 @@ export default {
     canvas?.addEventListener('pointermove', onMove);
     return {
       destroy() {
+        gone = true;
         canvas?.removeEventListener('pointermove', onMove);
         handle.destroy();
       },
