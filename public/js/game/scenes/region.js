@@ -131,7 +131,12 @@ export async function createRegionScene(ctx, regionId) {
       await speak(id, next.intro || ['…!']);
       const ok = next.type === 'quiz' ? await runQuiz(next, id) : await runChallenge(next);
       if (ok) await onSolved(next);
-      else if ((next.type === 'explain' || next.type === 'minigame' || next.type === 'quiz') && next.retry) await speak(id, next.retry);
+      else if ((next.type === 'explain' || next.type === 'minigame' || next.type === 'quiz') && next.retry) {
+        // after an explain bubble: nothing if it closed before any grade, and never the reply it just showed
+        const lines = next.type !== 'explain' ? [].concat(next.retry)
+          : explainFeedback ? [].concat(next.retry).filter((l) => !explainFeedback.includes(String(l).trim())) : [];
+        if (lines.length) await speak(id, lines);
+      }
       return;
     }
     const pending = mine.find((c) => !isSolved(c));
@@ -147,6 +152,7 @@ export async function createRegionScene(ctx, regionId) {
     }
   }
 
+  let explainFeedback = '';   // the reply the last explain bubble showed ('' if it closed before any grade)
   async function runChallenge(c) {
     try {
       if (c.type === 'puzzle') return await runPuzzle(c);
@@ -157,8 +163,10 @@ export async function createRegionScene(ctx, regionId) {
         return !!res?.solved;
       }
       if (c.type === 'explain') {
+        explainFeedback = '';
         const ex = await import('../../ui/explain.js');
         const res = await ex.open({ challenge: c, regionId, speaker: { name: nameOf(c.giver) } });
+        explainFeedback = String(res?.feedback || '');
         return !!res?.pass;
       }
     } catch (e) {

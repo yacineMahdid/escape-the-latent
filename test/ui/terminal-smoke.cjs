@@ -32,6 +32,13 @@ const WRONG_GLOBAL = 'import numpy as np\n\n\ndef softmax(x):\n    e = np.exp(x 
 const SYNTAX = 'import numpy as np\n\ndef softmax(x:\n    return x\n';
 const LOOP = 'n = 0\nwhile True:\n    n += 1\n';
 const RIGHT = 'import numpy as np\n\n\ndef softmax(x):\n    x = np.asarray(x, dtype=float)\n    e = np.exp(x - x.max(axis=1, keepdims=True))\n    return e / e.sum(axis=1, keepdims=True)\n';
+// a shape bug: the row sums use the wrong length, so every non-square input crashes on line 7, each test
+// with its own shapes in numpy's message
+const SHAPE = 'import numpy as np\n\n\ndef softmax(x):\n    x = np.asarray(x, dtype=float)\n    e = np.exp(x - x.max(axis=1, keepdims=True))\n    sums = e @ np.ones(x.shape[0])\n    return e / sums[:, None]\n';
+// crashes on two lines: one-row inputs on line 7, the four-row input on line 9
+const TWO_CRASHES = 'import numpy as np\n\n\ndef softmax(x):\n    x = np.asarray(x, dtype=float)\n    if len(x) == 1:\n        return x.glow\n    if len(x) == 4:\n        return x.hum\n    e = np.exp(x - x.max(axis=1, keepdims=True))\n    return e / e.sum(axis=1, keepdims=True)\n';
+// prints while the tests run (and overflows, so one test fails)
+const PRINTS = 'import numpy as np\n\n\ndef softmax(x):\n    print("rows", len(x))\n    e = np.exp(x)\n    return e / e.sum(axis=1, keepdims=True)\n';
 // a run that vandalises the shared interpreter; the next run must not notice
 const VANDAL = 'import builtins, math, sys, warnings\nimport numpy as np\nnp.exp = lambda x: x * 0\nnp.seterr(all="raise")\nbuiltins.len = lambda x: 0\nmath.sqrt = None\nsys.setrecursionlimit(60)\nwarnings.simplefilter("error")\nnp.extra = 1\n';
 const VAGUE = 'Because it makes things better and nicer for the lamps.';
@@ -190,6 +197,7 @@ const exKeyWords = (page) => page.$$eval('.ex-key:not([hidden])', (bs) => bs.map
       assert.deepEqual(tip.slice(0, 2), ['keeps shape and rows sum to one', 'known values'], 'the test names are in the tooltip');
       assert.equal(tip.at(-1), 'line 7: raise NotImplementedError', 'and the trace');
       assert.equal(await page.$eval('.term-ln.bad', (e) => e.textContent), '7', 'the gutter marks the failing line');
+      assert.doesNotMatch(rows[0].cls, /\b(pickable|sel)\b/, 'one line to mark: nothing to pick');
       const text = await page.$eval('.term-log', (e) => e.innerText);
       assert.ok(words(text) <= 12, `the console stays short: ${JSON.stringify(text)}`);
       await shot(page, 'term-starter');
@@ -236,22 +244,69 @@ const exKeyWords = (page) => page.$$eval('.ex-key:not([hidden])', (bs) => bs.map
       await shot(page, 'term-wrong');
     });
 
-    await step('another wrong solution: Ctrl+Enter tests; each failing test says its own message; a red pip picks one', async () => {
+    await step('another wrong solution: Ctrl+Enter tests; each failing test says its own message; with no line to mark, the rows are plain', async () => {
       await setCode(page, WRONG_GLOBAL);
       await page.focus('.term-ta');
       await page.keyboard.press('Control+Enter');
       await page.waitForSelector('.term-sum', { timeout: 30000 });
       assert.equal(await page.$eval('.term-sum b', (b) => b.textContent), '4 / 6 tests pass');
-      let rows = await consoleRows(page);
+      const rows = await consoleRows(page);
       assert.deepEqual(rows.map((r) => r.msg), ['every row must sum to 1', 'row 0 must be the softmax of row 0 alone'], 'every failure, in test order');
-      assert.deepEqual(rows.map((r) => /\bsel\b/.test(r.cls)), [true, false], 'the first one is picked');
-      await page.click('.term-pips i.bad:not(.sel)');
-      rows = await consoleRows(page);
-      assert.deepEqual(rows.map((r) => /\bsel\b/.test(r.cls)), [false, true], 'the red pip picks its row');
-      assert.deepEqual((await pips(page)).map((p) => p.sel), [false, false, true, false, false, false]);
-      await page.click('.term-log .term-fail >> nth=0');
-      assert.deepEqual((await pips(page)).map((p) => p.sel), [true, false, false, false, false, false], 'so does clicking a row');
+      assert.ok(rows.every((r) => !/\b(pickable|sel)\b/.test(r.cls)), 'assertion failures have no line: nothing looks pickable or picked');
+      assert.equal(await page.$$eval('.term-pips i.pick, .term-pips i.sel', (is) => is.length), 0, 'and no pip is');
+      await page.click('.term-pips i.bad >> nth=1');
+      assert.ok((await consoleRows(page)).every((r) => !/\bsel\b/.test(r.cls)), 'a red pip picks nothing');
+      assert.equal(await page.$('.term-ln.bad'), null, 'no line is marked');
       await shot(page, 'term-wrong-two');
+    });
+
+    await step('a shape bug crashing every test on one line (numpy names other shapes each time) is one row: the first message, "4 tests", the line', async () => {
+      await setCode(page, SHAPE);
+      await runAndWait(page, 'test');
+      assert.equal(await page.$eval('.term-sum b', (b) => b.textContent), '2 / 6 tests pass');
+      const rows = await consoleRows(page);
+      assert.equal(rows.length, 1, `one row, not one per shape: ${JSON.stringify(rows.map((r) => r.msg))}`);
+      assert.match(rows[0].msg, /^ValueError: matmul: .*\(size 2 is different from 3\)$/, 'the first failing test\'s own message');
+      assert.equal(rows[0].count, '4 tests');
+      assert.equal(rows[0].line, 'line 7');
+      assert.equal(await page.$eval('.term-ln.bad', (e) => e.textContent), '7');
+      const tip = rows[0].tip.split('\n');
+      assert.equal(tip.length, 5, 'each test with its own message, then the trace');
+      assert.match(tip[0], /^keeps shape and rows sum to one — ValueError: matmul: .*\(size 2 is different from 3\)$/);
+      assert.match(tip[1], /^known values — ValueError: matmul: .*\(size 1 is different from 2\)$/);
+      assert.equal(tip.at(-1), 'line 7: sums = e @ np.ones(x.shape[0])');
+      const msgs = (await pips(page)).filter((p) => !p.ok).map((p) => p.tip.split('\n')[1]);
+      assert.equal(new Set(msgs).size, 4, 'each pip keeps its own test\'s message');
+      await shot(page, 'term-shape-crash');
+    });
+
+    await step('crashes on two lines: two rows, the first one\'s line marked; a row or a red pip picks the other', async () => {
+      await setCode(page, TWO_CRASHES);
+      await runAndWait(page, 'test');
+      let rows = await consoleRows(page);
+      assert.deepEqual(rows.map((r) => [r.line, r.count]), [['line 7', '2 tests'], ['line 9', '']]);
+      assert.ok(rows.every((r) => /\bpickable\b/.test(r.cls)), 'a choice of lines: the rows can be picked');
+      assert.deepEqual(rows.map((r) => /\bsel\b/.test(r.cls)), [true, false], 'the first one is picked');
+      assert.equal(await page.$eval('.term-ln.bad', (e) => e.textContent), '7');
+      await page.click('.term-log .term-fail >> nth=1');
+      rows = await consoleRows(page);
+      assert.deepEqual(rows.map((r) => /\bsel\b/.test(r.cls)), [false, true], 'clicking a row picks it');
+      assert.equal(await page.$eval('.term-ln.bad', (e) => e.textContent), '9', 'and marks its line');
+      assert.deepEqual((await pips(page)).map((p) => p.sel), [false, false, false, true, false, false]);
+      await page.click('.term-pips i.pick >> nth=0');
+      assert.deepEqual((await pips(page)).map((p) => p.sel), [false, true, false, false, true, false], 'so does a red pip');
+      assert.equal(await page.$eval('.term-ln.bad', (e) => e.textContent), '7');
+      await shot(page, 'term-two-crashes');
+    });
+
+    await step('print() output from a test run sits right under the summary, before the failures', async () => {
+      await setCode(page, PRINTS);
+      await runAndWait(page, 'test');
+      const order = await page.$$eval('.term-log > *', (els) => els.map((e) => e.className.split(' ')[0]));
+      assert.equal(order[0], 'term-sum');
+      assert.equal(order[1], 'term-stdout', `the prints come next: ${JSON.stringify(order)}`);
+      assert.ok(order.lastIndexOf('term-stdout') < order.indexOf('term-row') && order.indexOf('term-row') > 0, `then the failures: ${JSON.stringify(order)}`);
+      assert.match(await page.$eval('.term-stdout', (e) => e.textContent), /^rows 2\nrows 1\nrows 2\nrows 4\n/, 'what each test printed, in order');
     });
 
     await step('a syntax error points at its line', async () => {
@@ -332,15 +387,20 @@ const exKeyWords = (page) => page.$$eval('.ex-key:not([hidden])', (bs) => bs.map
       assert.equal(await page.$eval('.term-stdout', (e) => e.textContent), '45', 'a fresh worker runs code again');
     });
 
-    await step('↺ Reset code asks "Click again to reset", then restores the starter', async () => {
-      await page.click('.term-key[data-act="reset"]');
-      assert.ok(!(await editorValue(page)).startsWith(STARTER_HEAD), 'one click does not reset');
-      assert.ok(await page.$eval('.term-key[data-act="reset"]', (b) => b.classList.contains('armed')));
-      assert.equal(await keyWords(page, 'reset'), 'Click again to reset');
-      await page.click('.term-key[data-act="reset"]');
+    await step('↺ Reset code asks "Sure?" in its own spot (the key keeps its width), then restores the starter', async () => {
+      const key = '.term-key[data-act="reset"]';
+      const width = await page.$eval(key, (b) => b.offsetWidth);
+      await page.click(key);
+      assert.ok(!(await editorValue(page)).startsWith(STARTER_HEAD), 'one press does not reset');
+      assert.ok(await page.$eval(key, (b) => b.classList.contains('armed')));
+      assert.equal(await keyWords(page, 'reset'), 'Sure?');
+      assert.equal(await page.$eval(key, (b) => b.offsetWidth), width, 'the armed key is no wider');
+      assert.equal(await page.$eval(key, (b) => b.title), 'Click again to reset', 'the details are in the tooltip');
+      await page.click(key);
       assert.ok((await editorValue(page)).startsWith(STARTER_HEAD));
       assert.match(await editorValue(page), /NotImplementedError/);
       assert.equal(await keyWords(page, 'reset'), 'Reset code');
+      assert.equal(await page.$eval(key, (b) => b.title), 'Back to the starter code');
     });
 
     await step('Esc closes with solved: false and removes the terminal', async () => {
@@ -534,26 +594,39 @@ const exKeyWords = (page) => page.$$eval('.ex-key:not([hidden])', (bs) => bs.map
       assert.equal(res.pass, true, 'Esc after passing still counts as a pass');
     });
 
-    await step('phone-sized screens still fit (portrait and landscape), the keys\' words on one row', async () => {
-      for (const [w, h] of [[390, 780], [360, 740], [844, 390]]) {
+    await step('phones to small laptops (portrait and landscape): the keys keep one row inside the panel, armed too; the explain question is whole', async () => {
+      for (const [w, h] of [[320, 568], [360, 740], [390, 780], [412, 915], [844, 390], [861, 700], [900, 600]]) {
         await page.setViewportSize({ width: w, height: h });
         await openTerminal(page);
         await sleep(300);
-        const m = await page.$eval('.term', (e) => {
+        const measure = () => page.$eval('.term', (e) => {
           const r = e.getBoundingClientRect();
-          const row = document.querySelector('.term-keys');
-          const keys = [...row.querySelectorAll('.term-key')].map((k) => k.getBoundingClientRect());
+          const inner = r.right - parseFloat(getComputedStyle(e).borderRightWidth);
+          const keys = [...document.querySelectorAll('.term-keys .term-key')];
+          const boxes = keys.map((k) => k.getBoundingClientRect());
+          const right = (s) => document.querySelector(s).getBoundingClientRect().right;
           return {
             fits: r.left >= -1 && r.right <= innerWidth + 1 && r.bottom <= innerHeight + 1,
             editor: document.querySelector('.term-editor').getBoundingClientRect().height,
-            oneRow: new Set(keys.map((k) => Math.round(k.top))).size === 1 && keys.every((k) => k.right <= r.right),
-            words: [...row.querySelectorAll('.term-key')].map((k) => k.innerText.trim()),
+            oneRow: new Set(boxes.map((k) => Math.round(k.top))).size === 1,
+            // keys, editor and console all end inside the panel's border
+            inside: [...boxes.map((k) => k.right), right('.term-editor'), right('.term-out')].every((x) => x <= inner + 0.5),
+            words: keys.map((k) => k.innerText.trim()),
+            resetWidth: keys[2].offsetWidth,
           };
         });
+        const m = await measure();
         assert.ok(m.fits, `${w}x${h}: the terminal fits`);
         assert.ok(m.editor >= 150, `${w}x${h}: the editor is ${m.editor}px tall`);
-        assert.ok(m.oneRow, `${w}x${h}: the keys sit on one row inside the panel`);
+        assert.ok(m.oneRow && m.inside, `${w}x${h}: the keys sit on one row inside the panel ${JSON.stringify(m)}`);
         assert.deepEqual(m.words, ['Run', 'Run tests', 'Reset code'], `${w}x${h}: the keys keep their words`);
+        // armed (one press on Reset code): same key, same width, nothing pushed out
+        await page.click('.term-key[data-act="reset"]');
+        await page.waitForFunction(() => document.querySelector('.term-key[data-act="reset"]').getAnimations().length === 0);   // the wiggle is over
+        const a = await measure();
+        assert.deepEqual(a.words, ['Run', 'Run tests', 'Sure?'], `${w}x${h}: armed`);
+        assert.equal(a.resetWidth, m.resetWidth, `${w}x${h}: the armed key keeps its width`);
+        assert.ok(a.oneRow && a.inside, `${w}x${h}: armed, the keys, editor and console stay inside the panel ${JSON.stringify(a)}`);
         await shot(page, `term-phone-${w}x${h}`);
         await page.keyboard.press('Escape');
         await gone(page);
@@ -564,9 +637,17 @@ const exKeyWords = (page) => page.$$eval('.ex-key:not([hidden])', (bs) => bs.map
         await sleep(900);
         const e = await page.evaluate(() => {
           const r = (s) => document.querySelector(s).getBoundingClientRect();
-          return { card: r('.ex-card').height, keys: r('.ex-keys').bottom, bubble: r('.ex-bubble').bottom };
+          const q = document.querySelector('.ex-q');
+          return {
+            card: r('.ex-card').height, keys: r('.ex-keys').bottom, bubble: r('.ex-bubble').bottom,
+            question: [q.clientHeight, q.scrollHeight],
+            below: r('.ex-reply-text').top >= r('.ex-verdict').bottom - 1, text: r('.ex-reply-text').width, reply: r('.ex-reply').width,
+          };
         });
         assert.ok(e.card >= 100 && e.keys <= h && e.bubble <= h, `${w}x${h}: the answer card and keys fit ${JSON.stringify(e)}`);
+        assert.ok(e.question[1] <= e.question[0] + 1, `${w}x${h}: the question is never cut ${JSON.stringify(e.question)}`);
+        // phones: the verdict (and meter) on the first line, the villager's words full width below it
+        if (w <= 700) assert.ok(e.below && e.text >= e.reply - 40, `${w}x${h}: the reply's words take the full width ${JSON.stringify(e)}`);
         await shot(page, `explain-phone-${w}x${h}`);
         await page.keyboard.press('Escape');
         await gone(page);
@@ -577,7 +658,7 @@ const exKeyWords = (page) => page.$$eval('.ex-key:not([hidden])', (bs) => bs.map
 
     console.log('python offline');
 
-    await step('Pyodide unreachable: fails fast, ▶ says offline, and recovers once it is back', async () => {
+    await step('Pyodide unreachable: fails fast and says so at once, ▶ says it again, and recovers once it is back', async () => {
       const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
       const cdn = /cdn\.jsdelivr\.net/;
       await context.route(cdn, (route) => route.abort());
@@ -587,9 +668,12 @@ const exKeyWords = (page) => page.$$eval('.ex-key:not([hidden])', (bs) => bs.map
         await p2.goto(`${BASE}/dev/terminal.html?mode=terminal&challenge=code1`);
         await p2.waitForSelector('.term');
         await p2.waitForFunction(() => document.querySelector('.term')?.dataset.py === 'failed', null, { timeout: 30000 });
+        // before the player does anything: a blank console would look ready
+        assert.deepEqual((await consoleRows(p2)).map((r) => r.text), ["Python didn't load (offline?). Try again."], 'the console says so right away');
+        assert.equal(await statusLine(p2), '', 'no status line left behind');
         await setCode(p2, 'print(6 * 7)\n');
         await runAndWait(p2, 'run');
-        assert.equal(await p2.$eval('.term-row.bad', (r) => r.textContent), "Python didn't load (offline?). Try again.");
+        assert.deepEqual((await consoleRows(p2)).map((r) => r.text), ["Python didn't load (offline?). Try again."], 'Run tries again and says it once');
         await shot(p2, 'term-offline');
         await context.unroute(cdn);
         await runAndWait(p2, 'run', 150000);          // Python loads from scratch in this context

@@ -316,6 +316,7 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
   .term-key { padding: 0 13px; font-size: 14px; border-width: 3px; }
   .term-keys .term-key .etl-ico { display: none; }
 }
+/* 320 px phones: a touch tighter still, with room to spare for a wider fallback font */
 @media (max-width: 340px) {
   .term-keys { gap: 6px; padding-left: 0; padding-right: 0; }
   .term-key { padding: 0 11px; }
@@ -494,6 +495,10 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
   .ex-key { height: 42px; padding: 0 16px; font-size: 16px; }
   .ex-key.has-ico { padding-left: 13px; }
   .ex-key.is-waiting::after { left: 12px; }
+}
+/* small portrait phones (320 x 568): the answer card gives up an empty line or so to the reply */
+@media (max-width: 700px) and (min-height: 501px) {
+  .ex-ta { height: min(196px, 29vh); }
 }
 
 /* short screens (phone landscape): tighter, and the keys sit beside the answer card */

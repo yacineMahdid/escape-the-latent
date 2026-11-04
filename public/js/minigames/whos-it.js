@@ -31,7 +31,6 @@ const BUB = { x: 740, y: 456, h: 54 };
 const STRIP = { y: 88, size: 24, pad: 12, gap: 8, h: 44, lift: 8 };
 const BIMBLE = { x: 908, y: 478 };
 const TAP = 3;              // degrees for a key tap shorter than one frame
-const INTRO = 0.34;         // seconds of the cards dropping in (the round is live meanwhile)
 const LITTLE = new Set(['the', 'a', 'an', 'because', 'was', 'is', 'and', 'of', 'to', 'so']);
 
 const DEF_COLORS = {
@@ -53,7 +52,6 @@ const lerp = (a, b, t) => a + (b - a) * t;
 const easeOut = (t) => 1 - (1 - t) ** 3;
 const easeBack = (t) => { const c = 1.9; return 1 + (c + 1) * (t - 1) ** 3 + c * (t - 1) ** 2; };
 const norm = (a) => ((a % 360) + 360) % 360;
-export const angDiff = (a, b) => norm(a - b + 180) - 180;          // a - b, wrapped into [-180, 180)
 const num = (v, d) => (Number.isFinite(v) ? v : d);
 const hexRgb = (hex) => { const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '')); const n = m ? parseInt(m[1], 16) : 0xe4ddd0; return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
 const rgbStr = (c) => `rgb(${Math.round(c[0])}, ${Math.round(c[1])}, ${Math.round(c[2])})`;
@@ -103,7 +101,7 @@ function config(spec) {
 }
 function colorOf(C, rd, j) {
   const word = rd.words[j];
-  if (C.colors[word]) return C.colors[word];
+  if (Object.prototype.hasOwnProperty.call(C.colors, word)) return C.colors[word];
   if (j === rd.ask) return C.colors.it;
   if (j === rd.words.length - 1) return C.colors['last word'];
   if (LITTLE.has(String(word).toLowerCase())) return C.colors['little words'];
@@ -131,12 +129,13 @@ const ART = new Map();
 const art = (key, make) => { let sp = ART.get(key); if (!sp) { sp = make(); ART.set(key, sp); } return sp; };
 let MEASURE = null;
 const measure = () => (MEASURE ||= document.createElement('canvas').getContext('2d'));
-// text art made before the Fredoka web font arrives is made again once it is there
+// text art made before the Fredoka web font arrives is made again once it is there (checked once per frame)
 const fontKey = () => { try { return document.fonts.check(`700 16px ${FONT}`) ? '' : '~'; } catch { return ''; } };
+let FK = '';
 function textW(text, size) { const m = measure(); m.font = `700 ${size}px ${FONT}`; return m.measureText(text).width; }
 function textArt(text, size, color, o = {}) { // centred on its middle; o.stroke + o.sw: an outline
   const sw = o.stroke ? (o.sw || 5) : 0;
-  return art(`t|${text}|${size}|${color}|${o.stroke || ''}|${sw}|${fontKey()}`, () => {
+  return art(`t|${text}|${size}|${color}|${o.stroke || ''}|${sw}|${FK}`, () => {
     const tw = textW(text, size), pad = sw + 4;
     const w = Math.ceil(tw + pad * 2), h = Math.ceil(size * 1.5 + pad * 2);
     return makeSprite(w, h, w / 2, h / 2, (g) => {
@@ -147,7 +146,7 @@ function textArt(text, size, color, o = {}) { // centred on its middle; o.stroke
   });
 }
 function pillArt(word, color) { // a key flag's paper pill, centred
-  return art(`pill|${word}|${color}|${fontKey()}`, () => {
+  return art(`pill|${word}|${color}|${FK}`, () => {
     const pw = Math.ceil((word ? textW(word, 16) : 22) + 20), ph = 28;
     return makeSprite(pw + 10, ph + 14, pw / 2 + 5, ph / 2 + 4, (g) => {
       draw.paper(g, () => draw.roundRect(g, -pw / 2, -ph / 2, pw, ph, ph / 2), color, { lw: 3 });
@@ -284,7 +283,7 @@ function makeGame(ctx) {
     const widths = (sz) => words.map((t) => textW(t, sz) + STRIP.pad * 2);
     let size = STRIP.size;
     while (size > 15 && span(widths(size)) > W - 60) size -= 1;
-    S.cardSize = size; S.cardFont = fontKey();
+    S.cardSize = size; S.cardFont = FK;
     S.cards = cardRow(widths(size));
     if (S.last) layoutResult(S);
   }
@@ -552,7 +551,9 @@ function makeGame(ctx) {
       if (outer) { g.strokeStyle = INK; g.lineWidth = 2.5; g.beginPath(); g.moveTo(px, py); g.lineTo(lx + (px - lx) * 0.45, ly + (py - ly) * 0.45); g.stroke(); }
       draw.paper(g, () => { g.beginPath(); g.arc(px, py, 4.5, 0, 7); }, pre ? '#e9cf9c' : f.color, { lw: 2.2, shadow: false });
       const flutter = S.driftDir ? Math.sin(amb * 7 + j * 1.7) * 0.07 : 0;
-      stamp(g, pre ? pillArt('', '#fff1cf') : pillArt(f.word, f.color), lx, ly, pop * (j === S.top && S.focused ? 1 + 0.12 * (S.focusKick || 0) : 1), flutter);
+      let sc = pop * (j === S.top && S.focused ? 1 + 0.12 * (S.focusKick || 0) : 1);
+      if (S.stage === 'rung' && S.last?.kind === 'good' && j === S.rd.means) sc *= 1 + 0.3 * Math.sin(Math.PI * clamp01(t / 0.4));
+      stamp(g, pre ? pillArt('', '#fff1cf') : pillArt(f.word, f.color), lx, ly, sc, flutter);
     }
     drawEar(g, S, theta);
   }
@@ -714,18 +715,18 @@ function makeGame(ctx) {
       const rdt = Math.min(0.05, Math.max(0, now - (ctx.lastDraw || now)));
       ctx.lastDraw = now;
       stepFx(S, rdt);
-      if (S.cardFont !== fontKey()) layoutCards(S);
+      FK = fontKey();
+      if (S.cardFont !== FK) layoutCards(S);
       let theta = S.theta, w = S.w;
       if (S.stage === 'pre') { theta = norm(S.theta + Math.sin(now * 0.8) * 70); w = listen(theta, S.base, S.C.sharp); }
       g.save();
       if (S.shake > 0) { const k = (S.shake / 0.32) * 7; g.translate((Math.random() - 0.5) * k, (Math.random() - 0.5) * k); }
-      const SK = globalThis.__wiSkip || new Set(); // DEBUG-PROFILE
-      if (!SK.has('bg')) blit(g, bgArt());
-      if (!SK.has('dial')) drawDial(g, S, theta, w, now);
-      if (!SK.has('pie')) drawPie(g, S, w, now);
-      if (!SK.has('bimble')) drawBimble(g, S, now);
-      if (!SK.has('bubble')) drawBubble(g, S, w, now);
-      if (!SK.has('strip')) drawStrip(g, S, w, now);
+      blit(g, bgArt());
+      drawDial(g, S, theta, w, now);
+      drawPie(g, S, w, now);
+      drawBimble(g, S, now);
+      drawBubble(g, S, w, now);
+      drawStrip(g, S, w, now);
       drawFx(g, S);
       g.restore();
     },
@@ -753,9 +754,7 @@ export default {
       pointerIn: () => pointerIn,
       setCursor: (c) => { if (canvas && canvas.style.cursor !== c) canvas.style.cursor = c; },
     };
-    const game = makeGame(ctx);
-    globalThis.__wiGame = game; // DEBUG-PROFILE
-    const handle = runMinigame(container, own, api, game);
+    const handle = runMinigame(container, own, api, makeGame(ctx));
     canvas = container.querySelector('.mg-canvas');
     const enter = () => { pointerIn = true; }, leave = () => { pointerIn = false; };
     canvas?.addEventListener('pointermove', enter); canvas?.addEventListener('pointerdown', enter); canvas?.addEventListener('pointerleave', leave);

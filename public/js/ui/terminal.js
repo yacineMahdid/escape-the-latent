@@ -920,6 +920,7 @@ export async function open({ challenge = {}, regionId = 'local' } = {}) {
       store.del(key);                          // a solved challenge leaves no draft (New Game starts clean)
       panel.classList.add('is-solved');
       editor.ta.readOnly = true;
+      disarm();
       for (const b of [runKey, testKey, resetKey]) b.disabled = true;
       stage.append(h('div', { class: 'term-stamp', 'aria-hidden': 'true' }, icon('test'), h('b', { text: 'Solved!' })));
       paperConfetti(overlay);
