@@ -147,6 +147,7 @@
   font: 14px/1 var(--bk-serif); font-variant: small-caps; letter-spacing: .14em;
   color: #e6d8ff; text-shadow: 0 0 8px rgba(155, 107, 255, .95);
 }
+.bk-name-short { display: none; }   /* "The Cursed Book", for narrow windows */
 
 .bk-motes {
   position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none;
@@ -583,6 +584,39 @@
   .bk-tl { font-size: 11px; letter-spacing: 0; }
   .bk-rbar { right: -42px; width: 42px; }
   .bk-name { top: -10px; font-size: 12px; letter-spacing: .08em; padding: 4px 14px 5px; }
+}
+/* narrow windows (phone portrait): the plate carries the short name instead of a cut-off long one */
+@media (max-width: 499px) {
+  .bk-name { max-width: calc(100% - 80px); }
+  .bk-name-full { display: none; }
+  .bk-name-short { display: inline; }
+}
+/* short windows (phone landscape, 640x480): a slimmer ribbon and clasp. The clasp sits at the bottom of the
+   edge when there is room, else just under the last ribbon, never over a ribbon's word:
+   the ribbons end at 26 + 4 x 42 + 3 x 4 = 206px, the clasp is 2 + 6 + 3 x 26 + 32 = 118px tall. */
+@media (max-height: 520px) {
+  .bk-tabs { top: 26px; gap: 4px; }
+  .bk-tab { height: 42px; gap: 4px; font-size: 16px; }
+  .bk-ico { height: 16px; line-height: 16px; }
+  .bk-tab .bk-emoji { font-size: 15px; }
+  .bk-tab-ask .bk-ico { font-size: 18px; }
+  .bk-tab-learned .bk-ico { font-size: 15px; }
+  .bk-tl { font-size: 10px; letter-spacing: 0; }
+  .bk-rbar { top: max(212px, calc(100% - 128px)); bottom: auto; padding: 3px 0 3px 2px; gap: 0; }
+  .bk-rbar .bk-ib { height: 26px; font-size: 17px; }
+  .bk-pc { padding: 1px 0; font-size: 11px; }
+  .bk-pnum { height: 16px; font-size: 15px; line-height: 16px; }
+  .bk-ptotal { padding-top: 1px; line-height: 12px; }
+  .bk-rbar .bk-ext { margin-top: 0; font-size: 14px; }
+}
+/* very short (a phone browser in landscape): tighter still, with less margin round the book;
+   the ribbons end at 24 + 4 x 38 + 3 x 3 = 185px, the clasp is 2 + 6 + 3 x 24 + 32 = 112px tall */
+@media (max-height: 370px) {
+  .bk { height: calc(100vh - 26px); }
+  .bk-tabs { top: 24px; gap: 3px; }
+  .bk-tab { height: 38px; gap: 3px; }
+  .bk-rbar { top: max(191px, calc(100% - 122px)); }
+  .bk-rbar .bk-ib { height: 24px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

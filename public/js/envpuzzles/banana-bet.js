@@ -171,7 +171,10 @@ export default {
       const radius = (u) => thick * (0.3 + 0.7 * Math.pow(Math.sin(Math.PI * u), 0.55));
       const skin = M(o.color ?? 0xffd84a, { roughness: o.rough ?? 0.55, emissive: o.glow ?? 0x2a2000, flatShading: !!o.flat });
       const tipM = M(o.tip ?? 0x4a3420, { roughness: 0.7, flatShading: !!o.flat });
-      mesh(taperTubeGeo(curve, radius, o.flat ? 20 : 32, o.radial ?? (o.flat ? 5 : 10)), skin, 0, 0, 0, g);
+      const tube = taperTubeGeo(curve, radius, o.flat ? 20 : 32, o.radial ?? (o.flat ? 5 : 10));
+      // toyparts' tube winds its triangles inward (its own users draw double-sided): face them out
+      const ix = tube.index.array; for (let i = 0; i < ix.length; i += 3) { const t = ix[i + 1]; ix[i + 1] = ix[i + 2]; ix[i + 2] = t; }
+      mesh(tube, skin, 0, 0, 0, g);
       const p1 = curve.getPointAt(1);
       mesh(new THREE.SphereGeometry(thick * 0.31, 10, 8), tipM, p1.x, p1.y, p1.z, g);
       const p0 = curve.getPointAt(0), out = curve.getTangentAt(0).negate();

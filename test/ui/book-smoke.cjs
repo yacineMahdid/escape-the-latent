@@ -351,7 +351,7 @@ async function main() {
       await page.click('.bk-tab[data-tab="ask"]');
       await page.waitForSelector('.bk-ask.on .bk-empty:not([hidden])');
       const ph = await page.$eval('.bk-qin', (e) => e.placeholder);
-      assert.ok(/ask about the paper/i.test(ph) && /terse/i.test(ph) && /challenge/i.test(ph), `the placeholder says what to do (${ph})`);
+      assert.ok(/ask about the paper/i.test(ph) && /won.t solve challenges/i.test(ph), `the placeholder says what to do and what not to expect (${ph})`);
       await page.waitForSelector('.bk-ask .bk-off:not([hidden])'); // no API key on the test server
       const off = await page.$eval('.bk-off', (e) => e.textContent.trim());
       assert.ok(/offline/i.test(off) && /API key/.test(off) && /hints/.test(off), `the offline line (${off})`);
@@ -564,7 +564,7 @@ async function main() {
       await page.waitForSelector('.bk-learned.on .bk-empty:not([hidden])');
       assert.equal(await page.$$eval('.bk-le', (els) => els.length), 0);
       const { text, lines } = await emptyLine('learned');
-      assert.ok(/nothing learned yet/i.test(text) && /villagers/.test(text), `says what fills it (${text})`);
+      assert.ok(/prove/i.test(text) && /villagers/.test(text), `says what fills it (${text})`);
       assert.equal(lines, 1, 'one line');
       await shot(page, 'learned-empty');
     });
@@ -574,7 +574,7 @@ async function main() {
       await page.goto(`${BASE}/dev/book.html?tab=notes`);
       await page.waitForSelector('.bk-notes.on .bk-empty:not([hidden])');
       const { text, lines } = await emptyLine('notes');
-      assert.ok(/no notes yet/i.test(text) && /select text/i.test(text), `says what fills it (${text})`);
+      assert.ok(/select text/i.test(text) && /note/i.test(text), `says what fills it (${text})`);
       assert.equal(lines, 1, 'one line');
       await shot(page, 'notes-empty');
     });
@@ -684,7 +684,7 @@ async function main() {
     await step('words where they are needed: the book\'s name, icon + word tabs and controls, short lines', async () => {
       await page.goto(`${BASE}/dev/book.html?tab=read`);
       await page.waitForSelector('.bk-read[data-state="ready"]', { timeout: 30000 });
-      const name = await page.$eval('.bk-name', (e) => { const r = e.getBoundingClientRect(); return { text: e.textContent, shown: r.width > 0 && r.top >= 0 && r.bottom <= innerHeight }; });
+      const name = await page.$eval('.bk-name', (e) => { const r = e.getBoundingClientRect(); return { text: e.innerText, shown: r.width > 0 && r.top >= 0 && r.bottom <= innerHeight }; });
       assert.deepEqual(name, { text: 'The Cursed Book of Dimensionality', shown: true }, 'the book\'s name is on its cover');
       assert.equal(await page.$eval('.bk-overlay', (e) => e.getAttribute('aria-label')), 'The Cursed Book of Dimensionality');
       const tabs = await page.$$eval('.bk-tab', (els) => els.map((e) => [e.querySelector('.bk-ico').textContent, e.querySelector('.bk-tl').textContent]));
@@ -702,11 +702,12 @@ async function main() {
           })
           .map((e) => e.outerHTML.slice(0, 90)), GLYPHS);
         assert.deepEqual(bad, [], `controls with neither a word nor a known glyph + tooltip on ${tab}`);
+        // hints under ~60 characters (the doc's "Concise text")
         const long = await page.evaluate(() => [...document.querySelectorAll('.bk-overlay :is(.bk-name, .bk-tl, .bk-w, .bk-ng-n, .bk-empty-t, .bk-fail-t, .bk-off)')]
-          .filter((e) => e.offsetParent).map((e) => e.textContent.trim())
+          .filter((e) => e.offsetParent).map((e) => e.innerText.trim())
           .concat([...document.querySelectorAll('.bk-overlay [placeholder]')].map((e) => e.placeholder))
-          .filter((s) => s.length > 75));
-        assert.deepEqual(long, [], `no paragraphs: lines over 75 characters on ${tab}`);
+          .filter((s) => s.length > 60));
+        assert.deepEqual(long, [], `no paragraphs: lines over 60 characters on ${tab}`);
       }
     });
 
@@ -735,6 +736,35 @@ async function main() {
         });
         assert.ok(words.every(([, ok]) => ok), `tab words in full on ${tab}: ${JSON.stringify(words)}`);
         await shot(page, `900-${tab}`);
+      }
+    });
+
+    console.log('phone sizes');
+    await step('narrow windows name it "The Cursed Book" in full; in short ones the clasp leaves every ribbon\'s icon and word in view', async () => {
+      for (const vp of [{ width: 390, height: 844 }, { width: 844, height: 390 }, { width: 640, height: 480 }, { width: 740, height: 360 }]) {
+        const at = `${vp.width}x${vp.height}`;
+        await page.setViewportSize(vp);
+        await page.goto(`${BASE}/dev/book.html?tab=read`);
+        await page.waitForSelector('.bk-read[data-state="ready"]', { timeout: 30000 });
+        await sleep(500);
+        const r = await page.evaluate(() => {
+          const name = document.querySelector('.bk-name');
+          const bar = document.querySelector('.bk-rbar').getBoundingClientRect();
+          const hidden = [];
+          for (const t of document.querySelectorAll('.bk-tab')) {
+            for (const part of [t.querySelector('.bk-ico'), t.querySelector('.bk-tl')]) {
+              const b = part.getBoundingClientRect();
+              const top = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+              if (top?.closest('.bk-tab') !== t || b.right > innerWidth) hidden.push(`${t.dataset.tab} ${part.className}`);
+            }
+          }
+          return { name: name.innerText, cut: name.scrollWidth > name.clientWidth, hidden, bar: { top: bar.top, bottom: bar.bottom } };
+        });
+        assert.equal(r.name, vp.width < 500 ? 'The Cursed Book' : 'The Cursed Book of Dimensionality', `the name on the plate at ${at}`);
+        assert.ok(!r.cut, `the name is not cut at ${at}`);
+        assert.deepEqual(r.hidden, [], `ribbon icons and words covered or off-screen at ${at}`);
+        assert.ok(r.bar.top >= 0 && r.bar.bottom <= vp.height, `the clasp inside the window at ${at}: ${JSON.stringify(r.bar)}`);
+        await shot(page, `phone-${at}`);
       }
     });
 

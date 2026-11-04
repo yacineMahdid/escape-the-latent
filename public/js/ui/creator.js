@@ -25,6 +25,8 @@ const T = {
   doneTip: 'Done (Enter)',
   photo: 'From a photo',
   pick: 'Choose or drop one',
+  pickTouch: 'Choose one', // touch screens: nothing to drop there
+  again: 'Choose another', // on a photo in the frame while nothing is going on (e.g. the look-alike is ready)
   pickLabel: 'Choose a photo',
   cam: 'Take one',
   camTip: 'Webcam',
@@ -143,7 +145,7 @@ const TABS = [
   { id: 'clothes', label: 'Clothes', rows: [
     { field: 'topStyle', label: 'Top', options: TOP_STYLES, icons: ICON.top },
     { field: 'topColor', label: 'Top colour', palette: CLOTH_COLORS },
-    { field: 'bottomColor', label: 'Bottom', palette: CLOTH_COLORS },
+    { field: 'bottomColor', label: 'Bottoms', palette: CLOTH_COLORS },
     { field: 'shoeColor', label: 'Shoes', palette: SHOE_COLORS },
   ] },
   { id: 'extras', label: 'Extras', rows: [
@@ -469,10 +471,13 @@ async function run(initial, resolve) {
   const camBtn = h('button', { type: 'button', class: 'cr-pill cr-cam', title: T.camTip }, ic('cr-pill-ic', ICON.webcam), T.cam);
   const snapBtn = h('button', { type: 'button', class: 'cr-pill cr-snap' }, ic('cr-pill-ic', '📸'), T.snap);
   const cancelBtn = h('button', { type: 'button', class: 'cr-pill cr-cancel', title: T.cancelTip }, ic('cr-pill-ic', '✕'), T.cancel);
-  // the frame is the one "choose a photo" button; the other buttons sit below it, not inside it
+  // the frame is the one "choose a photo" button; the other buttons sit below it, not inside it.
+  // It always says so: "Choose or drop one" (touch: "Choose one") while empty, "Choose another" on a photo.
   const frame = h('div', { class: 'cr-frame', role: 'button', tabindex: 0 },
-    h('div', { class: 'cr-pick' }, ic('cr-pick-ic', ICON.picture), h('span', { class: 'cr-pick-text', text: T.pick })),
-    photoImg, video, h('div', { class: 'cr-spin' }));
+    h('div', { class: 'cr-pick' }, ic('cr-pick-ic', ICON.picture),
+      h('span', { class: 'cr-pick-text' }, h('span', { class: 'cr-pick-mouse', text: T.pick }), h('span', { class: 'cr-pick-touch', text: T.pickTouch }))),
+    photoImg, video, h('div', { class: 'cr-spin' }),
+    h('div', { class: 'cr-again' }, ic('cr-again-ic', ICON.picture), h('span', { text: T.again })));
   const photo = h('section', { class: 'cr-photo', 'aria-labelledby': 'cr-photo-head' },
     h('div', { class: 'cr-tape' }),
     h('h3', { class: 'cr-photo-head', id: 'cr-photo-head' }, ic('cr-head-ic', '📷'), T.photo),
@@ -591,6 +596,7 @@ async function run(initial, resolve) {
 
   diceBtn.addEventListener('click', () => {
     if (photo.dataset.state === 'busy') return;
+    if (photo.dataset.state === 'done') setPhoto('idle'); // the look-alike is gone: no stale "✓ Look-alike ready"
     params = normalizeCharacter(randomCharacter());
     delete params.name;
     diceBtn.classList.remove('roll');
@@ -604,9 +610,12 @@ async function run(initial, resolve) {
   // ---- photo -> Claude
   // While Claude looks: 🎲 and ✓ wait, the swatches stay live (those choices win over the answer),
   // and Cancel (or the frame, or Esc) cancels. The status line says what is going on.
+  const dropImg = () => { photo.classList.remove('has-img'); photoImg.removeAttribute('src'); };
   function setPhoto(state, line = '') {
     const busy = state === 'busy';
     photo.dataset.state = state;
+    // a failed photo is put away: the frame says "Choose or drop one" again, right above what went wrong
+    if (state === 'error') dropImg();
     card.classList.toggle('busy', busy);
     diceBtn.disabled = busy;
     okBtn.disabled = busy;
@@ -652,8 +661,7 @@ async function run(initial, resolve) {
     if (photo.dataset.state !== 'busy') return;
     photoToken++;
     touched = null;
-    photo.classList.remove('has-img');
-    photoImg.removeAttribute('src');
+    dropImg();
     setPhoto('idle');
   }
   // no Claude here: the polaroid folds away and the stage takes its place

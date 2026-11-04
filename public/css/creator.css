@@ -67,6 +67,7 @@
 .cr-pick-ic svg { display: block; width: 76px; height: 76px; filter: drop-shadow(3px 3px 0 rgba(43, 34, 51, .2)); }
 .cr-pick-text { font: 600 16px/1.25 var(--font-ui); color: var(--ink-soft); text-wrap: balance; }
 .cr-photo:hover .cr-pick { transform: scale(1.05) rotate(-3deg); }
+.cr-photo[data-state="error"] .cr-pick { margin-bottom: 40px; } /* "Choose or drop one" sits above what went wrong */
 .cr-photo.drag .cr-frame { border-color: var(--pink); background: #ffe6f2; }
 .cr-photo.drag .cr-pick { transform: scale(1.12) rotate(3deg); }
 .cr-photo-img, .cr-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; }
@@ -75,6 +76,25 @@
 .cr-photo.cam .cr-video { display: block; transform: scaleX(-1); }
 .cr-photo.cam .cr-photo-img { display: none; }
 .cr-photo.cam, .cr-photo.cam .cr-frame { cursor: default; }
+/* touch screens have nothing to drop: "Choose one" there */
+.cr-pick-touch { display: none; }
+@media (hover: none) and (pointer: coarse) {
+  .cr-pick-mouse { display: none; }
+  .cr-pick-touch { display: inline; }
+}
+/* a photo in the frame and nothing going on (look-alike ready, after 🎲, camera put away): a label on the
+   photo still says what a click does (a failed photo is put away, so "Choose or drop one" shows instead) */
+.cr-again {
+  position: absolute; z-index: 2; top: 10px; left: 50%; display: none; align-items: center; justify-content: center; gap: 5px;
+  width: max-content; max-width: calc(100% - 12px); min-height: 32px; padding: 2px 12px 2px 8px;
+  font: 700 14px/1.1 var(--font-ui); color: var(--ink); text-align: center; text-wrap: balance;
+  background: var(--paper); border: 3px solid var(--ink); border-radius: 999px; box-shadow: 2px 2px 0 rgba(43, 34, 51, .25);
+  transform: translateX(-50%) rotate(1deg); transition: transform .2s, background .12s; pointer-events: none;
+}
+.cr-again-ic { flex: none; }
+.cr-again-ic svg { display: block; width: 20px; height: 20px; }
+.cr-photo.has-img:not(.cam):not([data-state="busy"]) .cr-again { display: flex; }
+.cr-photo:hover .cr-again, .cr-frame:focus-visible .cr-again { background: #fff3c4; transform: translateX(-50%) rotate(-2deg) scale(1.06); }
 
 /* paper pinwheel while Claude looks */
 .cr-spin {
@@ -117,6 +137,9 @@
 .cr-snap:hover { background: #ff92c6; }
 
 .cr-note { margin: 0; font: 500 13px/1.35 var(--font-ui); color: var(--ink-soft); text-align: center; white-space: pre-line; text-wrap: balance; }
+/* once the status line speaks (working, ready, or what went wrong) the note would only repeat it: it steps
+   back, keeping its room so nothing jumps */
+.cr-photo:is([data-state="busy"], [data-state="done"], [data-state="error"]) .cr-note { visibility: hidden; }
 
 /* ---------------- stage: the live 3D turntable ---------------- */
 .cr-stage {
@@ -233,10 +256,14 @@
   .cr-pill { height: 34px; padding: 0 12px 0 10px; font-size: 14px; gap: 5px; }
   .cr-pill-ic svg { width: 22px; height: 22px; }
   .cr-note { font-size: 12px; }
+  .cr-again { min-height: 30px; padding: 2px 9px 2px 6px; gap: 4px; font-size: 13px; }
+  .cr-again-ic svg { width: 17px; height: 17px; }
 }
 /* small laptops (e.g. 960 x 600): a little less polaroid and panel, so 🎲 Random and ✓ Done stay side by side */
 @media (max-width: 1023px) {
   .cr-photo { flex-basis: 180px; }
+  .cr-again { padding: 2px 9px; }
+  .cr-again-ic { display: none; }
   .cr-controls { flex-basis: 330px; }
   .cr-actions { gap: 12px; }
   .cr-act { height: 48px; padding: 0 17px 0 14px; gap: 7px; font-size: 18px; }
@@ -250,12 +277,26 @@
   .cr-overlay { padding: 10px; align-items: stretch; }
   .cr-card { --gap: 14px; flex-direction: column; height: auto; max-height: 100%; overflow: auto; padding: 16px; }
   .cr-title { position: static; align-self: flex-start; margin: 2px 0 0 2px; font-size: 19px; }
-  .cr-photo { flex: none; width: min(250px, 100%); margin-top: 8px; }
-  .cr-frame { aspect-ratio: 4 / 3; }
-  .cr-pick { gap: 6px; }
-  .cr-pick-ic svg { width: 50px; height: 50px; }
+  /* a wide, short polaroid (and a stage that gives a little on short screens), so ✓ Done and the tabs
+     make the first screen of a phone (360 x 740 and up) */
+  .cr-photo { flex: none; width: min(320px, 100%); margin-top: 6px; padding: 15px 12px 9px; gap: 6px; }
+  .cr-frame { aspect-ratio: 5 / 2; }
+  .cr-pick { flex-direction: row; gap: 10px; padding: 8px; }
+  .cr-pick-ic svg { width: 42px; height: 42px; }
+  .cr-photo[data-state="error"] .cr-pick { margin-bottom: 26px; } /* clear of the status line */
+  .cr-spin { top: 10px; width: 54px; height: 54px; }
+  .cr-spin::after { inset: 17px; }
+  .cr-status { bottom: 7px; }
+  .cr-again { padding: 2px 10px 2px 7px; }
+  .cr-again-ic { display: block; }
+  .cr-photo-foot { min-height: 34px; }
+  .cr-note { white-space: normal; }
   .cr-card.no-photo .cr-photo { display: none; }
   .cr-stage { flex: none; height: min(380px, 56vh); min-width: 0; }
+  .cr-card:not(.no-photo) .cr-stage {
+    height: clamp(250px, calc(100vh - 420px), min(380px, 56vh));
+    height: clamp(250px, calc(100svh - 420px), min(380px, 56svh));
+  }
   .cr-controls { flex: none; }
   .cr-panel { overflow: visible; }
 }
@@ -281,6 +322,11 @@
   .cr-spin { top: 9px; width: 44px; height: 44px; } /* above a two-line status label */
   .cr-spin::after { inset: 13px; }
   .cr-status { bottom: 6px; padding: 2px 6px; font-size: 11px; border-width: 2px; border-radius: 8px; }
+  /* what went wrong can take three lines here: the words go to the top, without their picture */
+  .cr-photo[data-state="error"] .cr-pick { align-self: start; }
+  .cr-photo[data-state="error"] .cr-pick-ic { display: none; }
+  .cr-again { top: 5px; min-height: 0; max-width: calc(100% - 4px); padding: 1px 4px; font-size: 11px; border-width: 2px; border-radius: 9px; }
+  .cr-again-ic { display: none; }
   .cr-photo-foot { gap: 5px; min-height: 30px; }
   .cr-pill { height: 30px; padding: 0 10px 0 8px; font-size: 12px; gap: 4px; border-width: 2px; }
   .cr-pill-ic { font-size: 12px; }

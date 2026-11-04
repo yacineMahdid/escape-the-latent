@@ -126,7 +126,6 @@ function pirateFlagSplits() { // 🏴‍☠️ is one glyph only where the font 
   return pirateSplits;
 }
 function drawEmoji(g, ch, x, y, size) {
-  if (globalThis.__rrSkip?.has('emoji')) return; // TEMP DEBUG
   if (ch === '🏴‍☠️' && pirateFlagSplits()) { drawPirateFlag(g, x, y, size); return; }
   const sp = emojiSprite(ch, Math.round(size));
   g.drawImage(sp.c, x - sp.d / 2, y - sp.d / 2, sp.d, sp.d);
@@ -269,10 +268,10 @@ function drawBrine(g, x, y, o) {
   g.fillStyle = '#ffd35a'; g.beginPath(); g.arc(0, -54, 2.4, 0, 7); g.fill();
   g.restore();
 }
-function drawPomelo(g, mood, amb, alpha) { // her head peeks over the card's left end; she holds it up
-  const x = 196, y = 51 + Math.sin(amb * 2.1) * 1.6 - (mood === 'happy' ? 3 : 0);
+function paintPomelo(g, mood) { // her head, centred on (0, 0): it peeks over the card's left end
+  const x = 0, y = 0;
   const PINK = '#f7a8b8', DARK = '#e98aa0';
-  g.save(); g.globalAlpha *= alpha;
+  g.save();
   for (const side of [-1, 1]) draw.paper(g, () => { g.beginPath(); g.moveTo(x + side * 10, y - 19); g.lineTo(x + side * 24, y - 30 + (mood === 'shock' ? -4 : 0)); g.lineTo(x + side * 21, y - 12); g.closePath(); }, DARK, { lw: 2.6, shadow: false });
   draw.paper(g, () => { g.beginPath(); g.ellipse(x, y, 25, 23, 0, 0, 7); }, PINK, { lw: 3, shadow: false });
   draw.paper(g, () => { g.beginPath(); g.ellipse(x + 3, y + 7, 10, 7.5, 0, 0, 7); }, '#ffc6d3', { lw: 2.4, shadow: false });
@@ -293,8 +292,8 @@ function drawPomelo(g, mood, amb, alpha) { // her head peeks over the card's lef
   }, '#8fcf5a', { lw: 2.6, shadow: false });
   g.restore();
 }
-function drawHooves(g, alpha) {
-  g.save(); g.globalAlpha *= alpha;
+function paintHooves(g) { // her two hooves holding the card's top edge
+  g.save();
   for (const hx of [178, 216]) {
     draw.paper(g, () => { g.beginPath(); g.ellipse(hx, 81, 8, 6, 0, 0, 7); }, '#f7a8b8', { lw: 2.6, shadow: false });
     g.strokeStyle = INK; g.lineWidth = 1.8; g.beginPath(); g.moveTo(hx, 82); g.lineTo(hx, 87); g.stroke();
@@ -327,6 +326,172 @@ function tag(g, emoji, text, x, y, o = {}) {
   drawEmoji(g, emoji, -w / 2 + 6 + size * 0.62, 0, size);
   if (text) { g.font = `700 ${size}px ${FONT}`; draw.text(g, text, -w / 2 + size * 1.3 + 10 + g.measureText(text).width / 2, 1, { size, weight: 700, color: o.color || INK }); }
   g.restore();
+}
+
+// ---- static painters (painted once into cached art)
+function paintScenery(g) { // sky, clouds, palm island, lagoon, the Stilt Post and the clothesline
+  const sky = g.createLinearGradient(0, 0, 0, HORIZON);
+  sky.addColorStop(0, '#9edcf6'); sky.addColorStop(1, '#e6f8fb');
+  g.fillStyle = sky; g.fillRect(0, 0, W, HORIZON + 2);
+  for (const [x, y, s] of [[128, 128, 1], [884, 46, 0.8], [828, 110, 1]]) {
+    g.save(); g.translate(x, y); g.scale(s, s);
+    const puffs = () => { g.beginPath(); for (const [cx, cy, r] of [[-22, 4, 14], [0, -4, 19], [24, 4, 14]]) { g.moveTo(cx + r, cy); g.arc(cx, cy, r, 0, 7); } g.rect(-26, 4, 50, 14); };
+    puffs(); g.lineWidth = 6; g.strokeStyle = '#a9d7e6'; g.lineJoin = 'round'; g.stroke();
+    puffs(); g.fillStyle = '#ffffff'; g.fill();
+    g.restore();
+  }
+  g.save(); g.translate(880, HORIZON);
+  draw.paper(g, () => { g.beginPath(); g.ellipse(0, 0, 44, 12, 0, Math.PI, 0); g.closePath(); }, '#f7e2a6', { lw: 3, shadow: false });
+  g.strokeStyle = INK; g.lineWidth = 6; g.lineCap = 'round'; g.beginPath(); g.moveTo(-4, -8); g.quadraticCurveTo(-2, -26, 6, -40); g.stroke();
+  g.strokeStyle = '#a8784c'; g.lineWidth = 3; g.stroke();
+  for (const a of [-2.6, -1.9, -1.1, -0.4]) draw.paper(g, () => { g.beginPath(); g.ellipse(6 + Math.cos(a) * 12, -40 + Math.sin(a) * 6, 13, 4.5, a + Math.PI / 2 + 1.4, 0, 7); }, '#5fbf5a', { lw: 2.4, shadow: false });
+  g.restore();
+  const sea = g.createLinearGradient(0, HORIZON, 0, H);
+  sea.addColorStop(0, '#6fe3ea'); sea.addColorStop(0.14, '#22cfd8'); sea.addColorStop(1, '#14b5c6');
+  g.fillStyle = sea; g.fillRect(0, HORIZON, W, H - HORIZON);
+  g.strokeStyle = 'rgba(43, 34, 51, .3)'; g.lineWidth = 3; g.beginPath(); g.moveTo(0, HORIZON); g.lineTo(W, HORIZON); g.stroke();
+  // the Stilt Post: Mrs. Pomelo's hut on stilts at the far left, with a landing where the racers wait
+  for (const sx of [12, 46, 80]) draw.paper(g, () => draw.roundRect(g, sx - 5, 58, 10, 480, 4), '#7a4e2e', { lw: 3, shadow: false });
+  g.strokeStyle = INK; g.lineWidth = 6; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(12, 210); g.lineTo(80, 300); g.moveTo(80, 210); g.lineTo(12, 300); g.stroke();
+  g.strokeStyle = '#9a6a40'; g.lineWidth = 3; g.stroke();
+  draw.paper(g, () => draw.roundRect(g, -14, -12, 112, 72, 8), '#f6e7c8', { lw: 3.5 });
+  draw.paper(g, () => { g.beginPath(); g.moveTo(-20, -12); g.lineTo(104, -12); g.lineTo(104, 10); g.lineTo(-20, 10); g.closePath(); }, '#e9c46a', { lw: 3, shadow: false });
+  g.strokeStyle = '#c99a3c'; g.lineWidth = 2; for (let x = -10; x < 104; x += 12) { g.beginPath(); g.moveTo(x, -10); g.lineTo(x + 5, 9); g.stroke(); }
+  draw.paper(g, () => draw.roundRect(g, 14, 22, 36, 26, 5), '#8fd3ff', { lw: 2.6, shadow: false });
+  draw.paper(g, () => draw.roundRect(g, 58, 24, 30, 20, 3), '#ff7ab8', { lw: 2.4, shadow: false });
+  g.strokeStyle = '#fff'; g.lineWidth = 2; g.beginPath(); g.moveTo(61, 27); g.lineTo(73, 36); g.lineTo(85, 27); g.stroke();
+  draw.paper(g, () => draw.roundRect(g, -10, DECK.y, 110, 15, 5), '#b8864e', { lw: 3, shadow: false });
+  g.strokeStyle = INK; g.lineWidth = 3;
+  g.beginPath(); g.moveTo(88, DECK.y + 15); g.lineTo(88, WATERLINE + 30); g.moveTo(100, DECK.y + 15); g.lineTo(100, WATERLINE + 30);
+  for (let y = DECK.y + 24; y < WATERLINE + 30; y += 10) { g.moveTo(88, y); g.lineTo(100, y); }
+  g.stroke();
+  g.fillStyle = 'rgba(255, 255, 255, .7)';
+  for (const sx of [12, 46, 80]) { g.beginPath(); g.ellipse(sx, WATERLINE + 34, 11, 3, 0, 0, 7); g.fill(); }
+  // the clothesline from the Post's roof to a pole
+  g.strokeStyle = INK; g.lineWidth = 5; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(LINE.x0, LINE.y); g.quadraticCurveTo((LINE.x0 + LINE.x1) / 2, LINE.y + LINE.sag * 2, LINE.x1, LINE.y); g.stroke();
+  g.strokeStyle = '#f3e6c8'; g.lineWidth = 2.4; g.stroke();
+  draw.paper(g, () => draw.roundRect(g, LINE.x1 - 4, 8, 12, HORIZON - 4, 5), '#c99a5a', { lw: 3, shadow: false });
+}
+function paintRaftBody(g) { // mast and deck, around the deck's centre
+  const polTop = POL.cy - POL.h / 2 - DECK.y - DECK.h / 2;
+  draw.paper(g, () => draw.roundRect(g, -3.5, polTop - 6, 7, -polTop + 2, 3), '#8a5a36', { lw: 2.5, shadow: false });
+  draw.paper(g, () => draw.roundRect(g, -DECK.w / 2, -DECK.h / 2, DECK.w, DECK.h, 7), '#b8864e', { lw: 3.5, shadow: false });
+  g.strokeStyle = '#8f6237'; g.lineWidth = 2;
+  for (let k = 1; k < 4; k++) { const x = -DECK.w / 2 + k * (DECK.w / 4); g.beginPath(); g.moveTo(x, -DECK.h / 2 + 3); g.lineTo(x, DECK.h / 2 - 3); g.stroke(); }
+  for (const lx of [-34, 34]) draw.paper(g, () => draw.roundRect(g, lx - 3, -DECK.h / 2 - 1, 6, DECK.h + 2, 2), '#f1dfb5', { lw: 1.6, shadow: false });
+}
+function paintRope(g, red) { // the whole fuse with its knot; drawn cropped to the length still to burn
+  const path = () => { g.beginPath(); g.moveTo(FUSE.x0, FUSE.y); for (let x = FUSE.x0; x <= FUSE.x1; x += 8) g.lineTo(x, FUSE.y + Math.sin(x / 9) * 1.6); };
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  path(); g.strokeStyle = INK; g.lineWidth = 9; g.stroke();
+  path(); g.strokeStyle = red ? '#e8566a' : '#e3bb74'; g.lineWidth = 4.6; g.stroke();
+  g.strokeStyle = red ? '#a8314a' : '#a37a3c'; g.lineWidth = 1.6;
+  for (let x = FUSE.x0 + 6; x < FUSE.x1 - 4; x += 9) { g.beginPath(); g.moveTo(x - 2, FUSE.y - 2.5); g.lineTo(x + 2, FUSE.y + 2.5); g.stroke(); }
+  draw.paper(g, () => { g.beginPath(); g.arc(FUSE.x0 - 4, FUSE.y, 6, 0, 7); }, '#a37a3c', { lw: 2.6, shadow: false });
+}
+function captionSize(g, text) {
+  let size = 30;
+  g.font = `700 ${size}px ${FONT}`;
+  const w = g.measureText(text).width;
+  if (w > CARD.w - 150) size = Math.max(20, Math.floor((size * (CARD.w - 150)) / w));
+  return size;
+}
+function paintCardBody(g) { // centred on (0, 0): cream card with an airmail edge
+  draw.paper(g, () => draw.roundRect(g, -CARD.w / 2, -CARD.h / 2, CARD.w, CARD.h, 14), PAPER, { lw: 4 });
+  g.save();
+  draw.roundRect(g, -CARD.w / 2 + 7, -CARD.h / 2 + 7, CARD.w - 14, CARD.h - 14, 8);
+  g.setLineDash([10, 10]); g.lineWidth = 3.5; g.strokeStyle = 'rgba(232, 86, 106, .5)'; g.stroke();
+  g.lineDashOffset = 10; g.strokeStyle = 'rgba(79, 134, 216, .5)'; g.stroke();
+  g.restore();
+}
+const paintCardText = (g, text) => draw.text(g, text, 0, 2, { size: captionSize(g, text), weight: 700 });
+function paintCardLines(g) { g.strokeStyle = INK; g.lineWidth = 3; g.lineCap = 'round'; g.beginPath(); g.moveTo(-200, -6); g.lineTo(200, -6); g.moveTo(-200, 10); g.lineTo(120, 10); g.stroke(); }
+
+// ---- cached art: whatever does not change from frame to frame is painted once into an offscreen canvas and
+// stamped every frame, so a frame is a few dozen image draws plus a few small shapes (light on every GPU,
+// including software and emulated ones)
+function makeSprite(w, h, ox, oy, paint) { // (ox, oy): where the painter's origin sits inside the sprite
+  const c = document.createElement('canvas');
+  c.width = Math.ceil(w * DPR); c.height = Math.ceil(h * DPR);
+  const g = c.getContext('2d');
+  g.scale(DPR, DPR); g.translate(ox, oy);
+  paint(g);
+  return { c, w, h, ox, oy };
+}
+const blit = (g, sp, x = 0, y = 0) => g.drawImage(sp.c, x - sp.ox, y - sp.oy, sp.w, sp.h);
+function stamp(g, sp, x, y, s = 1, rot = 0, alpha = 1) {
+  g.save(); g.translate(x, y); if (rot) g.rotate(rot); if (s !== 1) g.scale(s, s); if (alpha !== 1) g.globalAlpha *= alpha;
+  blit(g, sp); g.restore();
+}
+const ART = new Map();
+const art = (key, make) => { let sp = ART.get(key); if (!sp) { sp = make(); ART.set(key, sp); } return sp; };
+let MEASURE = null;
+const measure = () => (MEASURE ||= document.createElement('canvas').getContext('2d'));
+// text art made before the Fredoka web font arrives is made again once it is there
+const fontKey = () => { try { return document.fonts.check(`700 16px ${FONT}`) ? '' : '~'; } catch { return ''; } };
+const RIPPLES = [0, 1, 2, 3, 4, 5, 6].map((row) => ({ y: 194 + row * 52, gap: 170 - row * 8, speed: (row % 2 ? 1 : -1) * (7 + row * 2.5), phase: row * 53 }));
+const sceneryArt = () => art('scenery', () => makeSprite(W, H, 0, 0, paintScenery));
+const rippleArt = (row) => art(`ripple${row}`, () => {
+  const { gap } = RIPPLES[row];
+  return makeSprite(W + 2 * gap + 52, 18, 6, 9, (g) => {
+    g.strokeStyle = 'rgba(255, 255, 255, .5)'; g.lineWidth = 3; g.lineCap = 'round';
+    for (let x = 0; x < W + 2 * gap; x += gap) { g.beginPath(); g.moveTo(x, 0); g.quadraticCurveTo(x + 10, -5, x + 20, 0); g.quadraticCurveTo(x + 30, 5, x + 40, 0); g.stroke(); }
+  });
+});
+const raftArt = () => art('raft', () => makeSprite(DECK.w + 10, 206, DECK.w / 2 + 5, 190, paintRaftBody));
+const ropeArt = (red) => art(`rope${red ? 1 : 0}`, () => makeSprite(FUSE.x1 - FUSE.x0 + 26, 24, 14 - FUSE.x0, 12 - FUSE.y, (g) => paintRope(g, red)));
+const cardArt = (kind, text = '') => art(`card|${kind}|${text}|${kind === 'text' ? fontKey() : ''}`, () => makeSprite(CARD.w + 14, CARD.h + 20, CARD.w / 2 + 7, CARD.h / 2 + 7,
+  (g) => (kind === 'body' ? paintCardBody(g) : kind === 'text' ? paintCardText(g, text) : paintCardLines(g))));
+const pomeloArt = (mood) => art(`pomelo|${mood}`, () => makeSprite(74, 94, 37, 49, (g) => paintPomelo(g, mood)));
+const hoovesArt = () => art('hooves', () => makeSprite(68, 26, -164, -70, paintHooves));
+const PHOTO_ART = new WeakMap(); // photo object of the spec -> its sprites
+function photoArt(photo) { let m = PHOTO_ART.get(photo); if (!m) PHOTO_ART.set(photo, (m = {})); return m; }
+function polaroidArt(photo, peg) { // on its mast (with the peg) or loose (flying to the card)
+  const m = photoArt(photo), k = peg ? 'peg' : 'free';
+  return m[k] || (m[k] = makeSprite(POL.w + 14, POL.h + 32, POL.w / 2 + 7, POL.h / 2 + 16, (g) => drawPolaroid(g, photo, 0, 0, 1, 0, { peg })));
+}
+function postcardArt(photo) { // glued postcard hanging from its peg at (0, 0)
+  const m = photoArt(photo);
+  return m.card || (m.card = makeSprite(70, 56, 35, 3, (g) => {
+    g.save(); g.translate(0, 3); g.fillStyle = 'rgba(43, 34, 51, .2)'; draw.roundRect(g, -28, 4, 56, 38, 8); g.fill(); g.restore();
+    drawPostcardBody(g, 0, 23, 56, 38, 1);
+    drawPolaroid(g, photo, -13, 23, 0.26, -0.05, { shadow: false });
+  }));
+}
+const speckArt = (C, face, armsUp, sad) => art(`speck|${C.skin}${C.hair}${C.top}${C.bottom}${C.bald ? 'b' : ''}|${face}|${armsUp ? 1 : 0}|${sad ? 1 : 0}`,
+  () => makeSprite(56, 66, 28, 58, (g) => drawSpeck(g, 0, 0, { colors: C, face, armsUp, sad })));
+const brineArt = (face, armsUp, sad, holdUp) => art(`brine|${face}|${armsUp ? 1 : 0}|${sad ? 1 : 0}|${holdUp}`,
+  () => makeSprite(60, 74, 30, 66, (g) => drawBrine(g, 0, 0, { face, armsUp, sad, holdUp })));
+function tagArt(emoji, text, o = {}) { // anchored at its left or right end (o.align) or its centre
+  const size = o.size || 15, fill = o.fill || '#ffffff', color = o.color || INK, align = o.align || 'centre';
+  return art(`tag|${emoji}|${text}|${size}|${fill}|${color}|${align}|${fontKey()}`, () => {
+    const w = tagWidth(measure(), text, size), h = size + 10;
+    const ox = align === 'left' ? 4 : align === 'right' ? w + 4 : w / 2 + 4;
+    return makeSprite(w + 8, h + 8, ox, h / 2 + 4, (g) => tag(g, emoji, text, 0, 0, { size, fill, color, align: align === 'centre' ? null : align }));
+  });
+}
+function bubbleArt(text, side, size = 16) { // anchored at the tail's point
+  return art(`bubble|${text}|${side}|${size}|${fontKey()}`, () => {
+    const w = bubbleWidth(measure(), text, size), h = size + 14;
+    return makeSprite(w + 20, h + 16, side > 0 ? 6 : w + 14, h / 2 + 5, (g) => bubble(g, text, 0, 0, { side, size }));
+  });
+}
+function textArt(text, size, color, emoji) { // a pop-up word: ink and white outlines, optional emoji in front
+  return art(`text|${emoji || ''}|${text}|${size}|${color}|${fontKey()}`, () => {
+    const m = measure(); m.font = `700 ${size}px ${FONT}`;
+    const tw = m.measureText(text).width, ew = emoji ? size * 1.15 : 0;
+    const w = Math.ceil(tw + ew + size * 0.8), h = Math.ceil(size * 1.8);
+    return makeSprite(w, h, w / 2, h / 2, (g) => {
+      g.font = `700 ${size}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
+      const tx = ew / 2;
+      if (emoji) drawEmoji(g, emoji, tx - tw / 2 - ew / 2, 0, size);
+      g.lineWidth = size * 0.32; g.strokeStyle = INK; g.strokeText(text, tx, 0);
+      g.lineWidth = size * 0.14; g.strokeStyle = '#ffffff'; g.strokeText(text, tx, 0);
+      g.fillStyle = color; g.fillText(text, tx, 0);
+    });
+  });
 }
 
 // ---- the game
@@ -540,76 +705,15 @@ function makeGame(ctx) {
   }
   function fuseEnd(S) { return FUSE.x0 + (FUSE.x1 - FUSE.x0) * (fuseLeft(S) / S.maxTime); }
 
-  // ---- drawing
-  function drawSky(g, amb) {
-    const sky = g.createLinearGradient(0, 0, 0, HORIZON);
-    sky.addColorStop(0, '#9edcf6'); sky.addColorStop(1, '#e6f8fb');
-    g.fillStyle = sky; g.fillRect(0, 0, W, HORIZON + 2);
-    for (const [bx, by, s, sp] of [[120, 120, 1, 7], [520, 40, 0.8, 5], [840, 96, 1.15, 6]]) {
-      const x = ((bx + amb * sp) % 1160) - 100;
-      g.save(); g.translate(x, by); g.scale(s, s);
-      const puffs = () => { g.beginPath(); for (const [cx, cy, r] of [[-22, 4, 14], [0, -4, 19], [24, 4, 14]]) { g.moveTo(cx + r, cy); g.arc(cx, cy, r, 0, 7); } g.rect(-26, 4, 50, 14); };
-      puffs(); g.lineWidth = 6; g.strokeStyle = '#a9d7e6'; g.lineJoin = 'round'; g.stroke();
-      puffs(); g.fillStyle = '#ffffff'; g.fill();
-      g.restore();
-    }
-    // a tiny palm island on the horizon
-    g.save(); g.translate(880, HORIZON);
-    draw.paper(g, () => { g.beginPath(); g.ellipse(0, 0, 44, 12, 0, Math.PI, 0); g.closePath(); }, '#f7e2a6', { lw: 3, shadow: false });
-    g.strokeStyle = INK; g.lineWidth = 6; g.beginPath(); g.moveTo(-4, -8); g.quadraticCurveTo(-2, -26, 6, -40); g.stroke();
-    g.strokeStyle = '#a8784c'; g.lineWidth = 3; g.stroke();
-    for (const a of [-2.6, -1.9, -1.1, -0.4]) draw.paper(g, () => { g.beginPath(); g.ellipse(6 + Math.cos(a) * 12, -40 + Math.sin(a) * 6, 13, 4.5, a + Math.PI / 2 + 1.4, 0, 7); }, '#5fbf5a', { lw: 2.4, shadow: false });
+  // ---- drawing: cached art stamped each frame; only small live shapes are drawn as paths
+  function drawScene(g, S, amb) {
+    blit(g, sceneryArt());
+    g.save(); g.beginPath(); g.rect(104, HORIZON, W - 104, H - HORIZON); g.clip(); // ripples drift, not across the Post
+    RIPPLES.forEach((r, row) => { const off = (((amb * r.speed + r.phase) % r.gap) + r.gap) % r.gap; blit(g, rippleArt(row), -r.gap + off, r.y); });
     g.restore();
-  }
-  function drawPost(g) { // the Stilt Post: Mrs. Pomelo's hut on stilts at the far left, with a landing
-    for (const sx of [12, 46, 80]) draw.paper(g, () => draw.roundRect(g, sx - 5, 58, 10, 480, 4), '#7a4e2e', { lw: 3, shadow: false });
-    g.strokeStyle = INK; g.lineWidth = 6; g.lineCap = 'round';
-    g.beginPath(); g.moveTo(12, 210); g.lineTo(80, 300); g.moveTo(80, 210); g.lineTo(12, 300); g.stroke();
-    g.strokeStyle = '#9a6a40'; g.lineWidth = 3; g.stroke();
-    draw.paper(g, () => draw.roundRect(g, -14, -12, 112, 72, 8), '#f6e7c8', { lw: 3.5 });
-    draw.paper(g, () => { g.beginPath(); g.moveTo(-20, -12); g.lineTo(104, -12); g.lineTo(104, 10); g.lineTo(-20, 10); g.closePath(); }, '#e9c46a', { lw: 3, shadow: false });
-    g.strokeStyle = '#c99a3c'; g.lineWidth = 2; for (let x = -10; x < 104; x += 12) { g.beginPath(); g.moveTo(x, -10); g.lineTo(x + 5, 9); g.stroke(); }
-    draw.paper(g, () => draw.roundRect(g, 14, 22, 36, 26, 5), '#8fd3ff', { lw: 2.6, shadow: false });
-    draw.paper(g, () => draw.roundRect(g, 58, 24, 30, 20, 3), '#ff7ab8', { lw: 2.4, shadow: false });
-    g.strokeStyle = '#fff'; g.lineWidth = 2; g.beginPath(); g.moveTo(61, 27); g.lineTo(73, 36); g.lineTo(85, 27); g.stroke();
-    // the landing deck where the racers wait, and a ladder down to the water
-    draw.paper(g, () => draw.roundRect(g, -10, DECK.y, 110, 15, 5), '#b8864e', { lw: 3, shadow: false });
-    g.strokeStyle = INK; g.lineWidth = 3;
-    g.beginPath(); g.moveTo(88, DECK.y + 15); g.lineTo(88, WATERLINE + 30); g.moveTo(100, DECK.y + 15); g.lineTo(100, WATERLINE + 30);
-    for (let y = DECK.y + 24; y < WATERLINE + 30; y += 10) { g.moveTo(88, y); g.lineTo(100, y); }
-    g.stroke();
-    g.fillStyle = 'rgba(255, 255, 255, .7)';
-    for (const sx of [12, 46, 80]) { g.beginPath(); g.ellipse(sx, WATERLINE + 34, 11, 3, 0, 0, 7); g.fill(); }
-  }
-  function drawWater(g, amb) {
-    const sea = g.createLinearGradient(0, HORIZON, 0, H);
-    sea.addColorStop(0, '#6fe3ea'); sea.addColorStop(0.14, '#22cfd8'); sea.addColorStop(1, '#14b5c6');
-    g.fillStyle = sea; g.fillRect(0, HORIZON, W, H - HORIZON);
-    g.strokeStyle = 'rgba(43, 34, 51, .3)'; g.lineWidth = 3; g.beginPath(); g.moveTo(0, HORIZON); g.lineTo(W, HORIZON); g.stroke();
-    g.strokeStyle = 'rgba(255, 255, 255, .5)'; g.lineWidth = 3; g.lineCap = 'round';
-    for (let row = 0; row < 7; row++) {
-      const y = 194 + row * 52, gap = 170 - row * 8, sp = (row % 2 ? 1 : -1) * (7 + row * 2.5);
-      const off = (((amb * sp + row * 53) % gap) + gap) % gap;
-      for (let x = -gap + off; x < W + gap; x += gap) {
-        g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + 10, y - 5, x + 20, y); g.quadraticCurveTo(x + 30, y + 5, x + 40, y); g.stroke();
-      }
-    }
-  }
-  function drawClothesline(g, S, amb) {
-    g.strokeStyle = INK; g.lineWidth = 5; g.lineCap = 'round';
-    g.beginPath(); g.moveTo(LINE.x0, LINE.y); g.quadraticCurveTo((LINE.x0 + LINE.x1) / 2, LINE.y + LINE.sag * 2, LINE.x1, LINE.y); g.stroke();
-    g.strokeStyle = '#f3e6c8'; g.lineWidth = 2.4; g.stroke();
-    draw.paper(g, () => draw.roundRect(g, LINE.x1 - 4, 8, 12, HORIZON - 4, 5), '#c99a5a', { lw: 3, shadow: false });
-    for (let k = 0; k < S.toWin; k++) {
+    for (let k = 0; k < S.toWin; k++) { // pegs, and the glued postcards swinging from them
       const px = pegX(k, S.toWin), py = lineY(px), pc = S.pegs[k];
-      if (pc) {
-        g.save(); g.translate(px, py); g.rotate(Math.sin(amb * 1.7 + k * 1.3) * 0.045 + Math.sin(amb * 14) * 0.18 * pc.wob); g.translate(-px, -py);
-        const pg = postcardGeom(px, py);
-        g.save(); g.translate(0, 3); g.fillStyle = 'rgba(43, 34, 51, .2)'; draw.roundRect(g, pg.cx - pg.w / 2, pg.cy - pg.h / 2, pg.w, pg.h, 8); g.fill(); g.restore();
-        drawPostcardBody(g, pg.cx, pg.cy, pg.w, pg.h, 1);
-        drawPolaroid(g, pc.photo, pg.phx, pg.phy, pg.phs, -0.05, { shadow: false });
-        g.restore();
-      }
+      if (pc) stamp(g, postcardArt(pc.photo), px, py, 1, Math.sin(amb * 1.7 + k * 1.3) * 0.045 + Math.sin(amb * 14) * 0.18 * pc.wob);
       draw.paper(g, () => draw.roundRect(g, px - 4, py - 7, 8, 17, 2.5), pc ? '#d9a066' : '#e8c9a0', { lw: 2.4, shadow: false });
     }
   }
@@ -619,39 +723,41 @@ function makeGame(ctx) {
     const fuse = S.stage === 'fuse';
     if (r.sinkP < 1) { g.fillStyle = `rgba(10, 110, 130, ${0.22 * (1 - r.sinkP)})`; g.beginPath(); g.ellipse(L.x, WATERLINE + 9, 62, 8, 0, 0, 7); g.fill(); }
     g.save();
-    g.beginPath(); g.rect(-100, -100, W + 200, WATERLINE + 101); g.clip();
-    const deckC = L.y + DECK.h / 2;
-    g.translate(L.x, deckC); g.rotate(L.rot);
+    g.beginPath(); g.rect(-100, -100, W + 200, WATERLINE + 101); g.clip(); // the lagoon hides what sinks
+    g.translate(L.x, L.y + DECK.h / 2); g.rotate(L.rot);
     const glow = S.stage === 'resolve' && r.answer ? Math.min(1, S.stageT / 0.15) : 0;
     if (glow) {
       const gr = g.createRadialGradient(0, -20, 10, 0, -20, 110);
       gr.addColorStop(0, `rgba(255, 226, 110, ${0.75 * glow})`); gr.addColorStop(1, 'rgba(255, 226, 110, 0)');
       g.fillStyle = gr; g.fillRect(-120, -140, 240, 240);
     }
-    const polTop = POL.cy - POL.h / 2 - DECK.y - DECK.h / 2;
-    draw.paper(g, () => draw.roundRect(g, -3.5, polTop - 6, 7, -polTop + 2, 3), '#8a5a36', { lw: 2.5, shadow: false });
+    blit(g, raftArt());
     if (!r.lifted) {
-      const mark = fuse && i === S.at ? 'sel' : fuse && i === S.hover && S.hoverShow ? 'hover' : null;
-      drawPolaroid(g, r.photo, 0, POL.cy - DECK.y - DECK.h / 2, 1, r.tilt + Math.sin(S.t * 1.7 + r.phase) * 0.012, { mark, peg: true });
+      g.translate(0, POL.cy - DECK.y - DECK.h / 2); g.rotate(r.tilt + Math.sin(S.t * 1.7 + r.phase) * 0.012);
+      const w = POL.w, h = POL.h;
+      if (fuse && i === S.at) { g.lineWidth = 7; g.strokeStyle = '#ff7ab8'; draw.roundRect(g, -w / 2 - 5, -h / 2 - 5, w + 10, h + 10, 10); g.stroke(); }
+      else if (fuse && i === S.hover && S.hoverShow) { g.setLineDash([9, 6]); g.lineWidth = 3.5; g.strokeStyle = '#ff7ab8'; draw.roundRect(g, -w / 2 - 6, -h / 2 - 6, w + 12, h + 12, 10); g.stroke(); g.setLineDash([]); }
+      blit(g, polaroidArt(r.photo, true));
     }
-    draw.paper(g, () => draw.roundRect(g, -DECK.w / 2, -DECK.h / 2, DECK.w, DECK.h, 7), '#b8864e', { lw: 3.5, shadow: false });
-    g.strokeStyle = '#8f6237'; g.lineWidth = 2;
-    for (let k = 1; k < 4; k++) { const x = -DECK.w / 2 + k * (DECK.w / 4); g.beginPath(); g.moveTo(x, -DECK.h / 2 + 3); g.lineTo(x, DECK.h / 2 - 3); g.stroke(); }
-    for (const lx of [-34, 34]) draw.paper(g, () => draw.roundRect(g, lx - 3, -DECK.h / 2 - 1, 6, DECK.h + 2, 2), '#f1dfb5', { lw: 1.6, shadow: false });
     g.restore();
     if (r.sinkP <= 0) {
       g.strokeStyle = 'rgba(255, 255, 255, .8)'; g.lineWidth = 3; g.lineCap = 'round';
       g.beginPath(); g.moveTo(L.x - 60, WATERLINE + 1); g.quadraticCurveTo(L.x - 52, WATERLINE - 3, L.x - 44, WATERLINE + 1); g.moveTo(L.x + 44, WATERLINE + 1); g.quadraticCurveTo(L.x + 52, WATERLINE - 3, L.x + 60, WATERLINE + 1); g.stroke();
     }
   }
+  function drawRider(g, sp, who, kx, ky) {
+    g.save(); g.translate(who.x, who.y); if (who.rot) g.rotate(who.rot);
+    if (who.squash) g.scale(1 + kx * who.squash, 1 - ky * who.squash);
+    blit(g, sp); g.restore();
+  }
   function drawRiders(g, S, amb) {
+    const b = S.brine, sp = S.speck;
+    const flail = Math.floor(amb * 5) % 2 === 0; // arms splashing while they swim
     g.save();
     g.beginPath(); g.rect(-100, -100, W + 200, WATERLINE + 101); g.clip();
-    const b = S.brine, sp = S.speck;
-    drawBrine(g, b.x, b.y, { face: b.face, squash: b.squash, rot: b.rot, armsUp: b.mode === 'swim' || b.mode === 'fall' || b.cheer > 0, sad: b.mode === 'swim',
-      holdUp: S.stage === 'fuse' && !b.dove ? brineSide(g, S) : 0 });
-    drawSpeck(g, sp.x, sp.y, { colors: ctx.colors, face: sp.face, squash: sp.squash, rot: sp.rot,
-      armsUp: sp.mode === 'hop' || sp.mode === 'fall' || sp.mode === 'swim' || sp.cheer > 0, wave: sp.mode === 'swim' ? amb * 9 : 0, sad: sp.mode === 'swim' });
+    drawRider(g, brineArt(b.face, b.mode === 'swim' ? flail : b.mode === 'fall' || b.cheer > 0, b.mode === 'swim',
+      S.stage === 'fuse' && !b.dove ? brineSide(S) : 0), b, 0.14, 0.18);
+    drawRider(g, speckArt(ctx.colors, sp.face, sp.mode === 'swim' ? !flail : sp.mode === 'hop' || sp.mode === 'fall' || sp.cheer > 0, sp.mode === 'swim'), sp, 0.16, 0.2);
     g.restore();
     g.strokeStyle = 'rgba(255, 255, 255, .75)'; g.lineWidth = 2.5;
     for (const who of [b, sp]) {
@@ -667,15 +773,9 @@ function makeGame(ctx) {
       g.strokeStyle = 'rgba(90, 80, 100, .35)'; g.lineWidth = 3; g.setLineDash([3, 7]);
       g.beginPath(); g.moveTo(xb, FUSE.y); g.lineTo(xFull, FUSE.y); g.stroke(); g.setLineDash([]);
     }
-    if (xb > FUSE.x0 + 1) {
-      const path = () => { g.beginPath(); g.moveTo(FUSE.x0, FUSE.y); for (let x = FUSE.x0; x <= xb; x += 8) g.lineTo(x, FUSE.y + Math.sin(x / 9) * 1.6); g.lineTo(xb, FUSE.y + Math.sin(xb / 9) * 1.6); };
-      g.lineCap = 'round'; g.lineJoin = 'round';
-      path(); g.strokeStyle = INK; g.lineWidth = 9; g.stroke();
-      path(); g.strokeStyle = red ? '#e8566a' : '#e3bb74'; g.lineWidth = 4.6; g.stroke();
-      g.strokeStyle = red ? '#a8314a' : '#a37a3c'; g.lineWidth = 1.6;
-      for (let x = FUSE.x0 + 6; x < xb - 4; x += 9) { g.beginPath(); g.moveTo(x - 2, FUSE.y - 2.5); g.lineTo(x + 2, FUSE.y + 2.5); g.stroke(); }
-    }
-    draw.paper(g, () => { g.beginPath(); g.arc(FUSE.x0 - 4, FUSE.y, 6, 0, 7); }, '#a37a3c', { lw: 2.6, shadow: false });
+    const rope = ropeArt(red); // the rope still to burn: the cached rope, cropped at the spark
+    const vw = Math.max(18, Math.min(rope.w, xb + rope.ox + 5)), sw = Math.min(rope.c.width, Math.round(vw * DPR));
+    g.drawImage(rope.c, 0, 0, sw, rope.c.height, -rope.ox, -rope.oy, sw / DPR, rope.c.height / DPR);
     if (S.stage === 'fuse') { // the spark
       const fl = 1 + Math.sin(amb * 40) * 0.18 + (red ? 0.35 : 0);
       g.save(); g.translate(xb, FUSE.y); g.rotate(amb * 6); g.scale(fl, fl);
@@ -684,27 +784,6 @@ function makeGame(ctx) {
       g.fillStyle = '#fff6c2'; g.beginPath(); g.arc(0, 0, 3.6, 0, 7); g.fill();
       g.restore();
     }
-  }
-  function captionFont(g, text) {
-    let size = 30;
-    g.font = `700 ${size}px ${FONT}`;
-    const w = g.measureText(text).width;
-    if (w > CARD.w - 150) size = Math.max(20, Math.floor((size * (CARD.w - 150)) / w));
-    return size;
-  }
-  function drawCardFace(g, text, textAlpha, lineAlpha) { // centred on (0, 0), CARD size
-    draw.paper(g, () => draw.roundRect(g, -CARD.w / 2, -CARD.h / 2, CARD.w, CARD.h, 14), PAPER, { lw: 4 });
-    g.save(); // airmail edge
-    draw.roundRect(g, -CARD.w / 2 + 7, -CARD.h / 2 + 7, CARD.w - 14, CARD.h - 14, 8);
-    g.setLineDash([10, 10]); g.lineWidth = 3.5; g.strokeStyle = 'rgba(232, 86, 106, .5)'; g.stroke();
-    g.lineDashOffset = 10; g.strokeStyle = 'rgba(79, 134, 216, .5)'; g.stroke();
-    g.restore();
-    if (text && textAlpha > 0) {
-      g.save(); g.globalAlpha *= textAlpha;
-      draw.text(g, text, 0, 2, { size: captionFont(g, text), weight: 700 });
-      g.restore();
-    }
-    if (lineAlpha > 0) { g.save(); g.globalAlpha *= lineAlpha; g.strokeStyle = INK; g.lineWidth = 3; g.beginPath(); g.moveTo(-200, -6); g.lineTo(200, -6); g.moveTo(-200, 10); g.lineTo(120, 10); g.stroke(); g.restore(); }
   }
   function drawCard(g, S, amb) {
     let sy = 1, text = S.caption, ta = 1;
@@ -718,26 +797,26 @@ function makeGame(ctx) {
       else if (!S.ok && t >= T.fade0) ta = 1 - clamp01((t - T.fade0) / (T.resolve - T.fade0));
     }
     g.save(); g.translate(CARD.cx, CARD.cy + Math.sin(amb * 1.3) * 1.2); g.rotate(-0.012); g.scale(1, Math.max(0.02, sy));
-    drawCardFace(g, text, ta, 0);
+    blit(g, cardArt('body'));
+    if (text && ta > 0) { g.globalAlpha = ta; blit(g, cardArt('text', text)); }
     g.restore();
   }
   function drawPair(g, S) { // the true photo flying up, the snap, then the postcard flying to its peg
     if (S.stage !== 'resolve' || !S.lift || S.stageT < T.lift0) return;
-    const t = S.stageT, L = S.lift;
+    const t = S.stageT, L = S.lift, loose = polaroidArt(L.photo, false);
     if (t < T.lift1) {
       const p = easeInOut(clamp01((t - T.lift0) / (T.lift1 - T.lift0)));
-      const x = lerp(L.x, PAIR.x, p), y = lerp(L.y, PAIR.y, p) - Math.sin(p * Math.PI) * 60;
-      drawPolaroid(g, L.photo, x, y, lerp(1, PAIR.s, p), lerp(L.rot, PAIR.rot, p) + Math.sin(p * Math.PI) * 0.5);
+      stamp(g, loose, lerp(L.x, PAIR.x, p), lerp(L.y, PAIR.y, p) - Math.sin(p * Math.PI) * 60, lerp(1, PAIR.s, p), lerp(L.rot, PAIR.rot, p) + Math.sin(p * Math.PI) * 0.5);
       return;
     }
     if (!S.ok) {
       const a = t < T.fade0 ? 1 : 1 - clamp01((t - T.fade0) / (T.resolve - T.fade0));
-      if (a > 0) drawPolaroid(g, L.photo, PAIR.x, PAIR.y, PAIR.s, PAIR.rot, { alpha: a });
+      if (a > 0) stamp(g, loose, PAIR.x, PAIR.y, PAIR.s, PAIR.rot, a);
       return;
     }
     if (t < T.morph0) {
-      const k = clamp01((t - T.lift1) / 0.18), bump = 1 + Math.sin(k * Math.PI) * 0.12;
-      drawPolaroid(g, L.photo, PAIR.x, PAIR.y, PAIR.s * bump, PAIR.rot);
+      const k = clamp01((t - T.lift1) / 0.18);
+      stamp(g, loose, PAIR.x, PAIR.y, PAIR.s * (1 + Math.sin(k * Math.PI) * 0.12), PAIR.rot);
       return;
     }
     if (t >= T.morph1) return;
@@ -750,32 +829,35 @@ function makeGame(ctx) {
     g.save();
     if (ps < 0.6) { // the caption card folding down, its words fading into ink lines
       g.translate(cx, cy); g.scale(w / CARD.w, h / CARD.h);
-      drawCardFace(g, L.caption, 1 - clamp01(ps / 0.3), clamp01((ps - 0.2) / 0.3));
+      blit(g, cardArt('body'));
+      const a1 = 1 - clamp01(ps / 0.3), a2 = clamp01((ps - 0.2) / 0.3);
+      if (a1 > 0) { g.globalAlpha = a1; blit(g, cardArt('text', L.caption)); }
+      if (a2 > 0) { g.globalAlpha = a2; blit(g, cardArt('lines')); }
     } else drawPostcardBody(g, cx, cy, w, h, 1);
     g.restore();
     const ox = lerp(PAIR.x - CARD.cx, pg.phx - pg.cx, ps), oy = lerp(PAIR.y - CARD.cy, pg.phy - pg.cy, ps);
-    drawPolaroid(g, L.photo, cx + ox, cy + oy, lerp(PAIR.s, pg.phs, ps), lerp(PAIR.rot, -0.05, ps), { shadow: false });
+    stamp(g, loose, cx + ox, cy + oy, lerp(PAIR.s, pg.phs, ps), lerp(PAIR.rot, -0.05, ps));
   }
   // which side of Brine his tag and bubbles go: his right, unless that runs off the canvas
-  function brineSide(g, S) {
-    const b = S.brine;
-    const w = Math.max(tagWidth(g, b.word || '?', 15), b.bubble ? bubbleWidth(g, b.bubble.text, 16) + 6 : 0);
+  function brineSide(S) {
+    const b = S.brine, m = measure();
+    const w = Math.max(tagWidth(m, b.word || '?', 15), b.bubble ? bubbleWidth(m, b.bubble.text, 16) + 6 : 0);
     return b.x + 16 + w > W - 6 ? -1 : 1;
   }
   function drawBrineUi(g, S) {
     const b = S.brine;
     if (S.stage === 'pre') return;
-    const side = brineSide(g, S);
+    const side = brineSide(S);
     const headY = b.mode === 'swim' ? WATERLINE - 26 : b.y - 40;
     if (S.stage === 'fuse' && !b.dove) { // the one sticker word he read off the caption, held up in his paw
       const k = clamp01(S.stageT / 0.18);
-      tag(g, '🏷️', b.word || '?', b.x + side * 16, b.y - 44, { scale: easeBack(k), rot: side * 0.07, align: side > 0 ? 'left' : 'right', color: '#2f4f8f' });
+      stamp(g, tagArt('🏷️', b.word || '?', { align: side > 0 ? 'left' : 'right', color: '#2f4f8f' }), b.x + side * 16, b.y - 44, easeBack(k), side * 0.07);
     } else if (b.mode !== 'fall') {
-      tag(g, '🐻', String(b.score), b.x, headY - 34, { size: 13, fill: PAPER });
+      stamp(g, tagArt('🐻', String(b.score), { size: 13, fill: PAPER }), b.x, headY - 34);
     }
     if (b.bubble) {
       const k = b.bubble.t / b.bubble.life;
-      bubble(g, b.bubble.text, b.x + side * 16, headY - 6, { side, scale: easeBack(clamp01(k / 0.15)), alpha: 1 - clamp01((k - 0.8) / 0.2), size: 16 });
+      stamp(g, bubbleArt(b.bubble.text, side), b.x + side * 16, headY - 6, easeBack(clamp01(k / 0.15)), 0, 1 - clamp01((k - 0.8) / 0.2));
     }
   }
   function drawFx(g, S, layer) {
@@ -793,16 +875,8 @@ function makeGame(ctx) {
         g.save(); g.globalAlpha = 1 - p; g.strokeStyle = '#ffffff'; g.lineWidth = 8 * (1 - p) + 2;
         g.beginPath(); g.arc(f.x, f.y, 20 + 90 * easeOut(p), 0, 7); g.stroke(); g.restore();
       } else if (f.kind === 'text') {
-        const sc = p < 0.18 ? easeBack(p / 0.18) : 1;
         const dx = f.shake ? Math.sin(f.t * 70) * 4 * (1 - p) : 0;
-        g.save(); g.translate(f.x + dx, f.y - (f.shake ? 0 : 30 * easeOut(p))); g.scale(sc, sc); g.globalAlpha = 1 - clamp01((p - 0.7) / 0.3);
-        g.font = `700 ${f.size}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
-        const ew = f.emoji ? f.size * 1.15 : 0, tx = ew / 2;
-        if (f.emoji) drawEmoji(g, f.emoji, tx - g.measureText(f.text).width / 2 - ew / 2, 0, f.size);
-        g.lineWidth = f.size * 0.32; g.strokeStyle = INK; g.strokeText(f.text, tx, 0);
-        g.lineWidth = f.size * 0.14; g.strokeStyle = '#ffffff'; g.strokeText(f.text, tx, 0);
-        g.fillStyle = f.color; g.fillText(f.text, tx, 0);
-        g.restore();
+        stamp(g, textArt(f.text, f.size, f.color, f.emoji), f.x + dx, f.y - (f.shake ? 0 : 30 * easeOut(p)), p < 0.18 ? easeBack(p / 0.18) : 1, 0, 1 - clamp01((p - 0.7) / 0.3));
       }
     }
   }
@@ -872,22 +946,19 @@ function makeGame(ctx) {
       S.shake = Math.max(0, S.shake - rdt);
       g.save();
       if (S.shake > 0) { const k = (S.shake / 0.32) * 7; g.translate((Math.random() - 0.5) * k, (Math.random() - 0.5) * k); }
-      const SKIP = globalThis.__rrSkip || new Set(); // TEMP DEBUG
-      if (!SKIP.has('sky')) drawSky(g, now);
-      if (!SKIP.has('water')) drawWater(g, now);
-      if (!SKIP.has('post')) drawPost(g);
-      if (!SKIP.has('line')) drawClothesline(g, S, now);
-      if (!SKIP.has('rafts')) for (const r of S.oldRafts) drawRaft(g, S, r, -1);
-      if (!SKIP.has('rafts')) S.rafts.forEach((r, i) => drawRaft(g, S, r, i));
-      if (!SKIP.has('riders')) drawRiders(g, S, now);
-      if (!SKIP.has('fx')) drawFx(g, S, 'back');
-      if (!SKIP.has('fuse')) drawFuse(g, S, now);
-      if (!SKIP.has('pomelo')) drawPomelo(g, pomeloMood(S), now, 1);
-      if (!SKIP.has('card')) drawCard(g, S, now);
-      if (!SKIP.has('pomelo')) drawHooves(g, 1);
-      if (!SKIP.has('pair')) drawPair(g, S);
-      if (!SKIP.has('brine')) drawBrineUi(g, S);
-      if (!SKIP.has('fx')) drawFx(g, S, 'front');
+      drawScene(g, S, now);
+      for (const r of S.oldRafts) drawRaft(g, S, r, -1);
+      S.rafts.forEach((r, i) => drawRaft(g, S, r, i));
+      drawRiders(g, S, now);
+      drawFx(g, S, 'back');
+      drawFuse(g, S, now);
+      const mood = pomeloMood(S);
+      stamp(g, pomeloArt(mood), 196, 51 + Math.sin(now * 2.1) * 1.6 - (mood === 'happy' ? 3 : 0));
+      drawCard(g, S, now);
+      blit(g, hoovesArt());
+      drawPair(g, S);
+      drawBrineUi(g, S);
+      drawFx(g, S, 'front');
       g.restore();
     },
     result(S) { return S.result; },

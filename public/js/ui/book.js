@@ -27,6 +27,7 @@ const PDFJS_WORKER = '/vendor/pdfjs/pdf.worker.mjs';
 // Every word the player reads in the book's own chrome (answers, notes and records are theirs / the book's).
 const SAY = {
   name: 'The Cursed Book of Dimensionality',
+  nameShort: 'The Cursed Book',         // the plate in narrow windows
   loadFail: 'The paper would not load.',
   retry: 'Try again',
   onArxiv: 'Read on arXiv',
@@ -36,11 +37,11 @@ const SAY = {
   ask: 'Ask',
   notePlaceholder: 'Write a note…',
   erase: 'Erase?',                     // a 🗑 pressed once: press again to erase
-  notesEmpty: 'No notes yet. Select text in Read to highlight it or add a note.',
-  askPlaceholder: "Ask about the paper. It's terse and won't solve challenges.",
+  notesEmpty: 'Select text in Read to highlight it or add a note.',
+  askPlaceholder: "Ask about the paper. The book won't solve challenges.",
   offline: 'Offline (no API key): the book only mutters hints.',
   askFail: 'No answer came.',
-  learnedEmpty: 'Nothing learned yet. Concepts you prove to villagers are recorded here.',
+  learnedEmpty: 'Concepts you prove to villagers are recorded here.',
 };
 
 const TABS = [
@@ -1432,8 +1433,11 @@ class Book {
       // two sparks of light crawling round the edge, on four thin rails
       ...['t', 'r', 'b', 'l'].map((side) => h('i', { class: `bk-rail bk-rail-${side}`, 'aria-hidden': 'true' }, h('i'), h('i'))),
       deco('bk-cn bk-cn-tl'), deco('bk-cn bk-cn-bl'), deco('bk-cn bk-cn-br'),
-      // its name, on a plate across the top of the cover (the dialog's name too, so hidden from readers here)
-      h('div', { class: 'bk-name', 'aria-hidden': 'true', text: SAY.name }));
+      // its name, on a plate across the top of the cover; narrow windows show the short name instead
+      // (the dialog's name too, so hidden from readers here)
+      h('div', { class: 'bk-name', 'aria-hidden': 'true' },
+        h('span', { class: 'bk-name-full', text: SAY.name }),
+        h('span', { class: 'bk-name-short', text: SAY.nameShort })));
     this.root = h('div', { class: 'bk-overlay', role: 'dialog', 'aria-modal': 'true', 'aria-label': SAY.name, style: 'visibility:hidden' }, this.bookEl);
     this.root.addEventListener('pointerdown', (e) => { this.downOnBackdrop = e.target === this.root; });
     this.root.addEventListener('click', (e) => { if (e.target === this.root && this.downOnBackdrop) this.close(); });
