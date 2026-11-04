@@ -96,8 +96,12 @@ async function playWorld(browser, regionId) {
     try {
       if (!solvers[c.id]) throw new Error('no solver');
       await use(p, labelOf(c.giver));
-      const got = await drain(p);
+      let got = await drain(p);
       const want = c.type === 'minigame' ? 'overlay' : c.type === 'quiz' ? 'ask' : 'done';
+      // slow machines: a mini-game appears only once its module has loaded, seconds after the last line
+      if (got === 'done' && want !== 'done') {
+        got = await p.waitForSelector(want === 'overlay' ? '.puzzle-host' : '.dlg-ask', { timeout: 60000 }).then(() => want).catch(() => got);
+      }
       if (got !== want) throw new Error(`talking to ${labelOf(c.giver)} gave '${got}', expected '${want}'`);
       await solvers[c.id](p, c, h);
       await p.waitForFunction(() => !document.querySelector('.puzzle-host'), null, { timeout: 30000 }).catch(() => {});
