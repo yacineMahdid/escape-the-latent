@@ -612,7 +612,7 @@
         },
         "result": {
           "ok": "ok = number of ✓ bells (of 5); then api.onProgress(progress).",
-          "win": "ok = 5: the five bells ring at once and Noodle hops (1.4 s), the row packs itself away (0.5 s), then api.onSolved() (the region then plays the success lines and, as this is the finale, the resolution).",
+          "win": "ok = 5: the five bells ring at once (1.6 s), the row packs itself away (0.6 s), then api.onSolved() (the region then plays the success lines and, as this is the finale, the resolution; the artefact appears by the player's feet).",
           "else": "w.speak('penny', [count, details])",
           "count": {
             "one": "One mix-up!",
@@ -694,7 +694,7 @@
           "hyena",
           "apes"
         ],
-        "text": "Longer and longer strings of letters. Section 4.3.2 says who grows wiser. Figure 5 shows it."
+        "text": "Longer and longer strings of letters. Section 4.3.2 tells the tale. Figure 5 draws it."
       },
       {
         "keywords": [
