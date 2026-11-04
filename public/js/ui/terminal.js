@@ -6,7 +6,8 @@
 // the right, four icon keys (run, test, reset, close). Player code runs in a Pyodide worker
 // (js/workers/pyodide-worker.js); a run longer than 20 s is killed and the worker respawned.
 // Drafts autosave to localStorage `etl-code-<regionId>-<challengeId>`. All tests passing ->
-// paper confetti -> resolves { solved: true, code }. Esc closes with solved: false.
+// paper confetti -> the draft is deleted -> resolves { solved: true, code }. Esc closes with
+// solved: false. The console stays short: test pips + n/N and the first failure only.
 import { openModal, closeModal, topModal } from './modal.js';
 
 const CSS_HREF = '/css/terminal.css';
@@ -214,7 +215,8 @@ export function renderInline(src, parent = document.createDocumentFragment()) {
     if (m[1]) {
       let code = m[2];
       if (/^ .*[^ ].* $/.test(code)) code = code.slice(1, -1);
-      parent.append(h('code', { class: 'md-code', text: code }));
+      // short chips like `(n_q, d_v)` never break in the middle; long ones may
+      parent.append(h('code', { class: code.length < 24 ? 'md-code md-nowrap' : 'md-code', text: code }));
     } else if (m[3] != null) parent.append(h('span', { class: 'md-math' }, renderTex(m[3])));
     else if (m[4] != null) parent.append(h('span', { class: 'md-math' }, renderTex(m[4])));
     else if (m[5] != null || m[6] != null) parent.append(renderInline(m[5] ?? m[6], h('strong')));
@@ -773,6 +775,16 @@ export async function open({ challenge = {}, regionId = 'local' } = {}) {
     // ---- console rendering
     const row = (cls, ...kids) => h('div', { class: `term-row ${cls}` }, ...kids);
     const lineBtn = (line) => h('button', { class: 'term-lnk', type: 'button', title: `Line ${line}`, onclick: () => editor.goTo(line) }, String(line));
+    const muted = (mark, tip) => { const r = row('muted', h('span', { class: 'term-mark', text: mark })); r.title = tip; return r; };
+
+    // One failing test, as one row: ✗ reason [L7]. Its name and trace live in the tooltip.
+    function failRow(t) {
+      const r = row('bad term-fail', h('span', { class: 'term-mark', text: '✗' }),
+        h('span', { class: 'term-msg', text: t.message || pretty(t.name) || '✗' }), t.line ? lineBtn(t.line) : null);
+      r.title = [pretty(t.name), t.trace].filter(Boolean).join('\n');
+      editor.mark(t.line || null);
+      return r;
+    }
 
     function show(res, mode) {
       log.replaceChildren();
@@ -781,45 +793,49 @@ export async function open({ challenge = {}, regionId = 'local' } = {}) {
       if (res.cancelled) { log.append(row('muted', icon('stop', 'term-ic'))); log.lastChild.title = 'Stopped'; return; }
       if (res.offline) {
         const r = row('bad', icon('offline', 'term-ic'), h('span', { text: 'offline' }));
-        r.title = 'Python could not load. Check your connection, then try again.';
+        r.title = 'Python could not load';
         log.append(r);
         return;
       }
-      if (res.stdout) log.append(h('pre', { class: 'term-stdout', text: res.stdout.replace(/\n$/, '') }));
-      if (res.stderr) log.append(h('pre', { class: 'term-stderr', text: res.stderr.replace(/\n$/, '') }));
+      const prints = [
+        res.stdout ? h('pre', { class: 'term-stdout', text: res.stdout.replace(/\n$/, '') }) : null,
+        res.stderr ? h('pre', { class: 'term-stderr', text: res.stderr.replace(/\n$/, '') }) : null,
+      ].filter(Boolean);
       if (res.error) {
         const r = row('bad', h('span', { class: 'term-mark', text: '✗' }), h('span', { class: 'term-msg', text: res.error }), res.errorLine ? lineBtn(res.errorLine) : null);
         if (res.trace) r.title = res.trace;
-        log.append(r);
+        log.append(...prints, r);
         if (res.errorLine) editor.mark(res.errorLine);
         return;
       }
       if (mode === 'run') {
-        if (!res.stdout && !res.stderr) { const r = row('muted', h('span', { class: 'term-mark', text: '∅' })); r.title = 'No output'; log.append(r); }
+        log.append(...prints);
+        if (!prints.length) log.append(muted('∅', 'No output'));
         return;
       }
+      // tests: one pip per test (its name, and why it failed, in the tooltip), n/N, then the first
+      // failure only. Clicking another red pip shows that one instead.
       const results = Array.isArray(res.results) ? res.results : [];
+      if (!results.length) { log.append(muted('∅', 'No tests'), ...prints); return; }
       const pass = results.filter((t) => t.passed).length;
-      const sum = h('div', { class: `term-sum ${pass === results.length ? 'ok' : 'bad'}` },
-        h('span', { class: 'term-pips' }, results.map((t) => h('i', { class: t.passed ? 'ok' : 'bad', title: pretty(t.name) || '' }))),
-        h('b', { text: `${pass}/${results.length}` }));
-      log.prepend(sum);
-      let firstBad = null;
-      const said = new Set();          // the same reason (and line) twice is said once
+      let failure = null;
+      const pick = (t, pip) => {
+        const r = failRow(t);
+        if (failure) failure.replaceWith(r); else sum.after(r);
+        failure = r;
+        pips.querySelector('.sel')?.classList.remove('sel');
+        pip.classList.add('sel');
+      };
+      const pips = h('span', { class: 'term-pips' });
       for (const t of results) {
-        const name = pretty(t.name);
-        const sig = `${t.message}@${t.line}`;
-        const fresh = !t.passed && !said.has(sig);
-        if (!t.passed) said.add(sig);
-        const r = row(t.passed ? 'ok' : 'bad', h('span', { class: 'term-mark', text: t.passed ? '✓' : '✗' }),
-          h('span', { class: 'term-name', text: name }),
-          fresh && t.line ? lineBtn(t.line) : null);
-        if (fresh && t.message) r.append(h('div', { class: 'term-why', text: t.message }));
-        if (t.trace) r.title = t.trace;
-        log.append(r);
-        if (!t.passed && !firstBad) firstBad = t;
+        const pip = h('i', { class: t.passed ? 'ok' : 'bad', title: [pretty(t.name), t.passed ? '' : t.message].filter(Boolean).join('\n') });
+        if (!t.passed) pip.addEventListener('click', () => pick(t, pip));
+        pips.append(pip);
       }
-      if (firstBad?.line) editor.mark(firstBad.line);
+      const sum = h('div', { class: `term-sum ${pass === results.length ? 'ok' : 'bad'}` }, pips, h('b', { text: `${pass}/${results.length}` }));
+      log.append(sum, ...prints);
+      const first = results.findIndex((t) => !t.passed);
+      if (first >= 0) pick(results[first], pips.children[first]);
     }
 
     async function exec(mode) {
@@ -831,7 +847,8 @@ export async function open({ challenge = {}, regionId = 'local' } = {}) {
       editor.mark(null);
       let res;
       try {
-        res = await runner.run(editor.value, mode === 'test' ? String(challenge.tests ?? '') : undefined);
+        // no tests at all (a content slip) never counts as solved: the worker answers [] and we show ∅
+        res = await runner.run(editor.value, mode === 'test' ? (typeof challenge.tests === 'string' ? challenge.tests : '') : undefined);
       } catch (err) {
         console.error(err);
         res = { offline: true };
@@ -845,7 +862,8 @@ export async function open({ challenge = {}, regionId = 'local' } = {}) {
 
     async function celebrate() {
       solved = true;
-      saveNow();
+      clearTimeout(saveTimer);
+      store.del(key);                          // a solved challenge leaves no draft (New Game starts clean)
       panel.classList.add('is-solved');
       editor.ta.readOnly = true;
       for (const b of [runKey, testKey, resetKey]) b.disabled = true;
@@ -880,7 +898,7 @@ export async function open({ challenge = {}, regionId = 'local' } = {}) {
     function finish(isSolved) {
       if (closed) return;
       closed = true;
-      saveNow();
+      if (!isSolved) saveNow();
       disarm();
       if (runner.busy) runner.cancel();      // never leave a stuck program behind
       unsubscribe();

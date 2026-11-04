@@ -19,6 +19,7 @@ const PORT = Number(process.env.TERMINAL_TEST_PORT || 3103);
 const BASE = `http://localhost:${PORT}`;
 const OUT = path.join(ROOT, 'test-output');
 const DRAFT_KEY = 'etl-code-fixture-code1';
+const EXPLAIN_KEY = 'etl-explain-fixture-explain1';
 
 const STARTER_HEAD = 'import numpy as np';
 const WRONG_OVERFLOW = 'import numpy as np\n\n\ndef softmax(x):\n    e = np.exp(x)\n    return e / e.sum(axis=1, keepdims=True)\n';
@@ -26,6 +27,8 @@ const WRONG_GLOBAL = 'import numpy as np\n\n\ndef softmax(x):\n    e = np.exp(x 
 const SYNTAX = 'import numpy as np\n\ndef softmax(x:\n    return x\n';
 const LOOP = 'n = 0\nwhile True:\n    n += 1\n';
 const RIGHT = 'import numpy as np\n\n\ndef softmax(x):\n    x = np.asarray(x, dtype=float)\n    e = np.exp(x - x.max(axis=1, keepdims=True))\n    return e / e.sum(axis=1, keepdims=True)\n';
+// a run that vandalises the shared interpreter; the next run must not notice
+const VANDAL = 'import builtins, math, sys, warnings\nimport numpy as np\nnp.exp = lambda x: x * 0\nnp.seterr(all="raise")\nbuiltins.len = lambda x: 0\nmath.sqrt = None\nsys.setrecursionlimit(60)\nwarnings.simplefilter("error")\nnp.extra = 1\n';
 const VAGUE = 'Because it makes things better and nicer for the lamps.';
 const GOOD = 'They divide the scores by the square root of d_k. With big d_k the dot products get huge, which pushes the softmax into saturation where the gradients are tiny.';
 
@@ -80,22 +83,26 @@ const setCode = (page, code) => page.fill('.term-ta', code);
 const lastResult = (page) => page.evaluate(() => window.__term.last);
 const closes = (page) => page.evaluate(() => window.__term.closes);
 const modalOpen = (page) => page.evaluate(async () => (await import('/js/ui/modal.js')).isModalOpen());
+const draft = (page, key = DRAFT_KEY) => page.evaluate((k) => localStorage.getItem(k), key);
 
-async function runAndWait(page, act) {
+async function runAndWait(page, act, timeout = 30000) {
   await page.click(`.term-key[data-act="${act}"]`);
-  await page.waitForFunction(() => !document.querySelector('.term')?.classList.contains('is-busy') && document.querySelector('.term-log')?.childElementCount > 0, null, { timeout: 30000 });
+  await page.waitForFunction(() => !document.querySelector('.term')?.classList.contains('is-busy') && document.querySelector('.term-log')?.childElementCount > 0, null, { timeout });
 }
 
 async function consoleRows(page) {
   return page.$$eval('.term-log .term-row', (rows) => rows.map((r) => ({
     cls: r.className,
     mark: r.querySelector('.term-mark')?.textContent || '',
-    name: r.querySelector('.term-name')?.textContent || '',
-    why: r.querySelector('.term-why')?.textContent || '',
+    msg: r.querySelector('.term-msg')?.textContent || '',
     text: r.textContent,
+    tip: r.title,
     line: r.querySelector('.term-lnk')?.textContent || '',
   })));
 }
+
+const pips = (page) => page.$$eval('.term-pips i', (is) => is.map((i) => ({ ok: i.classList.contains('ok'), sel: i.classList.contains('sel'), tip: i.title })));
+const words = (s) => (String(s).match(/\S+/g) || []).length;
 
 // a closed UI fades out for ~200 ms before its DOM goes; never mistake it for the next one
 const gone = (page) => page.waitForFunction(() => !document.querySelector('.term-overlay, .ex-overlay'));
@@ -111,6 +118,8 @@ async function openExplain(page) {
   await page.evaluate(() => { window.__term.go('explain', 'explain1'); });
   await page.waitForSelector('.ex-bubble');
 }
+
+const exKeys = (page) => page.$$eval('.ex-key:not([hidden])', (bs) => bs.map((b) => b.dataset.act));
 
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
@@ -138,6 +147,7 @@ async function openExplain(page) {
         assert.ok(k.tip, `key ${k.act} needs a tooltip`);
       }
       assert.ok(await page.$eval('.term-prompt', (e) => e.querySelector('ul.md-list li strong') && e.querySelector('.md-code')), 'the prompt markdown is rendered');
+      assert.ok(await page.$eval('.term-prompt', (e) => e.querySelector('.md-code.md-nowrap')), 'short code chips do not wrap');
       assert.ok(await modalOpen(page), 'the terminal is in the modal stack');
       await shot(page, 'term-open');
     });
@@ -149,16 +159,22 @@ async function openExplain(page) {
       assert.equal(await page.$eval('.term-spin', (s) => s.hidden), true);
     });
 
-    await step('starter code fails every test, with the reason and the line', async () => {
+    await step('starter code: 0/6 pips and only the first failure, with its line', async () => {
       await runAndWait(page, 'test');
       assert.equal(await page.$eval('.term-sum b', (b) => b.textContent), '0/6');
+      const ps = await pips(page);
+      assert.equal(ps.length, 6);
+      assert.ok(ps.every((p) => !p.ok));
+      assert.match(ps[0].tip, /^keeps shape and rows sum to one\nNotImplementedError/, 'a pip tooltip has the test name and why it failed');
       const rows = await consoleRows(page);
-      assert.equal(rows.length, 6);
-      assert.ok(rows.every((r) => r.mark === '✗'));
-      assert.match(rows[0].why, /NotImplementedError/);
+      assert.equal(rows.length, 1, 'one failure row, not one row per test');
+      assert.equal(rows[0].mark, '✗');
+      assert.match(rows[0].msg, /NotImplementedError/);
       assert.equal(rows[0].line, '7');
-      assert.equal(rows.filter((r) => r.why).length, 1, 'the same reason is said once');
+      assert.match(rows[0].tip, /^keeps shape and rows sum to one\nline 7: raise NotImplementedError/, 'the name and trace are in the tooltip');
       assert.equal(await page.$eval('.term-ln.bad', (e) => e.textContent), '7', 'the gutter marks the failing line');
+      const text = await page.$eval('.term-log', (e) => e.innerText);
+      assert.ok(words(text) <= 6, `the console stays short: ${JSON.stringify(text)}`);
       await shot(page, 'term-starter');
     });
 
@@ -194,20 +210,26 @@ async function openExplain(page) {
       await setCode(page, WRONG_OVERFLOW);
       await runAndWait(page, 'test');
       assert.equal(await page.$eval('.term-sum b', (b) => b.textContent), '5/6');
-      const bad = (await consoleRows(page)).filter((r) => r.mark === '✗');
-      assert.equal(bad.length, 1);
-      assert.equal(bad[0].name, 'large values are stable');
-      assert.equal(bad[0].why, 'huge scores must not overflow into nan or inf');
+      assert.deepEqual((await pips(page)).map((p) => p.ok), [true, true, true, true, false, true]);
+      const rows = await consoleRows(page);
+      assert.equal(rows.length, 1, 'passing tests get no rows');
+      assert.equal(rows[0].msg, 'huge scores must not overflow into nan or inf');
+      assert.equal(rows[0].tip, 'large values are stable');
       await shot(page, 'term-wrong');
     });
 
-    await step('another wrong solution (whole-array softmax) fails, Ctrl+Enter runs the tests', async () => {
+    await step('another wrong solution: Ctrl+Enter tests, a red pip shows its own failure', async () => {
       await setCode(page, WRONG_GLOBAL);
       await page.focus('.term-ta');
       await page.keyboard.press('Control+Enter');
       await page.waitForSelector('.term-sum', { timeout: 30000 });
-      const bad = (await consoleRows(page)).filter((r) => r.mark === '✗').map((r) => r.why);
-      assert.ok(bad.includes('every row must sum to 1'), bad.join(' | '));
+      assert.equal(await page.$eval('.term-sum b', (b) => b.textContent), '4/6');
+      assert.equal((await consoleRows(page))[0].msg, 'every row must sum to 1');
+      await page.click('.term-pips i.bad:not(.sel)');
+      const rows = await consoleRows(page);
+      assert.equal(rows.length, 1);
+      assert.equal(rows[0].msg, 'row 0 must be the softmax of row 0 alone');
+      assert.deepEqual((await pips(page)).map((p) => p.sel), [false, false, true, false, false, false]);
     });
 
     await step('a syntax error points at its line', async () => {
@@ -221,6 +243,15 @@ async function openExplain(page) {
       assert.equal(sel, 3, 'clicking the line badge jumps there');
     });
 
+    await step('runaway recursion: one row, the repeated frame said once (×N) in the tooltip', async () => {
+      await setCode(page, 'def f(n):\n    return f(n + 1)\n\nf(0)\n');
+      await runAndWait(page, 'run');
+      const rows = await consoleRows(page);
+      assert.equal(rows.length, 1);
+      assert.match(rows[0].msg, /RecursionError/);
+      assert.match(rows[0].tip, /^line 4: f\(0\)\nline 2: return f\(n \+ 1\)  ×\d+$/);
+    });
+
     await step('▶ runs code and shows stdout + stderr', async () => {
       await setCode(page, 'import sys\nprint("glow", 6 * 7)\nprint("hot", file=sys.stderr)\n');
       await runAndWait(page, 'run');
@@ -232,7 +263,7 @@ async function openExplain(page) {
     await step('drafts autosave and come back after a reload', async () => {
       await setCode(page, WRONG_OVERFLOW);
       await sleep(450);
-      assert.equal(await page.evaluate((k) => localStorage.getItem(k), DRAFT_KEY), WRONG_OVERFLOW);
+      assert.equal(await draft(page), WRONG_OVERFLOW);
       await page.goto(`${BASE}/dev/terminal.html?mode=terminal&challenge=code1`);
       await page.waitForSelector('.term');
       assert.equal(await editorValue(page), WRONG_OVERFLOW);
@@ -289,14 +320,25 @@ async function openExplain(page) {
       assert.equal(await modalOpen(page), false);
     });
 
-    await step('the right solution passes: confetti, then resolves { solved: true, code }', async () => {
+    await step('one run cannot change the next (monkeypatched numpy, builtins, recursion limit...)', async () => {
       await openTerminal(page);
       await waitPyReady(page);
+      await setCode(page, VANDAL);
+      await runAndWait(page, 'run');
+      await setCode(page, 'import math, sys\nimport numpy as np\nprint(hasattr(np, "extra"), np.geterr()["over"], math.sqrt(4), len([1, 2]), sys.getrecursionlimit() > 100)\n');
+      await runAndWait(page, 'run');
+      assert.equal(await page.$eval('.term-stdout', (e) => e.textContent), 'False warn 2.0 2 True');
+    });
+
+    await step('the right solution passes: confetti, { solved: true, code }, and the draft is gone', async () => {
       await setCode(page, RIGHT);
+      await sleep(450);
+      assert.equal(await draft(page), RIGHT, 'a draft while working on it');
       const before = await closes(page);
       await page.click('.term-key[data-act="test"]');
       await page.waitForSelector('.term-stamp', { timeout: 30000 });
       assert.equal(await page.$eval('.term-sum b', (b) => b.textContent), '6/6');
+      assert.equal((await consoleRows(page)).length, 0, 'a full pass is just the pips');
       assert.ok(await page.$$eval('.term-confetti .cf', (c) => c.length) > 20, 'paper confetti');
       await shot(page, 'term-solved');
       await page.waitForFunction((n) => window.__term.closes === n + 1, before, { timeout: 8000 });
@@ -304,35 +346,66 @@ async function openExplain(page) {
       assert.deepEqual(res, { solved: true, code: RIGHT });
       await page.waitForFunction(() => !document.querySelector('.term-overlay'));
       assert.equal(await modalOpen(page), false);
-      assert.equal(await page.evaluate((k) => localStorage.getItem(k), DRAFT_KEY), RIGHT);
+      assert.equal(await draft(page), null, 'a solved challenge leaves no draft behind');
+    });
+
+    await step('New Game (resetSave) then reopening shows the starter, not the old solution', async () => {
+      await page.evaluate(async () => (await import('/js/game/save.js')).resetSave());
+      await openTerminal(page);
+      const code = await editorValue(page);
+      assert.ok(code.startsWith(STARTER_HEAD) && /NotImplementedError/.test(code), code);
+      await page.keyboard.press('Escape');
+      await gone(page);
+      await page.evaluate((k) => localStorage.removeItem(k), DRAFT_KEY);
+    });
+
+    await step('a challenge without tests never counts as solved (∅)', async () => {
+      for (const tests of ['', undefined, 'import numpy as np\n']) {
+        const done = page.evaluate(async (tests) => {
+          const t = await import('/js/ui/terminal.js');
+          return t.open({ challenge: { id: 'no-tests', title: 'No tests', prompt: 'x', starterCode: 'print(1)\n', tests }, regionId: 'fixture' });
+        }, tests);
+        done.catch(() => {});
+        await page.waitForSelector('.term');
+        await waitPyReady(page);
+        await runAndWait(page, 'test');
+        assert.equal(await page.$$eval('.term-row.muted[title="No tests"]', (r) => r.length), 1, `tests=${JSON.stringify(tests)}`);
+        assert.equal(await page.$('.term-stamp'), null);
+        await page.keyboard.press('Escape');
+        assert.equal((await done).solved, false);
+        await gone(page);
+      }
+      await page.evaluate(() => localStorage.removeItem('etl-code-fixture-no-tests'));
     });
 
     console.log('explain');
 
-    await step('opens as a speech bubble: name tag, question, icon keys, offline mark', async () => {
-      await page.evaluate(() => localStorage.removeItem('etl-explain-fixture-explain1'));
+    await step('opens as a speech bubble: name tag in the speaker colour, question, two icon keys', async () => {
+      await page.evaluate((k) => localStorage.removeItem(k), EXPLAIN_KEY);
       await openExplain(page);
       assert.equal(await page.$eval('.ex-tag', (e) => e.textContent), 'Elder Moss');
+      assert.equal(await page.$eval('.ex-tag', (e) => getComputedStyle(e).backgroundColor), 'rgb(138, 90, 158)', 'the elder\'s shirt colour');
       assert.match(await page.$eval('.ex-q', (e) => e.textContent), /Why do they scale the scores/);
-      await page.waitForSelector('.ex-off:not([hidden])', { timeout: 5000 });
       const keys = await page.$$eval('.ex-key:not([hidden])', (bs) => bs.map((b) => ({ act: b.dataset.act, text: b.textContent.trim(), tip: b.title, disabled: b.disabled })));
       assert.deepEqual(keys.map((k) => k.act), ['later', 'send']);
       assert.ok(keys.every((k) => !k.text && k.tip));
       assert.equal(keys[1].disabled, true, 'nothing to send yet');
-      assert.equal(await page.$eval('.ex-count', (e) => e.textContent), '0');
+      assert.equal(await page.$('.ex-count, .ex-pen, .ex-off, .ex-meta'), null, 'no word count, pen or offline mark');
+      assert.equal(await page.$eval('.ex-bubble', (b) => b.innerText.trim().split('\n').filter(Boolean).length), 2, 'name tag + question are the only words');
       await shot(page, 'explain-open');
     });
 
-    await step('a vague answer fails with feedback; ↺ retry and ✕ later appear', async () => {
+    await step('a vague answer fails: the reply stays up, focus stays in the answer, ➤ sends again', async () => {
       await page.keyboard.type(VAGUE);
-      assert.equal(await page.$eval('.ex-count', (e) => e.textContent), String(VAGUE.split(/\s+/).length));
       await page.click('.ex-key[data-act="send"]');
       await page.waitForSelector('.ex-reply[data-mood="fail"]', { timeout: 15000 });
       await sleep(900);
       assert.match(await page.$eval('.ex-reply-text', (e) => e.textContent), /big numbers trouble the softmax/);
-      assert.doesNotMatch(await page.$eval('.ex-reply-text', (e) => e.textContent), /key ideas/, 'the offline tally is shown as a meter, not words');
-      const keys = await page.$$eval('.ex-key:not([hidden])', (bs) => bs.map((b) => b.dataset.act));
-      assert.deepEqual(keys, ['later', 'retry']);
+      assert.deepEqual(await exKeys(page), ['later', 'send']);
+      assert.equal(await page.$eval('.ex-key[data-act="send"]', (b) => b.disabled), false);
+      assert.equal(await page.evaluate(() => document.activeElement?.className), 'ex-ta', 'keep typing right away');
+      await page.keyboard.type(' More words.');
+      assert.equal(await page.$eval('.ex-reply', (r) => r.hidden), false, 'the hint stays while you rewrite');
       await shot(page, 'explain-fail');
     });
 
@@ -345,14 +418,19 @@ async function openExplain(page) {
       assert.match(res.feedback, /big numbers/);
       assert.equal(await modalOpen(page), false);
       await openExplain(page);
-      assert.equal(await page.$eval('.ex-ta', (t) => t.value), VAGUE, 'the answer is still there');
+      assert.equal(await page.$eval('.ex-ta', (t) => t.value), `${VAGUE} More words.`, 'the answer is still there');
     });
 
-    await step('network trouble shows "…?" and lets you send again', async () => {
-      await page.route('**/api/grade', (route) => route.abort());
+    await step('grading trouble: the server\'s own word ("… busy"), else "…?"; you can send again', async () => {
+      await page.route('**/api/grade', (route) => route.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ error: '… busy' }) }));
       await page.click('.ex-key[data-act="send"]');
       await page.waitForSelector('.ex-reply[data-mood="error"]', { timeout: 15000 });
-      assert.equal(await page.$eval('.ex-reply-text', (e) => e.textContent), '…?');
+      await sleep(300);
+      assert.equal(await page.$eval('.ex-reply-text', (e) => e.textContent), '… busy');
+      await page.unroute('**/api/grade');
+      await page.route('**/api/grade', (route) => route.abort());
+      await page.click('.ex-key[data-act="send"]');
+      await page.waitForFunction(() => document.querySelector('.ex-reply-text')?.textContent === '…?', null, { timeout: 15000 });
       assert.equal(await page.$eval('.ex-key[data-act="send"]', (b) => b.hidden || b.disabled), false);
       await page.unroute('**/api/grade');
     });
@@ -362,7 +440,7 @@ async function openExplain(page) {
       await page.keyboard.press('Control+Enter');
       await page.waitForSelector('.ex-reply[data-mood="pass"]', { timeout: 15000 });
       await sleep(900);
-      assert.deepEqual(await page.$$eval('.ex-key:not([hidden])', (bs) => bs.map((b) => b.dataset.act)), ['done']);
+      assert.deepEqual(await exKeys(page), ['done']);
       await shot(page, 'explain-pass');
       const before = await closes(page);
       await page.click('.ex-key[data-act="done"]');
@@ -370,8 +448,17 @@ async function openExplain(page) {
       const res = await lastResult(page);
       assert.equal(res.pass, true);
       assert.ok(res.feedback.length > 0);
-      assert.equal(await page.evaluate(() => localStorage.getItem('etl-explain-fixture-explain1')), null, 'a passed draft is cleared');
+      assert.equal(await draft(page, EXPLAIN_KEY), null, 'a passed draft is cleared');
       assert.equal(await modalOpen(page), false);
+    });
+
+    await step('backing out before any reply resolves { pass: false, feedback: "" }', async () => {
+      await openExplain(page);
+      const before = await closes(page);
+      await page.keyboard.press('Escape');
+      await page.waitForFunction((n) => window.__term.closes === n + 1, before);
+      assert.deepEqual(await lastResult(page), { pass: false, feedback: '' });
+      await page.evaluate((k) => localStorage.removeItem(k), EXPLAIN_KEY);
     });
 
     await step('fundamental-shaped challenge ({ id, type, title, question, rubric, offline }) works too', async () => {
@@ -396,19 +483,60 @@ async function openExplain(page) {
       assert.equal(res.pass, true, 'Esc after passing still counts as a pass');
     });
 
-    await step('phone-sized screens still fit', async () => {
-      await page.setViewportSize({ width: 390, height: 780 });
-      await openTerminal(page);
-      await sleep(300);
-      const fits = await page.$eval('.term', (e) => { const r = e.getBoundingClientRect(); return r.right <= innerWidth + 1 && r.bottom <= innerHeight + 1; });
-      assert.ok(fits);
-      await shot(page, 'term-phone');
-      await page.keyboard.press('Escape');
-      await page.waitForFunction(() => !document.querySelector('.term-overlay'));
-      await openExplain(page);
-      await shot(page, 'explain-phone');
-      await page.keyboard.press('Escape');
+    await step('phone-sized screens still fit (portrait and landscape)', async () => {
+      for (const [w, h] of [[390, 780], [844, 390]]) {
+        await page.setViewportSize({ width: w, height: h });
+        await openTerminal(page);
+        await sleep(300);
+        const m = await page.$eval('.term', (e) => {
+          const r = e.getBoundingClientRect();
+          return { fits: r.right <= innerWidth + 1 && r.bottom <= innerHeight + 1, editor: document.querySelector('.term-editor').getBoundingClientRect().height };
+        });
+        assert.ok(m.fits, `${w}x${h}: the terminal fits`);
+        assert.ok(m.editor >= 150, `${w}x${h}: the editor is ${m.editor}px tall`);
+        await shot(page, `term-phone-${w}x${h}`);
+        await page.keyboard.press('Escape');
+        await gone(page);
+        await openExplain(page);
+        await page.fill('.ex-ta', VAGUE);
+        await page.click('.ex-key[data-act="send"]');
+        await page.waitForSelector('.ex-reply[data-mood="fail"]', { timeout: 15000 });
+        await sleep(900);
+        const e = await page.evaluate(() => {
+          const r = (s) => document.querySelector(s).getBoundingClientRect();
+          return { card: r('.ex-card').height, keys: r('.ex-keys').bottom, bubble: r('.ex-bubble').bottom };
+        });
+        assert.ok(e.card >= 100 && e.keys <= h && e.bubble <= h, `${w}x${h}: the answer card and keys fit ${JSON.stringify(e)}`);
+        await shot(page, `explain-phone-${w}x${h}`);
+        await page.keyboard.press('Escape');
+        await gone(page);
+      }
       await page.setViewportSize({ width: 1440, height: 900 });
+      await page.evaluate((k) => localStorage.removeItem(k), EXPLAIN_KEY);
+    });
+
+    console.log('python offline');
+
+    await step('Pyodide unreachable: fails fast, ▶ says offline, and recovers once it is back', async () => {
+      const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+      const cdn = /cdn\.jsdelivr\.net/;
+      await context.route(cdn, (route) => route.abort());
+      const p2 = await context.newPage();
+      p2.on('pageerror', (e) => errors.push(e.message));
+      try {
+        await p2.goto(`${BASE}/dev/terminal.html?mode=terminal&challenge=code1`);
+        await p2.waitForSelector('.term');
+        await p2.waitForFunction(() => document.querySelector('.term')?.dataset.py === 'failed', null, { timeout: 30000 });
+        await setCode(p2, 'print(6 * 7)\n');
+        await runAndWait(p2, 'run');
+        assert.match(await p2.$eval('.term-row.bad', (r) => r.textContent), /offline/);
+        await shot(p2, 'term-offline');
+        await context.unroute(cdn);
+        await runAndWait(p2, 'run', 150000);          // Python loads from scratch in this context
+        assert.equal(await p2.$eval('.term-stdout', (e) => e.textContent), '42', 'Python loads on the next try');
+      } finally {
+        await context.close();
+      }
     });
 
     assert.deepEqual(errors.filter((e) => !/Failed to load resource/.test(e)), [], 'no page errors');

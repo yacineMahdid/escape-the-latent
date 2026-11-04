@@ -2,10 +2,12 @@
 //
 //   open({ challenge, regionId, speaker: { name, color? } }) -> Promise<{ pass: boolean, feedback: string }>
 //
-// A speech bubble: the speaker's name tag and question, a roomy answer card with a tiny word count,
-// ➤ to send it to api.grade. Pass -> ✓ continue. Not yet -> the villager's reply, then ↺ retry or
-// ✕ later. Offline grading shows a tiny ⦸; network trouble shows "…?". Explain-kind fundamentals
-// call this too, with challenge = { id, type: 'explain', title, question, rubric, offline }.
+// A speech bubble: the speaker's name tag and question, a roomy answer card, ➤ to send it to
+// api.grade. Pass -> ✓ continue. Not yet -> the villager's reply stays above the card while you
+// rewrite; ➤ sends again. Grading trouble shows the server's own word or two ("… busy"), else "…?".
+// feedback is '' when nothing was graded (the player backed out first). Drafts live in localStorage
+// `etl-explain-<regionId>-<challengeId>` until the answer passes. Explain-kind fundamentals call this
+// too, with challenge = { id, type: 'explain', title, question, rubric, offline }.
 import { openModal, closeModal, topModal } from './modal.js';
 import { api } from '../api.js';
 import { h, icon, store, ensureCss, renderInline } from './terminal.js';
@@ -13,12 +15,12 @@ import { h, icon, store, ensureCss, renderInline } from './terminal.js';
 const MAX_CHARS = 6000;                 // the server's limit
 const draftKey = (regionId, id) => `etl-explain-${regionId}-${id}`;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-const words = (s) => (String(s).match(/\S+/g) || []).length;
-// the offline grader appends "(You touched on 1 of 2 key ideas.)"; the meter shows that instead
-const OFFLINE_TALLY = /\s*\(You touched on \d+ of \d+ key ideas?\.\)\s*$/i;
 
-let statusP = null;
-const serverStatus = () => (statusP ??= api.status().catch(() => { statusP = null; return null; }));
+// the server's error bodies are already short and in-world ("… busy", "✕ too long")
+const errorWord = (err) => {
+  const said = err?.body?.error;
+  return typeof said === 'string' && said.trim() && said.trim().length <= 40 ? said.trim() : '…?';
+};
 
 export async function open({ challenge = {}, regionId = 'local', speaker = {} } = {}) {
   await ensureCss();
@@ -31,8 +33,9 @@ export async function open({ challenge = {}, regionId = 'local', speaker = {} } 
     let closed = false;
     let passed = false;
     let lastFeedback = '';
-    let phase = 'edit';                  // edit | wait | pass | fail
+    let phase = 'edit';                  // edit | wait | pass  (a failed answer is back in edit, reply shown)
     let typing = null;
+    let grading = null;                  // AbortController of the request in flight
 
     // ---- pieces
     const tag = h('div', { class: 'ex-tag', text: name });
@@ -47,14 +50,10 @@ export async function open({ challenge = {}, regionId = 'local', speaker = {} } 
 
     const ta = h('textarea', { class: 'ex-ta', rows: '6', maxlength: String(MAX_CHARS), spellcheck: 'true', placeholder: '✎', 'aria-label': 'Your explanation' });
     ta.value = store.get(key) || '';
-    const count = h('span', { class: 'ex-count', title: 'Words' });
-    const offline = h('span', { class: 'ex-off', title: 'Offline: graded by keywords' }, icon('offline'));
-    offline.hidden = true;
 
     const btn = (act, ico, tip, cls = '') => h('button', { class: `ex-key ${cls}`.trim(), type: 'button', 'data-act': act, title: tip, 'aria-label': tip }, icon(ico));
     const laterKey = btn('later', 'close', 'Later · Esc');
     const sendKey = btn('send', 'send', 'Send · Ctrl+Enter', 'go');
-    const retryKey = btn('retry', 'reset', 'Try again');
     const doneKey = btn('done', 'test', 'Continue', 'go');
 
     const bubble = h('div', { class: 'ex-bubble', role: 'dialog', 'aria-modal': 'true', 'aria-label': challenge.title || name },
@@ -62,29 +61,22 @@ export async function open({ challenge = {}, regionId = 'local', speaker = {} } 
       question,
       reply,
       dots,
-      h('div', { class: 'ex-card' }, ta),
-      h('div', { class: 'ex-foot' }, h('span', { class: 'ex-meta' }, icon('pen', 'etl-ico ex-pen'), count, offline), h('span', { class: 'ex-keys' }, laterKey, retryKey, sendKey, doneKey)));
+      h('div', { class: 'ex-answer' },
+        h('div', { class: 'ex-card' }, ta),
+        h('div', { class: 'ex-foot' }, h('span', { class: 'ex-keys' }, laterKey, sendKey, doneKey))));
     const overlay = h('div', { class: 'ex-overlay' }, bubble);
 
     // ---- state
     function setPhase(p) {
       phase = p;
       bubble.dataset.phase = p;
-      sendKey.hidden = !(p === 'edit' || p === 'wait');
+      sendKey.hidden = p === 'pass';
       sendKey.disabled = p === 'wait' || !ta.value.trim();
       sendKey.classList.toggle('is-waiting', p === 'wait');
       laterKey.hidden = p === 'pass';
-      retryKey.hidden = p !== 'fail';
       doneKey.hidden = p !== 'pass';
-      ta.readOnly = p === 'wait' || p === 'pass';
+      ta.readOnly = p !== 'edit';
       dots.hidden = p !== 'wait';
-    }
-
-    function updateCount() {
-      const n = words(ta.value);
-      count.textContent = String(n);
-      count.title = `${n} word${n === 1 ? '' : 's'}`;
-      if (phase === 'edit') sendKey.disabled = !ta.value.trim();
     }
 
     async function say(text, mood, score) {
@@ -110,61 +102,63 @@ export async function open({ challenge = {}, regionId = 'local', speaker = {} } 
       renderInline(full, replyText);
     }
 
+    const caretToEnd = () => { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); };
+
     async function send() {
       if (phase !== 'edit' || closed) return;
       const answer = ta.value.trim();
       if (!answer) { ta.focus(); return; }
       store.set(key, ta.value);
+      typing?.cancel();
       setPhase('wait');
       reply.hidden = true;
+      reply.title = '';
+      const ctrl = new AbortController();
+      grading = ctrl;
       let res = null;
       let error = null;
       try {
-        res = await api.grade({ regionId, challengeId: id, answer: answer.slice(0, MAX_CHARS) });
+        // signal: closing the bubble hangs up, so the server can drop the grading call
+        res = await api.grade({ regionId, challengeId: id, answer: answer.slice(0, MAX_CHARS), signal: ctrl.signal });
       } catch (err) {
         error = err;
       }
+      if (grading === ctrl) grading = null;
       if (closed) return;
       if (error || !res || typeof res.pass !== 'boolean') {
         console.warn('[explain] grading failed', error || res);
         setPhase('edit');
-        await say('…?', 'error');
-        reply.title = error?.message || 'No answer';
-        ta.focus();
+        const word = errorWord(error);
+        say(word, 'error');
+        reply.title = word === '…?' ? (error?.message || 'No answer') : '';
+        caretToEnd();
         return;
       }
-      reply.title = '';
-      if (res.offline) offline.hidden = false;
       lastFeedback = String(res.feedback || '');
-      const shown = lastFeedback.replace(OFFLINE_TALLY, '') || (res.pass ? '✓' : '…');
+      const shown = lastFeedback || (res.pass ? '✓' : '…');
       if (res.pass) {
         passed = true;
         store.del(key);
         setPhase('pass');
         bubble.classList.add('is-pass');
-        say(shown, 'pass', res.score);
+        say(shown, 'pass');
         doneKey.focus();
       } else {
-        setPhase('fail');
+        setPhase('edit');                  // the reply stays up as a hint; keep typing, ➤ sends again
         say(shown, 'fail', res.score);
-        retryKey.focus();
+        caretToEnd();
       }
-    }
-
-    function retry() {
-      if (phase !== 'fail') return;
-      setPhase('edit');
-      updateCount();
-      ta.focus();
-      ta.setSelectionRange(ta.value.length, ta.value.length);
     }
 
     function finish() {
       if (closed) return;
       closed = true;
       typing?.cancel();
+      grading?.abort();
+      grading = null;
       window.removeEventListener('keydown', onKey);
-      if (!passed) store.set(key, ta.value);
+      if (!passed && ta.value.trim()) store.set(key, ta.value);
+      else if (!passed) store.del(key);
       closeModal(overlay);
       overlay.classList.add('is-closing');
       setTimeout(() => overlay.remove(), 200);
@@ -172,29 +166,23 @@ export async function open({ challenge = {}, regionId = 'local', speaker = {} } 
     }
 
     // ---- wiring
-    ta.addEventListener('input', () => {
-      updateCount();
-      if (phase === 'fail') { setPhase('edit'); updateCount(); }   // typing again is a retry
-    });
-    // Ctrl/Cmd+Enter: send, or continue / try again, wherever the focus is
+    ta.addEventListener('input', () => { if (phase === 'edit') sendKey.disabled = !ta.value.trim(); });
+    // Ctrl/Cmd+Enter: send, or continue once passed, wherever the focus is
     const onKey = (e) => {
       if (!(e.ctrlKey || e.metaKey) || e.key !== 'Enter' || e.isComposing || e.repeat || topModal() !== overlay) return;
       e.preventDefault();
-      if (phase === 'pass') finish(); else if (phase === 'fail') retry(); else send();
+      if (phase === 'pass') finish(); else send();
     };
     window.addEventListener('keydown', onKey);
     sendKey.addEventListener('click', send);
-    retryKey.addEventListener('click', retry);
     laterKey.addEventListener('click', finish);
     doneKey.addEventListener('click', finish);
     reply.addEventListener('pointerdown', () => typing?.cancel());
 
     setPhase('edit');
-    updateCount();
     root.append(overlay);
     openModal(overlay, { onEscape: finish });
-    serverStatus().then((s) => { if (s && s.ai === false && !closed) offline.hidden = false; });
-    requestAnimationFrame(() => { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); });
+    requestAnimationFrame(caretToEnd);
   });
 }
 
