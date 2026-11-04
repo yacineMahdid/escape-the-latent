@@ -1,4 +1,4 @@
-// Grumm's paper map of the Latent: pick where to go. Resolves to a region id or null.
+// Becancourt's paper map of the Latent: pick where to go. Resolves to a region id or null.
 import { openModal, closeModal } from '../../ui/modal.js';
 import { api } from '../../api.js';
 import { getSave, regionState } from '../save.js';
@@ -90,7 +90,7 @@ export async function openMapOverlay() {
       api.paperMeta(rg.paper.arxivId).then((m) => { votes.querySelector('b').textContent = m?.votes != null ? `${m.votes.toLocaleString()} votes` : '–'; }).catch(() => { votes.querySelector('b').textContent = '–'; });
     }
     const st = document.createElement('div'); st.className = 'map-info-status';
-    st.textContent = rs.returned ? '✓ Done' : save.currentTask === id ? (rs.artefact ? '✦ Bring it to Grumm' : '📍 Current task') : '🔒 Locked';
+    st.textContent = rs.returned ? '✓ Done' : save.currentTask === id ? (rs.artefact ? '✦ Bring it to Becancourt' : '📍 Current task') : '🔒 Locked';
     info.appendChild(st);
     const canGo = rs.returned || save.currentTask === id;
     const go = document.createElement('button'); go.className = 'etl-btn primary'; go.textContent = canGo ? '✈️ Travel' : '🔒 Locked'; go.title = canGo ? `Travel to ${rg?.region?.name || id}` : 'Locked'; go.disabled = !canGo || !rg;

@@ -1,8 +1,9 @@
 # Escape the Latent
 
 A cozy paper-diorama game. You are a **Speck**: a human small enough to stand on
-**Professor Grumm**'s desk. Grumm is a normal-sized, permanently irritated
-scientist (he only looks giant because you are tiny). He sends you into the
+the desk of **Jean-Lafontaine de Becancourt**, a normal-sized, permanently
+irritated old scientist with long black hair, a black beard and big eyebrows
+(he only looks giant because you are tiny). He sends you into the
 Latent, a set of small paper worlds folded from famous machine learning papers,
 to bring back knowledge. Each world (Paper Mario-style layered dioramas, Animal
 Crossing-style villagers) has a story that *is* the paper's idea. You get
@@ -50,11 +51,11 @@ that only mutters cryptic hints, and keyword-based grading.
 * **B** opens the Umbral Book: the real arXiv PDF, highlights and notes, an Ask tab,
   and the **Learned** pages where the book records basic concepts you have shown
   you understand (it never asks you about those again).
-* **M** opens Grumm's map in the lab, or leaves a region.
+* **M** opens Becancourt's map in the lab, or leaves a region.
 
 Each region has world puzzles, a Python coding challenge (runs in your browser
 with Pyodide and numpy) and an explain-it conversation. Win the artefact, bring
-it back to Grumm, enjoy his face.
+it back to Becancourt, enjoy his face.
 
 ## Project layout
 

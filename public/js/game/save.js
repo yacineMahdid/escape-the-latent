@@ -5,8 +5,8 @@ export function emptySave() {
   return {
     version: 1,
     character: null,          // character params (see docs/ARCHITECTURE.md)
-    introSeen: false,         // Grumm's first rant
-    currentTask: null,        // region id Grumm sent you to
+    introSeen: false,         // the scientist's first rant
+    currentTask: null,        // region id he sent you to
     regions: {},              // id -> { arrived, solved: { challengeId: true }, talked: { npcId: true }, artefact: bool, returned: bool }
     artefacts: [],            // artefact ids carried or delivered
     learned: {},              // conceptId -> { title, record, region, at }  (the book's Learned pages)

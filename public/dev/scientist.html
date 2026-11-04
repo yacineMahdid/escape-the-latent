@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Scientist preview</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js" } }</script>
+<style>
+  html, body { margin: 0; height: 100%; background: #e9dcc0; overflow: hidden; font-family: Fredoka, sans-serif; }
+  canvas { display: block; }
+  .lab { position: fixed; font: 600 14px sans-serif; color: #2b2233; background: rgba(255, 253, 246, .85); padding: 2px 8px; border-radius: 8px; }
+  #err { position: fixed; left: 8px; bottom: 8px; color: #a01d35; font: 13px monospace; background: #fff; }
+</style>
+</head><body>
+<div id="err"></div>
+<script type="module">
+// Dev-only preview of the scientist model.
+//   /dev/scientist.html?v=a          variant file /js/engine/scientist/variant-a.js (sheet of 4 views)
+//   ?v=final                         /js/engine/scientist.js     ?v=current  the old one in humans.js
+//   ?view=face|three|full|lab&expr=grumpy|neutral|surprised|talking   one big view instead of the sheet
+// window.__info = { height, tris, meshes } once rendered; window.__ready = true.
+import * as THREE from 'three';
+import { buildHuman, DEFAULT_CHARACTER } from '/js/engine/humans.js';
+
+const q = new URLSearchParams(location.search);
+const v = q.get('v') || 'final';
+const errEl = document.getElementById('err');
+window.__errors = [];
+const fail = (m) => { window.__errors.push(String(m)); errEl.textContent += `${m}\n`; };
+window.addEventListener('error', (e) => fail(e.message));
+
+let mod;
+try {
+  mod = v === 'final' ? await import('/js/engine/scientist.js')
+    : v === 'current' ? await import('/js/engine/humans.js')
+    : await import(`/js/engine/scientist/variant-${v}.js`);
+} catch (e) { fail(`import failed: ${e.message}`); throw e; }
+const build = mod.buildScientist;
+
+const W = innerWidth, H = innerHeight;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setSize(W, H);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setScissorTest(true);
+document.body.appendChild(renderer.domElement);
+
+function lights(scene, at = new THREE.Vector3()) {
+  scene.add(new THREE.HemisphereLight(0xfff4e0, 0x9a7a5a, 1.45));
+  const sun = new THREE.DirectionalLight(0xffe8cc, 1.7);
+  sun.position.set(at.x + 16, at.y + 24, at.z + 14);
+  sun.target.position.copy(at);
+  sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); sun.shadow.bias = -0.0004;
+  Object.assign(sun.shadow.camera, { left: -26, right: 26, top: 30, bottom: -14, near: 1, far: 120 });
+  scene.add(sun, sun.target);
+}
+
+function model(expr) {
+  const m = build();
+  m.userData.setExpression?.(expr === 'talking' ? 'talking' : expr);
+  if (expr === 'talking') for (let i = 0; i < 3; i++) m.userData.animate?.(0.05, { talking: true });
+  return m;
+}
+function headPos(m) {
+  m.updateMatrixWorld(true);
+  const h = m.userData.parts?.head;
+  if (h) return h.getWorldPosition(new THREE.Vector3());
+  const b = new THREE.Box3().setFromObject(m);
+  return new THREE.Vector3(0, b.max.y - 1.6, 0);
+}
+
+function viewScene(kind, expr) {
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(kind === 'lab' ? 0xe9dcc0 : 0xf3ead6);
+  const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 400);
+  const m = model(expr);
+  if (kind === 'lab') {
+    // the real lab: Grumm-scale desk (top at y = 9.5), the tiny player on it, the lab camera
+    const S = 2.42;
+    m.scale.setScalar(S); m.position.set(0, 0, -10.5); scene.add(m);
+    const desk = new THREE.Mesh(new THREE.BoxGeometry(21, 1, 10.6), new THREE.MeshStandardMaterial({ color: 0xc08a52, roughness: 0.8 }));
+    desk.position.set(0, 9.0, 0); desk.receiveShadow = true; desk.castShadow = true; scene.add(desk);
+    const wall = new THREE.Mesh(new THREE.PlaneGeometry(140, 70), new THREE.MeshStandardMaterial({ color: 0xe9dcc0 }));
+    wall.position.set(0, 35, -24); wall.receiveShadow = true; scene.add(wall);
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(140, 90), new THREE.MeshStandardMaterial({ color: 0xb98552 }));
+    floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+    const p = buildHuman(DEFAULT_CHARACTER); p.position.set(0, 9.5, 2.6); scene.add(p);
+    lights(scene, new THREE.Vector3(0, 9.5, -4));
+    cam.fov = 48; cam.position.set(0, 15.9, 18.5); cam.lookAt(0, 14.1, -6);
+  } else {
+    scene.add(m);
+    const floor = new THREE.Mesh(new THREE.CircleGeometry(9, 48), new THREE.MeshStandardMaterial({ color: 0xd9c7a2 }));
+    floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+    lights(scene, new THREE.Vector3(0, 5, 0));
+    const hp = headPos(m);
+    if (kind === 'face') { cam.fov = 26; cam.position.set(0, hp.y + 0.2, hp.z + 13.5); cam.lookAt(hp.x, hp.y - 0.9, hp.z); }
+    else if (kind === 'three') { cam.fov = 28; cam.position.set(hp.x + 8.2, hp.y + 0.9, hp.z + 9.6); cam.lookAt(hp.x, hp.y - 1.0, hp.z); }
+    else if (kind === 'back') { cam.fov = 30; cam.position.set(hp.x - 3, hp.y + 1.5, hp.z - 10); cam.lookAt(hp.x, hp.y - 1.2, hp.z); }
+    else { const b = new THREE.Box3().setFromObject(m); const c = b.getCenter(new THREE.Vector3()); cam.fov = 30; cam.position.set(c.x + 3, c.y + 1.5, c.z + 27); cam.lookAt(c.x, c.y, c.z); }
+  }
+  return { scene, cam, m };
+}
+
+const view = q.get('view');
+const panes = view
+  ? [{ kind: view, expr: q.get('expr') || 'grumpy', x: 0, y: 0, w: W, h: H, label: `${view} · ${q.get('expr') || 'grumpy'}` }]
+  : [
+    { kind: 'face', expr: 'grumpy', x: 0, y: 0, w: W / 2, h: H / 2, label: 'face · grumpy' },
+    { kind: 'three', expr: 'surprised', x: W / 2, y: 0, w: W / 2, h: H / 2, label: '3/4 · surprised' },
+    { kind: 'full', expr: 'talking', x: 0, y: H / 2, w: W / 2, h: H / 2, label: 'full · talking' },
+    { kind: 'lab', expr: 'grumpy', x: W / 2, y: H / 2, w: W / 2, h: H / 2, label: 'in the lab (tiny player on the desk)' },
+  ];
+let info = null;
+for (const p of panes) {
+  const { scene, cam, m } = viewScene(p.kind, p.expr);
+  if (!info) {
+    const solo = build(); solo.updateMatrixWorld(true);
+    const b = new THREE.Box3().setFromObject(solo);
+    let tris = 0, meshes = 0;
+    solo.traverse((o) => { if (o.isMesh) { meshes++; const g = o.geometry; tris += (g.index ? g.index.count : g.attributes.position.count) / 3; } });
+    info = { height: +(b.max.y - b.min.y).toFixed(2), minY: +b.min.y.toFixed(2), width: +(b.max.x - b.min.x).toFixed(2), tris: Math.round(tris), meshes,
+      api: { setExpression: typeof solo.userData.setExpression, animate: typeof solo.userData.animate, parts: !!solo.userData.parts } };
+  }
+  cam.aspect = p.w / p.h; cam.updateProjectionMatrix();
+  const y = H - p.y - p.h; // scissor origin is bottom-left
+  renderer.setViewport(p.x, y, p.w, p.h); renderer.setScissor(p.x, y, p.w, p.h);
+  renderer.render(scene, cam);
+  const tag = document.createElement('div'); tag.className = 'lab'; tag.textContent = p.label;
+  tag.style.left = `${p.x + 8}px`; tag.style.top = `${p.y + 8}px`; document.body.appendChild(tag);
+}
+window.__info = info;
+window.__ready = true;
+</script></body></html>

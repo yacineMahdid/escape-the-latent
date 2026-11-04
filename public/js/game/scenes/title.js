@@ -1,11 +1,11 @@
 // Title screen: a composed paper diorama (villagers lined up on the path, a
-// normal-sized Grumm looming over the tiny world like someone peering into a
+// normal-sized Becancourt looming over the tiny world like someone peering into a
 // diorama, paper sheets and confetti drifting) plus a cut-paper logo and chunky
 // paper buttons.
 import * as THREE from 'three';
 import { buildDiorama, ANCHORS } from '../../engine/diorama.js';
 import { buildVillager } from '../../engine/villagers.js';
-import { loadHumans } from '../player.js';
+import { loadHumans, loadScientist, scientistStandIn } from '../player.js';
 import { createRng } from '../../engine/geo.js';
 
 const CAST = [
@@ -55,32 +55,16 @@ export async function createTitleScene() {
     updaters.push((dt) => hero.userData.animate?.(dt, { moving: false, speed: 0, facing: 1 }));
   }
 
-  // Grumm (normal-sized; this world is tiny) peering over the far hills
-  let grumm;
-  if (humans?.buildScientist) {
-    grumm = humans.buildScientist();
-    grumm.userData.setExpression?.('grumpy');
-    grumm.scale.setScalar(2.4);
-    grumm.position.set(15, -6.5, -40);
-    grumm.rotation.y = -0.35;
-  } else {
-    grumm = new THREE.Group();
-    const m = (c) => new THREE.MeshLambertMaterial({ color: c });
-    const head = new THREE.Mesh(new THREE.SphereGeometry(6, 32, 24), m(0xf0c4a0)); head.position.y = 15; grumm.add(head);
-    const hair = new THREE.Mesh(new THREE.SphereGeometry(6.8, 28, 20), m(0xf4f4f4)); hair.position.set(0, 17.5, -1.5); hair.scale.set(1.25, 0.75, 1); grumm.add(hair);
-    for (const sx of [-2, 2]) {
-      const e = new THREE.Mesh(new THREE.SphereGeometry(0.75, 16, 12), m(0x1e1824)); e.position.set(sx, 15.6, 5.5); e.scale.y = 1.3; grumm.add(e);
-      const brow = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.8, 1), m(0xeeeeee)); brow.position.set(sx, 17.6, 5.4); brow.rotation.z = sx > 0 ? 0.32 : -0.32; grumm.add(brow);
-      const lens = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.18, 8, 24), m(0x2b2233)); lens.position.set(sx, 15.6, 5.8); grumm.add(lens);
-    }
-    const stache = new THREE.Mesh(new THREE.SphereGeometry(2.4, 20, 12), m(0xf4f4f4)); stache.position.set(0, 13.2, 5.4); stache.scale.set(1.5, 0.45, 0.6); grumm.add(stache);
-    const coat = new THREE.Mesh(new THREE.CylinderGeometry(6, 8, 10, 24), m(0xf8f8f4)); coat.position.y = 5; grumm.add(coat);
-    grumm.position.set(15, -3, -42);
-    grumm.rotation.y = -0.35;
-  }
-  scene.add(grumm);
-  const gy = grumm.position.y;
-  updaters.push((dt, t) => { grumm.position.y = gy + Math.sin(t * 0.6) * 0.35; grumm.userData.animate?.(dt, { talking: false }); });
+  // Becancourt (normal-sized; this world is tiny) peering over the far hills
+  const buildScientist = await loadScientist();
+  const scientist = buildScientist ? buildScientist() : scientistStandIn();
+  scientist.userData.setExpression?.('grumpy');
+  scientist.scale.setScalar(2.4);
+  scientist.position.set(15, -6.5, -40);
+  scientist.rotation.y = -0.35;
+  scene.add(scientist);
+  const gy = scientist.position.y;
+  updaters.push((dt, t) => { scientist.position.y = gy + Math.sin(t * 0.6) * 0.35; scientist.userData.animate?.(dt, { talking: false }); });
 
   // bunting over the line-up
   const cols = [0xff7ab8, 0xffd35a, 0x3ec7b5, 0x8fd3ff, 0xb39cff, 0xff9a45];

@@ -273,8 +273,8 @@ export async function createRegionScene(ctx, regionId) {
         confetti(140);
         await itemGet(region.artefact?.name || 'Artefact', region.artefact?.description || '');
         world.setGateOpen(true);
-        setHud({ task: `Bring ${theName(region.artefact?.name)} to Grumm`, artefacts: getSave().artefacts });
-        toast('Bring it to Grumm: signpost, far left', 3600); pulseHud('map');
+        setHud({ task: `Bring ${theName(region.artefact?.name)} to Becancourt`, artefacts: getSave().artefacts });
+        toast('Bring it to Becancourt: signpost, far left', 3600); pulseHud('map');
       },
     });
   }
@@ -290,7 +290,7 @@ export async function createRegionScene(ctx, regionId) {
   return {
     scene: ws.scene, camera: ws.camera, update: ws.update, dispose: ws.dispose,
     async onEnter() {
-      setHud({ place: region.region.name, task: st.artefact && !st.returned ? `Bring ${theName(region.artefact?.name)} to Grumm` : (region.scientist?.taskTitle || ''), artefacts: getSave().artefacts, mapLabel: 'Leave' });
+      setHud({ place: region.region.name, task: st.artefact && !st.returned ? `Bring ${theName(region.artefact?.name)} to Becancourt` : (region.scientist?.taskTitle || ''), artefacts: getSave().artefacts, mapLabel: 'Leave' });
       ws.snapCamera();
     },
     async start() {

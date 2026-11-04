@@ -5,7 +5,7 @@ const root = () => document.getElementById('ui-root');
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const STYLES = {
-  grumm: { tag: '#6a5acd', box: 'grumm' },
+  scientist: { tag: '#6a5acd', box: 'scientist' },
   npc: { tag: '#ff7ab8', box: 'npc' },
   narration: { tag: null, box: 'narration' },
   book: { tag: '#9b6bff', box: 'book' },
@@ -71,7 +71,7 @@ export async function say(lines, { speaker = null, style = 'npc', onLine } = {})
     for (let i = 0; i < lines.length; i++) {
       onLine?.(i, true);
       arrow.style.visibility = 'hidden';
-      await typeLine(text, String(lines[i]), box, style === 'grumm');
+      await typeLine(text, String(lines[i]), box, style === 'scientist');
       onLine?.(i, false);
       arrow.style.visibility = 'visible';
       await waitAdvance(box);

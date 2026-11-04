@@ -1,6 +1,6 @@
-// Professor Grumm's lab: the hub. The Speck stands on his desk. Talk to Grumm, deliver artefacts, open the map.
+// Jean-Lafontaine de Becancourt's lab: the hub. The Speck stands on his desk. Talk to him, deliver artefacts, open the map.
 import * as THREE from 'three';
-import { createPlayer, loadHumans } from '../player.js';
+import { createPlayer, loadScientist, scientistStandIn } from '../player.js';
 import { createWalkScene } from '../walkscene.js';
 import { buildArtefact, theName } from '../artefacts.js';
 import { getSave, updateSave, regionState } from '../save.js';
@@ -13,10 +13,10 @@ import { createKit } from '../../engine/kit.js';
 
 export const REGION_ORDER = ['attention', 'clip', 'mamba'];
 
-const GRUMM = { name: 'Professor Grumm', color: '#6a5acd' };
+const SCIENTIST = { name: 'Jean-Lafontaine de Becancourt', color: '#6a5acd' };
 
 const INTRO = [
-  'Oh. It\'s awake. I\'m Professor Grumm. Normal size. YOU are a Speck.',
+  'Oh. It\'s awake. I\'m Jean-Lafontaine de Becancourt. Normal size. YOU are a Speck.',
   'Perfect size for the Latent: tiny worlds folded from famous papers.',
   'Go in. Bring back REAL knowledge. Not vibes.',
   'Take this book. It whispers. It helps BARELY.',
@@ -27,18 +27,6 @@ const FINALE = [
   '…Good work. Now GO HOME.',
 ];
 
-function scientistStandIn() {
-  const g = new THREE.Group();
-  const m = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.8 });
-  const coat = new THREE.Mesh(new THREE.CapsuleGeometry(1.6, 3.4, 8, 16), m(0xf6f6f2)); coat.position.y = 3.6; g.add(coat);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(1.8, 24, 18), m(0xf0c4a0)); head.position.y = 7.6; g.add(head);
-  const hair = new THREE.Mesh(new THREE.SphereGeometry(2.0, 20, 14), m(0xf2f2f2)); hair.position.set(0, 8.2, -0.4); hair.scale.set(1.2, 0.8, 1); g.add(hair);
-  for (const sx of [-0.6, 0.6]) { const e = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 10), m(0x1e1824)); e.position.set(sx, 7.8, 1.65); g.add(e); const brow = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.22, 0.3), m(0xe8e8e8)); brow.position.set(sx, 8.35, 1.6); brow.rotation.z = sx > 0 ? 0.35 : -0.35; g.add(brow); }
-  const stache = new THREE.Mesh(new THREE.SphereGeometry(0.7, 16, 10), m(0xf2f2f2)); stache.position.set(0, 7.0, 1.6); stache.scale.set(1.4, 0.4, 0.6); g.add(stache);
-  g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
-  let t = 0; g.userData.setExpression = () => {}; g.userData.animate = (dt) => { t += dt; g.position.y = Math.sin(t * 1.5) * 0.04; };
-  return g;
-}
 
 export async function createLabScene(ctx) {
   const save = getSave();
@@ -47,9 +35,9 @@ export async function createLabScene(ctx) {
   const root = new THREE.Group();
   const L = (c, o = {}) => new THREE.MeshLambertMaterial({ color: c, ...o });
   const add = (geo, mat, x, y, z, par = root) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); par.add(m); return m; };
-  // Scale: Grumm is a normal man; the Speck is tiny (about the height of his mug).
+  // Scale: he is a normal man; the Speck is tiny (about the height of his mug).
   // The Speck walks on his desk top (y = 0); the lab floor is far below.
-  const S = 2.42;          // humans.buildScientist() is ~9.5 units tall -> ~23 units, ~12x the Speck
+  const S = 2.42;          // buildScientist() is ~9.5 units tall -> ~23 units, ~12x the Speck
   const FLOOR = -9.5;      // a desk is ~0.75 m tall
 
   // ---------- the desk (the Speck's world) ----------
@@ -66,13 +54,13 @@ export async function createLabScene(ctx) {
   add(rbox(8.5, 2.1, 0.35, 0.1), wood, -4.6, -2.2, 5.2);
   add(new THREE.SphereGeometry(0.22, 12, 10), L(0xf0c040), -4.6, -2.2, 5.45);
 
-  // ---------- the room, at Grumm's scale ----------
+  // ---------- the room, at his scale ----------
   const planks = K.mkTex(256, 256, (g, w, h) => { for (let i = 0; i < 8; i++) { const v = 150 + r() * 30 | 0; g.fillStyle = `rgb(${v + 40},${v - 10},${v - 60})`; g.fillRect(0, i * 32, w, 32); g.fillStyle = 'rgba(60,30,10,.5)'; g.fillRect(0, i * 32, w, 2); g.fillRect((r() * w) | 0, i * 32, 2, 32); } });
   add(new THREE.PlaneGeometry(140, 90), L(0xffffff, { map: K.rep(planks, 10, 6) }), 0, FLOOR, -10).rotation.x = -Math.PI / 2;
   const paper = K.mkTex(256, 256, (g, w, h) => { g.fillStyle = '#e9dcc0'; g.fillRect(0, 0, w, h); g.fillStyle = '#dccba8'; for (let x = 0; x < w; x += 32) g.fillRect(x, 0, 12, h); g.fillStyle = 'rgba(255,255,255,.25)'; for (let i = 0; i < 30; i++) { g.beginPath(); g.arc(r() * w, r() * h, 3, 0, 7); g.fill(); } });
   add(new THREE.PlaneGeometry(140, 70), L(0xffffff, { map: K.rep(paper, 12, 6) }), 0, FLOOR + 35, -24);
   add(new THREE.BoxGeometry(140, 2.4, 0.8), L(0x8a5a36), 0, FLOOR + 1.2, -23.6);
-  // chalkboard behind Grumm
+  // chalkboard behind him
   const chalk = K.mkTex(1024, 512, (g, w, h) => {
     g.fillStyle = '#2f4a3c'; g.fillRect(0, 0, w, h); g.strokeStyle = 'rgba(255,255,255,.08)'; for (let i = 0; i < 40; i++) { g.beginPath(); g.moveTo(r() * w, r() * h); g.lineTo(r() * w, r() * h); g.stroke(); }
     g.fillStyle = 'rgba(245,245,235,.9)'; g.font = 'italic 44px Georgia';
@@ -96,7 +84,7 @@ export async function createLabScene(ctx) {
     while (x < -24) { const bw = 0.8 + r() * 1.1; const bh = 3.2 + r() * 1.6; add(new THREE.BoxGeometry(bw, bh, 2.6), L([0xe8566a, 0x4f86d8, 0xffd35a, 0x3ec7b5, 0xb39cff, 0xff9a45][(r() * 6) | 0]), x + bw / 2, FLOOR + 3.25 + row * 5.8 + bh / 2, -20.2); x += bw + 0.08; }
   }
 
-  // ---------- things on the desk (all Grumm-sized, so huge to the Speck) ----------
+  // ---------- things on the desk (all his size, so huge to the Speck) ----------
   const colliders = [];
   // his pen pot, stuffed with pencils (he already holds his coffee)
   const pot = add(new THREE.CylinderGeometry(0.95, 0.85, 2.1, 28, 1, true), L(0x4f86d8, { side: THREE.DoubleSide }), 6.6, 1.05, -2.6);
@@ -148,7 +136,7 @@ export async function createLabScene(ctx) {
   const tent = new THREE.Group(); tent.position.set(7.8, 0, 1.8); tent.rotation.y = -0.5; root.add(tent);
   for (const side of [-1, 1]) { const pl = add(new THREE.PlaneGeometry(2.6, 1.9), L(0xffffff, { map: mapTex, side: THREE.DoubleSide }), 0, 0.82, side * 0.42, tent); pl.rotation.x = side * 0.45; }
   colliders.push({ type: 'rect', x0: 6.5, x1: 9.1, z0: 0.9, z1: 2.7 });
-  // pedestals for the artefacts Grumm keeps
+  // pedestals for the artefacts he keeps
   const shelfSlots = [[-8.3, 0.9], [-6.6, 0.9], [-4.9, 0.9]];
   const CAP_H = 0.36;
   const capCols = [[0xe8566a, 0xffd0d8], [0x4f86d8, 0xd6e6ff], [0xffc83a, 0xfff1c0]];
@@ -168,14 +156,14 @@ export async function createLabScene(ctx) {
     update() {},
   };
 
-  // Grumm: a normal-sized man standing behind his desk
-  const humans = await loadHumans();
-  const grumm = humans && humans.buildScientist ? humans.buildScientist() : scientistStandIn();
-  grumm.scale.setScalar(S);
-  grumm.position.set(0, FLOOR, -10.5);
-  root.add(grumm);
-  let grummTalking = false;
-  const setExpr = (e) => grumm.userData.setExpression?.(e);
+  // Jean-Lafontaine de Becancourt: a normal-sized man standing behind his desk
+  const buildScientist = await loadScientist();
+  const scientist = buildScientist ? buildScientist() : scientistStandIn();
+  scientist.scale.setScalar(S);
+  scientist.position.set(0, FLOOR, -10.5);
+  root.add(scientist);
+  let scientistTalking = false;
+  const setExpr = (e) => scientist.userData.setExpression?.(e);
   setExpr('grumpy');
 
   const player = await createPlayer(save.character);
@@ -195,7 +183,7 @@ export async function createLabScene(ctx) {
       book: () => openTaskBook(),
       map: () => openMap(),
       menu: () => ctx.pauseMenu(),
-      tick: (dt) => { grumm.userData.animate?.(dt, { talking: grummTalking }); },
+      tick: (dt) => { scientist.userData.animate?.(dt, { talking: scientistTalking }); },
     },
   });
   Object.assign(ws.sun.shadow.camera, { left: -24, right: 24, top: 24, bottom: -14, far: 120 });
@@ -210,9 +198,9 @@ export async function createLabScene(ctx) {
   }
   refreshShelf();
 
-  async function grummSays(lines, expr = 'grumpy') {
-    setExpr('talking'); grummTalking = true;
-    try { await say(lines, { speaker: GRUMM, style: 'grumm' }); } finally { grummTalking = false; setExpr(expr); }
+  async function scientistSays(lines, expr = 'grumpy') {
+    setExpr('talking'); scientistTalking = true;
+    try { await say(lines, { speaker: SCIENTIST, style: 'scientist' }); } finally { scientistTalking = false; setExpr(expr); }
   }
 
   const regions = {};
@@ -223,16 +211,16 @@ export async function createLabScene(ctx) {
   async function assign(id) {
     const rg = await region(id);
     updateSave((s) => { s.currentTask = id; });
-    if (rg) await grummSays(rg.scientist?.briefing || [`Go to ${rg.region.name}. Bring me something worth my time.`]);
-    else await grummSays(['Hmm. That map is missing. Somebody ate it.']);
+    if (rg) await scientistSays(rg.scientist?.briefing || [`Go to ${rg.region.name}. Bring me something worth my time.`]);
+    else await scientistSays(['Hmm. That map is missing. Somebody ate it.']);
     refreshHud();
     pulseHud('map');
   }
 
-  async function talkToGrumm() {
+  async function talkToScientist() {
     const s = getSave();
     if (!s.introSeen) {
-      await grummSays(INTRO);
+      await scientistSays(INTRO);
       updateSave((x) => { x.introSeen = true; });
       await assign(nextTask());
       return;
@@ -244,25 +232,25 @@ export async function createLabScene(ctx) {
         const rg = await region(id);
         await say([`You hand over ${theName(rg?.artefact?.name)}.`], { style: 'narration' });
         setExpr('surprised');
-        await grummSays(rg?.scientist?.return || ['...Hm. Hmph. Fine.'], 'surprised');
+        await scientistSays(rg?.scientist?.return || ['...Hm. Hmph. Fine.'], 'surprised');
         updateSave(() => { regionState(id).returned = true; });
         confetti(120);
         refreshShelf();
         const nx = nextTask();
         if (nx) { setExpr('grumpy'); await assign(nx); }
-        else { await grummSays(FINALE, 'surprised'); updateSave((x) => { x.currentTask = null; x.endingSeen = true; }); ctx.goto('ending'); }
+        else { await scientistSays(FINALE, 'surprised'); updateSave((x) => { x.currentTask = null; x.endingSeen = true; }); ctx.goto('ending'); }
         return;
       }
     }
     const cur = s.currentTask || nextTask();
-    if (!cur) { await grummSays(['You again. Go be competent elsewhere.']); return; }
+    if (!cur) { await scientistSays(['You again. Go be competent elsewhere.']); return; }
     const rg = await region(cur);
-    await grummSays(rg?.scientist?.reminder || ['The map, Speck. On my desk. GO.']);
+    await scientistSays(rg?.scientist?.reminder || ['The map, Speck. On my desk. GO.']);
   }
 
   async function openMap() {
     const s = getSave();
-    if (!s.introSeen) { toast('Talk to Grumm first', 2200); return; }
+    if (!s.introSeen) { toast('Talk to Becancourt first', 2200); return; }
     const { openMapOverlay } = await import('./map.js');
     const choice = await openMapOverlay(ctx);
     if (!choice) return;
@@ -283,16 +271,16 @@ export async function createLabScene(ctx) {
   async function refreshHud() {
     const s = getSave();
     const cur = s.currentTask;
-    let task = s.introSeen ? '' : 'Talk to Grumm';
+    let task = s.introSeen ? '' : 'Talk to Becancourt';
     if (cur) {
       const rg = await region(cur);
       const rs = regionState(cur);
-      task = rs.artefact && !rs.returned ? `Give Grumm ${theName(rg?.artefact?.name)}` : (rg?.scientist?.taskTitle || '');
+      task = rs.artefact && !rs.returned ? `Give Becancourt ${theName(rg?.artefact?.name)}` : (rg?.scientist?.taskTitle || '');
     }
     setHud({ place: 'Lab', task, artefacts: s.artefacts, mapLabel: 'Map' });
   }
 
-  ws.addInteractable({ label: 'Grumm', icon: '💬', pos: { x: 0, y: 0, z: -2.8 }, radius: 4.0, promptHeight: 2.6, onInteract: talkToGrumm });
+  ws.addInteractable({ label: 'Becancourt', icon: '💬', pos: { x: 0, y: 0, z: -2.8 }, radius: 4.0, promptHeight: 2.6, onInteract: talkToScientist });
   ws.addInteractable({ label: 'Map', icon: '🗺️', pos: { x: 7.8, y: 0, z: 1.8 }, radius: 2.6, promptHeight: 2.6, onInteract: openMap });
   ws.addInteractable({
     label: 'Trophies', icon: '✦', pos: { x: -6.6, y: 0, z: 0.9 }, radius: 2.4, promptHeight: 2.4,
@@ -313,9 +301,9 @@ export async function createLabScene(ctx) {
       if (fromLatent) await ws.run(() => ws.cameraFrom([7.4, 2.6, 5.6], [7.8, 0.7, 1.8], 1100));
       if (!s.introSeen) {
         await ws.run(() => say(['You wake up on a desk. Everything is enormous. Including him.'], { style: 'narration' }));
-        await ws.run(talkToGrumm);
+        await ws.run(talkToScientist);
       } else if (REGION_ORDER.some((id) => regionState(id).artefact && !regionState(id).returned)) {
-        toast('Give Grumm the artefact', 2600);
+        toast('Give Becancourt the artefact', 2600);
       }
     },
   };

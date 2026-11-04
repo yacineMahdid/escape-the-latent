@@ -12,7 +12,7 @@ async function drain(p, ms = 30000) {
   while (Date.now() - t0 < ms) {
     if (await p.$('.puzzle-host')) return 'puzzle';
     if (await p.$('.dlg-ask')) return 'ask';
-    if (await p.$('.dlg')) { quiet = 0; await p.keyboard.press('Space'); await p.waitForTimeout(240); }
+    if (await p.$('.dlg') || await p.$('.item-get')) { quiet = 0; await p.keyboard.press('Space'); await p.waitForTimeout(240); }
     else { quiet += 200; if (quiet > 2400) return 'done'; await p.waitForTimeout(200); }
   }
   return 'timeout';
@@ -62,9 +62,19 @@ async function playRegion(browser, regionId) {
     const solved = await p.evaluate(([id, cid]) => !!JSON.parse(localStorage.getItem('etl-save-v1')).regions[id].solved[cid], [regionId, c.id]);
     results.push(`${solved ? 'PASS' : 'FAIL'} ${regionId}/${c.id} ${c.puzzle} (giver ${label})`);
   }
+  // every step is solved now, so the artefact lies in the world: walk over and pick it up
+  const aName = region.artefact?.name || 'artefact';
+  const apos = await p.evaluate((lab) => { const it = window.__etl.ws.interactables.find((x) => x.label === lab); if (!it) return null; const q = typeof it.pos === 'function' ? it.pos() : it.pos; return [q.x, q.y ?? 0, q.z]; }, aName);
+  if (apos) {
+    await p.evaluate(([x, y, z]) => window.__etl.ws.player.place(x + 0.6, y, z + 0.4), apos);
+    await p.waitForTimeout(500);
+    await p.keyboard.press('KeyE');
+    await p.waitForTimeout(400);
+    await drain(p);
+  }
   const st = await p.evaluate((id) => JSON.parse(localStorage.getItem('etl-save-v1')).regions[id], regionId);
-  const artefactShown = await p.evaluate(() => !!document.querySelector('.item-get') || true);
-  results.push(`${errors.length ? 'FAIL' : 'PASS'} ${regionId}: page errors ${errors.length ? errors.slice(0, 3).join(' | ') : 'none'}; artefact ${st.artefact ? 'won' : 'not yet'}${artefactShown ? '' : ''}`);
+  results.push(`${st.artefact ? 'PASS' : 'FAIL'} ${regionId}: artefact ${apos ? 'spawned' : 'never spawned'}, ${st.artefact ? 'picked up' : 'not picked up'}`);
+  results.push(`${errors.length ? 'FAIL' : 'PASS'} ${regionId}: page errors ${errors.length ? errors.slice(0, 3).join(' | ') : 'none'}`);
   await p.close();
   return results;
 }

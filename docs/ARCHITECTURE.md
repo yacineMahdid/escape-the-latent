@@ -6,27 +6,35 @@ contract, change this file in the same commit.
 
 ## The game in one paragraph
 
-You are a **Speck**: a human about the height of a coffee mug. **Professor
-Grumm** is a normal-sized, grumpy human scientist; he only looks giant because
-you are tiny. The hub is his desk. He sends you on "impossible" errands into
+You are a **Speck**: a human about the height of a coffee mug. **Jean-Lafontaine
+de Becancourt** is a normal-sized, grumpy old scientist (long black hair, a black
+beard, big eyebrows; not an Einstein type); he only looks giant because you are
+tiny. The hub is his desk. He sends you on "impossible" errands into
 **the Latent**: small paper worlds folded from famous machine learning papers.
 Each paper is a **region** on a paper map, rendered as a layered paper diorama
 (Paper Mario world layout, Animal Crossing characters, everything at your
 scale). Each region has a small, child-like story whose problem *is* the
 paper's core idea. You solve it by actually reading the paper (inside the game,
 in your **dark book**), then passing hands-on world puzzles, a Python coding
-challenge and an "explain it" conversation graded by Claude. You win an **artefact**, bring it back, and
-Grumm is (grudgingly) astonished. The game does not hold your hand.
+challenge and an "explain it" conversation graded by Claude. You win an
+**artefact**, bring it back, and Becancourt is (grudgingly) astonished. The game does not hold your hand.
 
 ### Scale (keep it consistent)
 
-- Grumm is **normal-sized**. Narration, UI and docs never call him a giant.
+- Becancourt is **normal-sized**. Narration, UI and docs never call him a giant.
   Latent villagers may call him "your giant": that is their point of view.
 - The Speck and everything in the Latent share one small scale (the player and
   villagers are about 1.9 units tall).
 - Lab: the desk top is the walkable world at `y = 0`; the room floor is at
-  `y = -9.5`; Grumm is `buildScientist()` scaled by 2.42 (~23 units tall,
+  `y = -9.5`; Becancourt is `buildScientist()` from `public/js/engine/scientist.js`
+  scaled by 2.42 (~23 units tall,
   about 12x the Speck), standing on the floor behind the desk.
+
+### Names
+
+- Full name: **Jean-Lafontaine de Becancourt** (dialogue name tag, his intro).
+- Short name in tight UI (prompts, HUD task, toasts): **Becancourt**.
+- He calls the player "Speck". Latent villagers call him "your giant".
 
 ## Run it
 
@@ -179,7 +187,7 @@ so it matches the villagers. Every mesh `castShadow = true`.
   },
   "scientist": {
     "taskTitle": "Bring me ...",           // the impossible task, short
-    "briefing": ["Grumm line", "..."],     // when he sends you off (grumpy, dismissive)
+    "briefing": ["his line", "..."],       // when he sends you off (grumpy, dismissive)
     "reminder": ["..."],                   // if you talk to him before finishing
     "return": ["..."]                      // when you bring the artefact (shocked, grudging)
   },
