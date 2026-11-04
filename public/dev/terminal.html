@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Terminal harness</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="/css/game.css">
+<style>
+  /* a stand-in for the cozy diorama behind the terminal */
+  body {
+    background:
+      radial-gradient(ellipse 60% 30% at 20% 88%, #79c86a 60%, transparent 61%),
+      radial-gradient(ellipse 70% 34% at 85% 92%, #8fd47a 60%, transparent 61%),
+      radial-gradient(circle at 78% 18%, #fff6c8 0 40px, transparent 41px),
+      linear-gradient(#bfe6ff, #e6f6ff 60%, #8fd47a 60%);
+  }
+  .harness { position: fixed; top: 14px; right: 14px; z-index: 5; display: flex; gap: 10px; }
+  .harness .etl-btn { font-size: 22px; padding: 6px 14px; }
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div id="ui-root"></div>
+<div class="harness">
+  <button class="etl-btn" id="open-terminal" title="Terminal">⌨️</button>
+  <button class="etl-btn" id="open-explain" title="Explain">💬</button>
+</div>
+<script type="module">
+// Harness for the Python terminal and the explain-it bubble (public/js/ui/terminal.js, explain.js).
+//
+//   /dev/terminal.html?mode=terminal|explain|none&challenge=code1|explain1
+//   /dev/terminal.html?region=attention&challenge=c3      real content (explain grading needs that region on the server)
+//
+// Needs the fixture server for grading: REGIONS_DIR=server/test/fixtures/regions PORT=3103 node server/index.js
+// window.__term = { opens, closes, open, results: [], last } for automated tests.
+import * as terminal from '/js/ui/terminal.js';
+import * as explain from '/js/ui/explain.js';
+
+// The fixture region's challenges (server/test/fixtures/regions/fixture.json), embedded as-is.
+const FIXTURE = {
+    "code1": {
+      "id": "code1",
+      "type": "code",
+      "title": "Even Out the Glow",
+      "giver": "loom",
+      "requires": [],
+      "prompt": "The Glow Loom's threads blaze unevenly: a few burn white-hot while the rest go dark. Write `softmax(x)` so each row of glow is shared out fairly.\n\n- **Input:** `x`, a 2-D numpy array of shape `(n, m)`: one row per lamp, one column per flower.\n- **Output:** an array of the same shape whose row `i` is the softmax of row `i`: `exp(x[i, j]) / sum_k exp(x[i, k])`. Every row sums to 1.\n- Rows are independent of each other, and huge scores (like `1000`) must not overflow into `nan` or `inf`.\n\nYou may use numpy.",
+      "starterCode": "import numpy as np\n\n\ndef softmax(x):\n    \"\"\"Row-wise softmax of a 2-D array x with shape (n, m).\"\"\"\n    # Your code here\n    raise NotImplementedError\n",
+      "tests": "import numpy as np\n\n\ndef test_keeps_shape_and_rows_sum_to_one():\n    x = np.array([[1.0, 2.0, 3.0], [0.0, 0.0, 0.0]])\n    out = softmax(x)\n    assert out.shape == x.shape, \"softmax must keep the shape of x\"\n    assert np.allclose(out.sum(axis=1), 1.0), \"every row must sum to 1\"\n\n\ndef test_known_values():\n    out = softmax(np.array([[0.0, np.log(3.0)]]))\n    assert np.allclose(out, [[0.25, 0.75]]), \"softmax([0, log 3]) should be [0.25, 0.75]\"\n\n\ndef test_rows_are_independent():\n    x = np.array([[1.0, 2.0], [10.0, 20.0]])\n    out = softmax(x)\n    assert np.allclose(out[0], [0.26894142, 0.73105858]), \"row 0 must be the softmax of row 0 alone\"\n    assert not np.allclose(out[0], out[1]), \"rows must not be normalised together\"\n\n\ndef test_shift_invariance():\n    x = np.random.default_rng(0).normal(size=(4, 5))\n    assert np.allclose(softmax(x), softmax(x + 7.0)), \"adding a constant to a row must not change it\"\n\n\ndef test_large_values_are_stable():\n    out = softmax(np.array([[1000.0, 1001.0, 1002.0]]))\n    assert np.all(np.isfinite(out)), \"huge scores must not overflow into nan or inf\"\n    assert np.allclose(out, softmax(np.array([[0.0, 1.0, 2.0]]))), \"huge scores must give the same glow as small ones\"\n\n\ndef test_does_not_modify_input():\n    x = np.array([[3.0, 1.0], [2.0, 2.0]])\n    before = x.copy()\n    softmax(x)\n    assert np.array_equal(x, before), \"softmax must not change its input\"\n",
+      "solutionFile": "server/test/fixtures/solutions/fixture_code1.py",
+      "paperLink": "Section 3.2.1, Equation (1)",
+      "intro": [
+        "The loom's slate flickers: SOFTMAX REQUIRED. ONE ROW PER LAMP."
+      ],
+      "success": [
+        "The threads dim and brighten until every row shares its glow fairly."
+      ]
+    },
+    "explain1": {
+      "id": "explain1",
+      "type": "explain",
+      "title": "Why Dim the Lamps?",
+      "giver": "elder",
+      "requires": [
+        "code1"
+      ],
+      "question": "Little one, the paper divides the attention scores by something before the softmax. Why do they scale the scores at all?",
+      "rubric": [
+        "Says the dot-product scores are divided by the square root of the key dimension d_k",
+        "Explains that for large d_k the dot products grow large in magnitude",
+        "Explains that large scores push the softmax into regions with extremely small gradients (saturation), which the scaling avoids"
+      ],
+      "passBar": "Criteria 1 and 3 must be met; criterion 2 may be implied by the rest.",
+      "offline": [
+        [
+          "sqrt",
+          "square root",
+          "scale",
+          "scaling"
+        ],
+        [
+          "softmax",
+          "saturat",
+          "gradient"
+        ]
+      ],
+      "paperLink": "Section 3.2.1, the paragraph after Equation (1)",
+      "intro": [
+        "Ribbit. Sit with me a moment and tell me why we dim the lamps."
+      ],
+      "success": [
+        "Ribbit! So that is why. The meadow can rest easy now."
+      ],
+      "retry": [
+        "Ribbit... that is part of it, but why would big numbers trouble the softmax?"
+      ]
+    }
+  };
+const SPEAKERS = {"pip": "Pip", "elder": "Elder Moss", "loom": "The Glow Loom"};
+
+const q = new URLSearchParams(location.search);
+const regionId = q.get('region') || 'fixture';
+const state = (window.__term = { opens: 0, closes: 0, open: false, results: [], last: null });
+
+async function challengeFor(id, type) {
+  const pick = (all) => all.find((c) => c.id === id && c.type === type) || all.find((c) => c.type === type);
+  if (regionId === 'fixture') return pick(Object.values(FIXTURE));
+  const region = await (await fetch(`/content/regions/${encodeURIComponent(regionId)}.json`)).json();
+  const all = [...(region.challenges || []), ...(region.fundamentals || []).filter((f) => f.check?.kind === 'explain')
+    .map((f) => ({ id: f.id, type: 'explain', title: f.title, question: f.check.question, rubric: f.check.rubric, offline: f.check.offline, giver: f.giver }))];
+  for (const p of region.inhabitants || []) SPEAKERS[p.id] = p.name;
+  for (const s of region.stations || []) SPEAKERS[s.id] = s.label;
+  return pick(all);
+}
+
+async function go(type, id) {
+  if (state.open) return;
+  const challenge = await challengeFor(id, type);
+  if (!challenge) throw new Error(`no ${type} challenge ${id || ''}`);
+  state.opens++;
+  state.open = type;
+  const result = type === 'code'
+    ? await terminal.open({ challenge, regionId })
+    : await explain.open({ challenge, regionId, speaker: { name: SPEAKERS[challenge.giver] || 'Someone' } });
+  state.results.push({ type, id: challenge.id, ...result });
+  state.last = result;
+  state.closes++;
+  state.open = false;
+}
+
+document.getElementById('open-terminal').addEventListener('click', () => go('code', q.get('challenge')));
+document.getElementById('open-explain').addEventListener('click', () => go('explain', q.get('challenge')));
+window.__term.go = go;
+
+const mode = q.get('mode') || 'terminal';
+if (mode === 'terminal') go('code', q.get('challenge'));
+else if (mode === 'explain') go('explain', q.get('challenge'));
+</script>
+</body>
+</html>

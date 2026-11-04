@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Creator harness</title>
+<script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js" } }</script>
+<link rel="stylesheet" href="/css/game.css">
+<style>
+  /* a stand-in for the meadow behind the creator */
+  body {
+    background:
+      radial-gradient(ellipse 60% 30% at 20% 88%, #79c86a 60%, transparent 61%),
+      radial-gradient(ellipse 70% 34% at 85% 92%, #8fd47a 60%, transparent 61%),
+      radial-gradient(circle at 78% 18%, #fff6c8 0 40px, transparent 41px),
+      linear-gradient(#bfe6ff, #e6f6ff 60%, #8fd47a 60%);
+  }
+  .harness-open { position: fixed; top: 14px; right: 14px; z-index: 5; font-size: 22px; }
+  .harness-out { position: fixed; left: 14px; bottom: 14px; z-index: 5; max-width: 60vw; font: 12px var(--font-code); background: var(--paper); border: 3px solid var(--ink); border-radius: 10px; padding: 6px 10px; white-space: pre-wrap; }
+  .harness-out:empty { display: none; }
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div id="ui-root"></div>
+<button class="etl-btn harness-open" id="open" title="Open the creator">🙂</button>
+<pre class="harness-out" id="out"></pre>
+<script type="module">
+// /dev/creator.html?initial=<url-encoded JSON>&auto=0
+//   opens the character creator (auto unless auto=0); window.__creator exposes { opens, closes, open, result } for tests.
+import { open } from '/js/ui/creator.js';
+
+const q = new URLSearchParams(location.search);
+let initial = null;
+try { initial = q.has('initial') ? JSON.parse(q.get('initial')) : null; } catch { initial = null; }
+const state = (window.__creator = { opens: 0, closes: 0, open: false, result: null });
+const out = document.getElementById('out');
+
+async function go() {
+  if (state.open) return;
+  state.opens++;
+  state.open = true;
+  out.textContent = '';
+  const result = await open({ initial: state.result || initial });
+  state.result = result;
+  state.closes++;
+  state.open = false;
+  out.textContent = JSON.stringify(result, null, 1);
+}
+
+document.getElementById('open').addEventListener('click', () => go());
+if (q.get('auto') !== '0') go();
+window.__ready = true;
+</script>
+</body>
+</html>
