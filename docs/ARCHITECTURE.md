@@ -73,7 +73,8 @@ public/
   js/main.js            boot + scene state machine                owner: core
   js/api.js             fetch wrappers for /api/*                 owner: core
   js/engine/            three.js world builder, biomes, villagers owner: core
-  js/engine/humans.js   human player + scientist models           owner: creator
+  js/engine/humans.js   human player model (+ the old scientist)  owner: creator
+  js/engine/scientist.js  Jean-Lafontaine de Becancourt's model  owner: core
   js/game/              save, dialogue, scenes (title/lab/map/region/ending) owner: core
   js/ui/modal.js        modal stack (pauses game input)           owner: core
   js/ui/book.js         the Cursed Book: PDF reader, notes, ask   owner: book
@@ -164,16 +165,25 @@ arXiv ids are validated with `/^\d{4}\.\d{4,5}(v\d+)?$/`.
 Colors are `#rrggbb`. `humans.js` must accept any object and fill missing or
 invalid fields with defaults.
 
-### humans.js API
+### humans.js and scientist.js APIs
 
 ```js
-import { buildHuman, buildScientist, DEFAULT_CHARACTER, normalizeCharacter } from './engine/humans.js';
+import { buildHuman, DEFAULT_CHARACTER, normalizeCharacter } from './engine/humans.js';
 const player = buildHuman(params);      // THREE.Group, feet at y=0, ~1.9 units tall, faces +z
 player.userData.animate(dt, { moving: bool, speed: 0..1, facing: -1|1 });
-const grumm = buildScientist();        // THREE.Group, a human ~5x the player's height, lab coat
-grumm.userData.setExpression('grumpy' | 'neutral' | 'surprised' | 'talking');
-grumm.userData.animate(dt, { talking: bool });
+
+import { buildScientist } from './engine/scientist.js';   // Jean-Lafontaine de Becancourt
+const becancourt = buildScientist();    // THREE.Group, ~10 units tall (x2.42 in the lab), faces +z:
+                                        // long black hair, black beard, big brows, burgundy cardigan, mug
+becancourt.userData.setExpression('grumpy' | 'neutral' | 'surprised' | 'talking');
+becancourt.userData.animate(dt, { talking: bool });
+becancourt.userData.parts;              // { head, brows, eyes, mouths, mug, left, right }
 ```
+
+The game loads him through `loadScientist()` in `public/js/game/player.js`, which falls
+back to `scientistStandIn()` (same look, simpler). `humans.js` still holds the old
+Einstein-style `buildScientist()` for its dev page only; the game never uses it.
+Preview: `/dev/scientist.html` (`?v=final`, `&view=face|three|full|lab|back&expr=...`).
 
 Style: Animal Crossing humans. Big round head (about 45% of the height), dot
 eyes with a white highlight, tiny nose, simple mouth, rosy cheeks, chunky small

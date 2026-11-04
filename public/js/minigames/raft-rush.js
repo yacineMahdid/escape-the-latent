@@ -126,6 +126,7 @@ function pirateFlagSplits() { // 🏴‍☠️ is one glyph only where the font 
   return pirateSplits;
 }
 function drawEmoji(g, ch, x, y, size) {
+  if (globalThis.__rrSkip?.has('emoji')) return; // TEMP DEBUG
   if (ch === '🏴‍☠️' && pirateFlagSplits()) { drawPirateFlag(g, x, y, size); return; }
   const sp = emojiSprite(ch, Math.round(size));
   g.drawImage(sp.c, x - sp.d / 2, y - sp.d / 2, sp.d, sp.d);
@@ -871,21 +872,22 @@ function makeGame(ctx) {
       S.shake = Math.max(0, S.shake - rdt);
       g.save();
       if (S.shake > 0) { const k = (S.shake / 0.32) * 7; g.translate((Math.random() - 0.5) * k, (Math.random() - 0.5) * k); }
-      drawSky(g, now);
-      drawWater(g, now);
-      drawPost(g);
-      drawClothesline(g, S, now);
-      for (const r of S.oldRafts) drawRaft(g, S, r, -1);
-      S.rafts.forEach((r, i) => drawRaft(g, S, r, i));
-      drawRiders(g, S, now);
-      drawFx(g, S, 'back');
-      drawFuse(g, S, now);
-      drawPomelo(g, pomeloMood(S), now, 1);
-      drawCard(g, S, now);
-      drawHooves(g, 1);
-      drawPair(g, S);
-      drawBrineUi(g, S);
-      drawFx(g, S, 'front');
+      const SKIP = globalThis.__rrSkip || new Set(); // TEMP DEBUG
+      if (!SKIP.has('sky')) drawSky(g, now);
+      if (!SKIP.has('water')) drawWater(g, now);
+      if (!SKIP.has('post')) drawPost(g);
+      if (!SKIP.has('line')) drawClothesline(g, S, now);
+      if (!SKIP.has('rafts')) for (const r of S.oldRafts) drawRaft(g, S, r, -1);
+      if (!SKIP.has('rafts')) S.rafts.forEach((r, i) => drawRaft(g, S, r, i));
+      if (!SKIP.has('riders')) drawRiders(g, S, now);
+      if (!SKIP.has('fx')) drawFx(g, S, 'back');
+      if (!SKIP.has('fuse')) drawFuse(g, S, now);
+      if (!SKIP.has('pomelo')) drawPomelo(g, pomeloMood(S), now, 1);
+      if (!SKIP.has('card')) drawCard(g, S, now);
+      if (!SKIP.has('pomelo')) drawHooves(g, 1);
+      if (!SKIP.has('pair')) drawPair(g, S);
+      if (!SKIP.has('brine')) drawBrineUi(g, S);
+      if (!SKIP.has('fx')) drawFx(g, S, 'front');
       g.restore();
     },
     result(S) { return S.result; },

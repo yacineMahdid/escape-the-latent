@@ -28,7 +28,7 @@ const SZJ = 0.84; // cardigan depth squash
 const V0 = 4.82; // the cardigan is buttoned below this height, open in a V above it
 const BROW_X = 0.54, BROW_Y = 0.44;
 const BROW_XO = [-0.32, -0.08, 0.17, 0.4]; // brow control points, offset outward from BROW_X
-const BROW_R = 0.19;
+const BROW_R = 0.19; // brow thickness: 0.92 of it across the brow, 0.6 of it out of the face, and the end-cap length
 const BEARD_Y = -1.3, JAW = 0.17; // the beard hangs from here in head coordinates; how far the jaw drops
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -81,8 +81,9 @@ function knitRevolve(pts, { seg = 72, sz = 1, gap = null, ribs = 0, amp = 0, hum
 // A flattened lock of hair along a smooth curve: half-width W(u) across, half-thickness H(u) along
 // out(P, u) (the direction it lies against). The end closes in a round cap about as long as the end
 // is wide (capK scales it), so no lock ends in a point; capStart closes the start the same way (a lip
-// roll). Analytic normals, outward-facing triangles.
-function lockGeo(pts, W, H, out, { segs = 20, radial = 10, capRows = 5, capK = 1, sq = 2, capStart = false } = {}) {
+// roll). Analytic normals, outward-facing triangles. into: a lock built earlier with the same options,
+// re-laid in place along the new path (a brow moving with the face) instead of building a new geometry.
+function lockGeo(pts, W, H, out, { segs = 20, radial = 10, capRows = 5, capK = 1, sq = 2, capStart = false, into = null } = {}) {
   const e = 2 / sq; // sq > 2 squares the cross-section off (a flat ribbon of hair rather than a tube)
   const crv = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.5);
   const L = crv.getLength();
@@ -119,6 +120,11 @@ function lockGeo(pts, W, H, out, { segs = 20, radial = 10, capRows = 5, capK = 1
       const L2 = Math.hypot(nx, ny, nz) || 1;
       nor.push(nx / L2, ny / L2, nz / L2);
     }
+  }
+  if (into) {
+    for (const [k, v] of [['position', pos], ['normal', nor]]) { into.attributes[k].array.set(v); into.attributes[k].needsUpdate = true; }
+    into.boundingBox = into.boundingSphere = null; // (recomputed when next needed, for culling)
+    return into;
   }
   for (let i = 0; i < rows.length - 1; i++) for (let j = 0; j < radial; j++) {
     const a = i * (radial + 1) + j, b = a + radial + 1;
@@ -392,18 +398,27 @@ export function buildScientist() {
   const creases = [];
   for (const sx of [-1, 1]) creases.push(F.put(add(head, new THREE.CapsuleGeometry(0.024, 0.2, 4, 6), skinLine), sx * 0.085, 0.3, 0.004, sx * 0.16));
 
-  // enormous flat brows: a chain of three thick flattened capsules through control points on the
-  // forehead (re-laid every frame so they can lift, slant and arch), with soft tufts at the ends
+  // enormous flat brows: each one thick flattened lock swept through control points on the forehead,
+  // rounded at both ends (one surface, so no seams; re-laid in place whenever the expression lifts, slants
+  // or arches it), with soft tufts at the ends. The path runs on past the end control points by the cap
+  // length along the end segments, so each round cap closes just beyond its end point.
   const browPts = (sx) => BROW_XO.map((xo) => {
     const y = BROW_Y + cur.browY + cur.slant * xo + cur.arch * (1 - (xo / 0.42) ** 2);
     return onFace(sx * (BROW_X + xo), y, 0.085);
   });
+  const browW = () => 0.92 * BROW_R * cur.browS, browH = () => 0.6 * BROW_R * cur.browS;
+  const BROW_LOCK = { segs: 16, radial: 16, capRows: 5, capK: 1 / 0.92, capStart: true }; // (cap length = BROW_R * browS)
+  const browOut = (Q) => nrmH(Q);
+  const browPath = (P) => {
+    const ext = BROW_R * cur.browS;
+    const end = (a, b) => a.clone().addScaledVector(b.clone().sub(a).normalize(), -ext);
+    return [end(P[0], P[1]), ...P, end(P[3], P[2])];
+  };
   const brows = [];
   for (const sx of [-1, 1]) {
     const b = grp(head);
     b.userData.sx = sx;
-    const P = browPts(sx);
-    b.userData.segs = [0, 1, 2].map((i) => add(b, new THREE.CapsuleGeometry(BROW_R, P[i].distanceTo(P[i + 1]), 4, 10), browM));
+    b.userData.lock = add(b, lockGeo(browPath(browPts(sx)), browW, browH, browOut, BROW_LOCK), browM);
     // [control point, along, up, tilt from 'up' toward 'away', radius, length]
     b.userData.tufts = [[0, 0.03, 0.1, 0.45, 0.075, 0.22], [3, 0.05, 0.02, 1.2, 0.072, 0.2], [3, 0.02, 0.1, 0.62, 0.07, 0.19]].map(([at, dx, dy, a, r, h]) => {
       const m = add(b, new THREE.SphereGeometry(1, 10, 8), browM);
@@ -412,19 +427,9 @@ export function buildScientist() {
     });
     brows.push(b);
   }
-  const bX = new THREE.Vector3(), bY = new THREE.Vector3(), bZ = new THREE.Vector3(), bM = new THREE.Matrix4();
   const layBrow = (b) => {
     const sx = b.userData.sx, P = browPts(sx);
-    b.userData.segs.forEach((m, i) => {
-      const A = P[i], B2 = P[i + 1];
-      m.position.addVectors(A, B2).multiplyScalar(0.5);
-      bY.subVectors(B2, A).normalize();
-      bZ.copy(nrmH(m.position));
-      bZ.addScaledVector(bY, -bZ.dot(bY)).normalize();
-      bX.crossVectors(bY, bZ);
-      m.quaternion.setFromRotationMatrix(bM.makeBasis(bX, bY, bZ));
-      m.scale.set(0.92 * cur.browS, 1, 0.6 * cur.browS);
-    });
+    lockGeo(browPath(P), browW, browH, browOut, { ...BROW_LOCK, into: b.userData.lock.geometry });
     for (const m of b.userData.tufts) {
       // in-plane frame at the end: u points away from the brow, v up the forehead; tilt a from v toward u
       const { at, dx, dy, a, r, h } = m.userData;
@@ -714,8 +719,10 @@ export function buildScientist() {
     beardG.position.y = BEARD_Y - JAW * (cur.jaw + 0.6 * open);
     stache.position.y = 0.055 * cur.lift + 0.02 * open;
   };
+  let browKey = ''; // the brow values the brows were last laid with: they are only re-laid when these move
   const apply = (blinking) => {
-    brows.forEach(layBrow);
+    const key = [cur.browY, cur.slant, cur.arch, cur.browS].map((v) => v.toFixed(5)).join();
+    if (key !== browKey) { browKey = key; brows.forEach(layBrow); }
     const lidY = 0.34 - cur.lid * 0.3;
     eyes.forEach((e, i) => {
       e.scale.set(cur.eyeX, blinking ? 0.12 : 1.3 * cur.eyeY, 0.5);
@@ -737,7 +744,7 @@ export function buildScientist() {
   };
   root.userData.expression = () => expr;
   root.userData.setExpression = (name) => {
-    expr = EXPRESSIONS[name] ? name : 'neutral';
+    expr = Object.prototype.hasOwnProperty.call(EXPRESSIONS, name) ? name : 'neutral'; // ('toString' etc. are unknown too)
     showMouth();
     if (!started) { Object.assign(cur, EXPRESSIONS[expr]); apply(false); pose(false); }
   };
