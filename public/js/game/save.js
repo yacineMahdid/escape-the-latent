@@ -59,5 +59,14 @@ export function learn(concept, entry) {
 export function resetSave() {
   cache = emptySave();
   try { localStorage.removeItem(KEY); } catch { /* ignore */ }
+  // the player's notes, book chat and unfinished code/explanations belong to the save too
+  try {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && /^etl-(notes|book|code|explain)-/.test(k)) keys.push(k);
+    }
+    keys.forEach((k) => localStorage.removeItem(k));
+  } catch { /* storage unavailable */ }
   return cache;
 }
