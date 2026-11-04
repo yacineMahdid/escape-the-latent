@@ -80,6 +80,8 @@ export function createWalkScene({ engine, world, player, light, fog, background,
     cameraTo(pos, look, ms = 700) { return startShot({ p: camera.position.clone(), q: camera.quaternion.clone() }, pose(pos, look), ms, true); },
     // start at a pose and ease back into the follow camera
     cameraFrom(pos, look, ms = 1000) { const a = pose(pos, look); camera.position.copy(a.p); camera.quaternion.copy(a.q); return startShot(a, null, ms, false); },
+    // ease from wherever the camera is (e.g. a held cameraTo shot) back into the follow camera
+    cameraBack(ms = 700) { return startShot({ p: camera.position.clone(), q: camera.quaternion.clone() }, null, ms, false); },
     update(dt, t) {
       if (disposed) return;
       world.update?.(dt, t);

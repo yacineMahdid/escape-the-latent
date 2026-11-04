@@ -1,5 +1,5 @@
 // Plays every world puzzle inside its region: walk to the giver, talk, solve,
-// listen to the success lines. Non-puzzle steps are pre-marked solved in the save,
+// listen to the success lines. Non-puzzle steps (and the extra pack) are pre-marked solved in the save,
 // so finishing the puzzles also spawns the artefact. Needs the game server running.
 //   BASE=http://localhost:3000 node test/play/puzzles-ingame.cjs [attention clip mamba]
 const { chromium } = require('playwright');
@@ -20,9 +20,11 @@ async function drain(p, ms = 30000) {
 
 async function playRegion(browser, regionId) {
   const region = await (await fetch(`${BASE}/content/regions/${regionId}.json`)).json();
+  // the published extra pack (mini-game, environmental puzzle, quiz) is pre-solved too: see extras-ingame.cjs
+  const extra = await fetch(`${BASE}/content/extra/${regionId}.json`).then((r) => (r.ok ? r.json() : { challenges: [] }));
   const puzzles = region.challenges.filter((c) => c.type === 'puzzle');
   const pre = {};
-  for (const c of region.challenges) if (c.type !== 'puzzle') pre[c.id] = true;
+  for (const c of [...region.challenges, ...(extra.challenges || [])]) if (c.type !== 'puzzle') pre[c.id] = true;
   for (const f of region.fundamentals || []) pre[f.id] = true;
   const p = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   const errors = [];

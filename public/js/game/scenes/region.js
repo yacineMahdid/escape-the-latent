@@ -342,6 +342,8 @@ export async function createRegionScene(ctx, regionId) {
       askValue: (q, o = {}) => askValue(q, o),
       speakerOf, toast, confetti, sfx,
       setTask: (text) => setHud({ task: text }),
+      // a camera shot: look at `look` from `pos` and hold there (to: Promise when it arrives), then back() to the follow camera
+      camera: { to: (pos, look, ms) => ws.cameraTo(pos, look, ms), back: (ms) => ws.cameraBack(ms) },
     };
   }
   async function startEnvironment(c) {

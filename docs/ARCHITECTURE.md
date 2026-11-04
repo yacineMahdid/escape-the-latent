@@ -396,7 +396,8 @@ export default {
     //      villager(id) / station(id) -> mesh, addInteractable(it) / removeInteractable(it),
     //      addCollider(c) / removeCollider(c), onUpdate(fn(dt, t)) -> unsubscribe,
     //      speak(id, lines), say(lines, opts), ask(q, options, opts), askValue(q, opts),
-    //      speakerOf(id), toast(msg, ms), confetti(n), sfx(name), setTask(text) }
+    //      speakerOf(id), toast(msg, ms), confetti(n), sfx(name), setTask(text),
+    //      camera: { to(pos, look, ms) -> Promise (holds the shot), back(ms) (eases back to the follow camera) } }
     return { destroy() {} };   // remove everything you added
   },
 };
