@@ -73,8 +73,16 @@ export function createRegionStore({ dir = defaultRegionsDir(), logger = console 
 
 // Small helpers shared by the routes.
 export function findChallenge(region, challengeId) {
-  if (!region || !Array.isArray(region.challenges)) return null;
-  return region.challenges.find((c) => c && c.id === challengeId) || null;
+  if (!region) return null;
+  const c = (Array.isArray(region.challenges) ? region.challenges : []).find((x) => x && x.id === challengeId);
+  if (c) return c;
+  // Fundamentals (basic concepts) of kind "explain" are graded like explain challenges.
+  const f = (Array.isArray(region.fundamentals) ? region.fundamentals : []).find((x) => x && x.id === challengeId);
+  if (!f || !f.check || f.check.kind !== 'explain') return f ? { ...f, type: 'fundamental' } : null;
+  return {
+    id: f.id, type: 'explain', giver: f.giver, title: f.title,
+    question: f.check.question, rubric: f.check.rubric, passBar: f.check.passBar, offline: f.check.offline,
+  };
 }
 
 // The inhabitant (or station) that gives a challenge: { name, species, role }.
