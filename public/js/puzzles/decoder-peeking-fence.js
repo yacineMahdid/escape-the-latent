@@ -89,7 +89,7 @@ export default {
       slots.push(slot);
       deskRow.append(h('div', { class: 'pf-desk' }, [
         h('div', { class: 'pf-desk-name', text: `Desk ${wr.desk ?? j + 1}` }),
-        h('div', { class: 'pf-writes', text: `writes: ${wr.writes}` }),
+        h('div', { class: 'pf-writes', title: 'writes', text: `✎ ${wr.writes}` }),
         slot,
       ]));
     });
@@ -124,7 +124,7 @@ export default {
       for (let j = 0; j < p.cols; j++) { const hd = h('div', { class: 'pf-colhead', text: headTexts ? headTexts[j] : '' }); p.heads.push(hd); grid.append(hd); }
       for (let i = 0; i < n; i++) {
         const badges = h('div', { class: 'pf-badges' });
-        const name = h('span', { text: `✎${i + 1}`, title: `Writer at desk ${i + 1}` });
+        const name = h('span', { text: rowName(i), title: `Writer at desk ${i + 1}` });
         const rh = h('div', { class: 'pf-rowhead' }, [name, badges]);
         p.badges.push(badges); p.names.push(name);
         grid.append(rh);
@@ -142,6 +142,7 @@ export default {
       });
       return grid;
     }
+    const rowName = (i) => `${i + 1} ✎${writers[i]?.writes ?? ''}`;
     let painting = null;
     function paint(win) {
       if (!painting || painting.has(win)) return;
@@ -173,12 +174,12 @@ export default {
     window.addEventListener('pointerup', onUp);
     window.addEventListener('pointercancel', onUp);
 
-    const gridSelf = buildPanel(panelSelf, 50, null, 104);
-    const gridCross = buildPanel(panelCross, 40, village, 30);
+    const gridSelf = buildPanel(panelSelf, 50, null, 128);
+    const gridCross = buildPanel(panelCross, 40, village, 78);
 
     // ---------- stamp palette ----------
     const toolBtns = stampDefs.map((st) => {
-      const b = h('button', { class: 'pf-tool', 'data-tool': st.id, text: st.label });
+      const b = h('button', { class: 'pf-tool', 'data-tool': st.id, title: st.title || '', text: st.title && !st.label.includes(st.title) ? `${st.label} ${st.title}` : st.label });
       b.addEventListener('click', () => { tool = st.id; board.sfx('pin'); toolBtns.forEach((x) => x.classList.toggle('on', x === b)); });
       return b;
     });
@@ -201,7 +202,7 @@ export default {
         const { fainted, w } = softmaxRow(p.scores[i] || [], p.stamps[i]);
         weights[key].push({ fainted, w });
         p.rows[i].classList.toggle('pf-row-fainted', fainted);
-        p.names[i].textContent = `✎${i + 1}${fainted ? ' 😵' : ''}`;
+        p.names[i].textContent = rowName(i);
         p.wins[i].forEach((win, j) => {
           win.style.setProperty('--w', glow(w[j]));
           win.classList.toggle('is-fence', p.stamps[i][j] === 'fence');
@@ -222,21 +223,30 @@ export default {
     const legal = (i, j) => { const c = cardById[desks[j]]; return !c || c.reveals == null || c.reveals < i + 1; };
     function ring() {
       changed();
-      if (desks.some((d) => !d)) { board.fail('emptyDesk'); return; }
+      if (desks.some((d) => !d)) {
+        slots.forEach((sl, j) => { if (!desks[j]) { sl.classList.remove('pz-shake'); void sl.offsetWidth; sl.classList.add('pz-shake'); } });
+        board.fail('emptyDesk'); return;
+      }
       const rowProblems = [];
       for (let i = 0; i < n; i++) {
         const { fainted, w } = weights.self[i];
         const badges = [];
         if (fainted) { badges.push(['fainted', '😵 NaN', { desk: i + 1 }]); rowProblems.push({ key: 'fainted', vars: { desk: i + 1 } }); }
+        // fainted is exclusive; peeking and squinting can both show
         else {
           let peek = 0; for (let j = 0; j < n; j++) if (!legal(i, j)) peek += w[j];
           if (peek > 1e-12) {
-            const pct = peek < 0.005 ? '<1' : String(Math.round(peek * 100));
+            const pct = peek * 100 < 1 ? '<1' : String(Math.round(peek * 100));
             badges.push(['peeking', `👀 ${pct}%`, { desk: i + 1, pct }]); rowProblems.push({ key: 'peeking', vars: { desk: i + 1, pct } });
           }
           if (selfStamps[i].some((st, j) => st && legal(i, j))) { badges.push(['squinting', '🤨', { desk: i + 1 }]); rowProblems.push({ key: 'squinting', vars: { desk: i + 1 } }); }
         }
-        badges.forEach(([key, label, vars]) => panelSelf.badges[i].append(h('span', { class: 'pf-badge', text: label, title: interp(spec.feedback?.[key] || key, vars) })));
+        badges.forEach(([key, label, vars]) => {
+          const f = spec.feedback?.[key];
+          const text = f && typeof f === 'object' && f.badge ? interp(f.badge, vars) : label;
+          const title = f && typeof f === 'object' ? interp(f.title || '', vars) : interp(f || key, vars);
+          panelSelf.badges[i].append(h('span', { class: 'pf-badge', text, title }));
+        });
       }
       const general = [];
       if (crossStamps.some((r) => r.some(Boolean))) general.push('bridge');

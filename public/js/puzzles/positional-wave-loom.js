@@ -38,6 +38,7 @@ const CSS = `
 .wl-arrow:hover { color: #c2185b; }
 .wl-dial-val { min-width: 36px; text-align: center; font: 600 11px var(--font-ui); }
 .wl-rowlabel { text-align: right; padding-right: 4px; }
+.wl-chip { justify-self: start; font: 700 12px var(--font-code); padding: 2px 6px; border-radius: 6px; background: #2b2233; color: #ffe9a8; white-space: nowrap; }
 .wl-join { width: 300px; display: flex; flex-direction: column; gap: 8px; transform: rotate(.8deg); }
 .wl-join-q { font-weight: 600; font-size: 16px; }
 .wl-join-opt {
@@ -98,7 +99,7 @@ export default {
 
     // the lantern plates: one row per house, one column (string) per lantern
     const grid = h('div', { class: 'wl-grid', style: { '--wl-cols': cols.length } });
-    grid.append(h('div', { class: 'pz-label wl-rowlabel', text: 'house' }));
+    grid.append(h('div', { class: 'wl-chip', title: 'lanterns per plate', text: spec.dModelChip || `d_model = ${dModel}` }));
     cols.forEach((j) => grid.append(h('div', { class: 'pz-label wl-colhead', text: String(j), title: `Lantern ${j}` })));
     const cells = houses.map((hs) => {
       grid.append(h('div', { class: 'wl-house' }, [h('b', { text: String(hs.pos) }), h('span', { text: hs.word })]));
@@ -135,9 +136,10 @@ export default {
     });
 
     // how the plates join each villager's word-coat
-    const joinCard = h('div', { class: 'pz-card wl-join' }, [h('div', { class: 'wl-join-q', text: spec.joinQuestion || 'How do the plates join the coats?' })]);
-    const joinBtns = (spec.joinOptions || [{ id: 'add', label: 'Add' }, { id: 'concat', label: 'Concatenate' }]).map((o) => {
-      const b = h('button', { class: 'wl-join-opt', 'data-join': o.id }, [h('span', { class: 'wl-radio' }), h('span', { text: o.label })]);
+    const joinCard = h('div', { class: 'pz-card wl-join' }, [h('div', { class: 'wl-join-q', text: spec.joinQuestion || 'Plates onto word-coats:' })]);
+    const tools = spec.joinTools || spec.joinOptions || [{ id: 'add', label: 'Add' }, { id: 'concat', label: 'Concatenate' }];
+    const joinBtns = tools.map((o) => {
+      const b = h('button', { class: 'wl-join-opt', 'data-join': o.id, title: o.title || '' }, [h('span', { class: 'wl-radio' }), h('span', { text: [o.icon, o.label].filter(Boolean).join(' ') })]);
       b.addEventListener('click', () => { join = o.id; board.sfx('pin'); refresh(); });
       joinCard.append(b);
       return b;
@@ -150,7 +152,7 @@ export default {
         const v = value(hs.pos, k); const c = colorAt(v, stops); const el = cells[r][k];
         el.style.background = c; el.style.setProperty('--glow', c); el.title = v.toFixed(2);
       }));
-      faceBtns.forEach((b, k) => { b.textContent = faces[k].toUpperCase(); b.classList.toggle('is-sin', faces[k] === 'sin'); });
+      faceBtns.forEach((b, k) => { b.textContent = spec.faceLabels?.[faces[k]] || faces[k].toUpperCase(); b.classList.toggle('is-sin', faces[k] === 'sin'); });
       dialVals.forEach((val, k) => { val.textContent = opts[optIndex(ms[k])].label; });
       joinBtns.forEach((b) => b.classList.toggle('on', b.dataset.join === join));
     }
