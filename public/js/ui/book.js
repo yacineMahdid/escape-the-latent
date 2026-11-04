@@ -1,4 +1,4 @@
-// The Umbral Book: the player's dark tome.
+// The Cursed Book of Dimensionality: the player's dark tome.
 //   📄 Read     the real arXiv PDF (PDF.js): lazy pages, crisp at devicePixelRatio, zoom, text layer,
 //               select text -> 🖍 highlight / ✎ note / ? ask
 //   ✎ Notes    every highlight + note for this paper (localStorage etl-notes-<arxivId>)
@@ -6,6 +6,10 @@
 //   ✦ Learned  concepts the player has proven (getSave().learned), newest first, grouped by region
 //
 //   open({ paper: { arxivId, title }, regionId, tab? }) -> Promise, resolves when the book closes.
+//   isOpen() -> boolean
+//   clearBookData()   forget every note, chat, page and preference the book keeps (for a new game)
+// localStorage: etl-notes-<arxivId>, etl-book-chat-<regionId|lab>, etl-book-page-<arxivId>,
+//               etl-book-tab, etl-book-ink, etl-book-learned-seen
 // All player / AI text goes in with textContent, never as HTML.
 import { openModal, closeModal, topModal } from './modal.js';
 import { api } from '../api.js';
@@ -26,11 +30,11 @@ const INKS = ['#b48cff', '#ff8fcf', '#6fe3d2', '#ffd36b'];
 const ZOOMS = [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.15, 1.3, 1.5, 1.75, 2, 2.5, 3];
 const MAX_FIT_WIDTH = 1000;      // css px; fit-width never makes a page wider than this
 const MAX_CANVAS_PX = 12e6;      // device pixels per page canvas
-const RENDER_KEEP = 8;           // rendered pages kept when they scroll far away
+const RENDER_KEEP = 8;           // rendered pages kept at most, and at most this many canvas pixels
+const RENDER_BUDGET_PX = 32e6;   // (~128 MB); pages near the view always stay
+
 const CHAT_KEEP = 20;
 const HISTORY_SEND = 6;
-const FAIL_PDF = 'The ink will not settle.';
-const FAIL_ASK = '…the pages refuse.';
 const HEX = /^#[0-9a-f]{6}$/i;
 
 const KEY_TAB = 'etl-book-tab';
@@ -156,7 +160,8 @@ function loadDoc(arxivId, onProgress) {
   }
   const entry = { arxivId, task: null, listeners: new Set(onProgress ? [onProgress] : []) };
   entry.promise = loadPdfjs().then((pdfjs) => {
-    const task = pdfjs.getDocument({ url: api.paperPdfUrl(arxivId), isEvalSupported: false });
+    // ERRORS only: PDF.js warns a lot ("Knockout groups not supported.") and the game watches the console
+    const task = pdfjs.getDocument({ url: api.paperPdfUrl(arxivId), isEvalSupported: false, verbosity: pdfjs.VerbosityLevel?.ERRORS ?? 0 });
     entry.task = task;
     task.onProgress = (p) => { for (const fn of entry.listeners) { try { fn(p); } catch { /* ignore */ } } };
     return task.promise;
@@ -364,7 +369,11 @@ class Reader {
 
   async start() {
     if (!this.id) { this.setState('blank'); return; }
+    if (this.starting || this.closed || this.views.length) return;
+    this.starting = true;
     this.setState('loading');
+    this.progress.style.setProperty('--p', '0');
+    if (this.onProgress) docEntry?.listeners.delete(this.onProgress);
     this.onProgress = ({ loaded, total }) => {
       if (total > 0) this.progress.style.setProperty('--p', String(clamp(loaded / total, 0, 1)));
     };
@@ -382,6 +391,8 @@ class Reader {
       if (this.closed) return;
       console.warn('[book] the paper would not open:', err?.message || err);
       this.setState('error');
+    } finally {
+      this.starting = false;
     }
   }
 
@@ -392,9 +403,12 @@ class Reader {
     if (state === 'loading') this.status.append(h('div', { class: 'bk-sigil', 'aria-hidden': 'true', text: '✦' }));
     if (state === 'blank') this.status.append(h('div', { class: 'bk-empty bk-emoji', 'aria-hidden': 'true', text: '📄' }));
     if (state === 'error') {
-      this.status.append(h('div', { class: 'bk-fail', role: 'alert' },
-        h('p', { class: 'bk-fail-line', text: FAIL_PDF }),
-        h('a', { class: 'bk-ib bk-fail-link', href: absUrl(this.id), target: '_blank', rel: 'noopener noreferrer', title: 'arXiv', 'aria-label': 'arXiv', text: '↗' })));
+      // no words: a cracked sigil, ↻ to try again, ↗ to read it on arXiv
+      this.status.append(h('div', { class: 'bk-fail', role: 'alert', 'aria-label': 'Paper lost' },
+        h('div', { class: 'bk-sigil bk-dead', 'aria-hidden': 'true', text: '✦' }),
+        h('div', { class: 'bk-fail-row' },
+          h('button', { class: 'bk-ib bk-again', type: 'button', title: 'Again', 'aria-label': 'Again', text: '↻', onclick: () => this.start() }),
+          h('a', { class: 'bk-ib bk-fail-link', href: absUrl(this.id), target: '_blank', rel: 'noopener noreferrer', title: 'arXiv', 'aria-label': 'arXiv', text: '↗' }))));
     }
   }
 
@@ -427,8 +441,11 @@ class Reader {
         const pv = this.views[Number(en.target.dataset.page) - 1];
         if (!pv) continue;
         pv.near = en.isIntersecting;
-        if (!pv.near && pv.canvas && this.views.filter((v) => v.canvas).length > RENDER_KEEP) this.free(pv);
+        pv.el.classList.toggle('near', pv.near);
+        // flung past before it was drawn: stop drawing it
+        if (!pv.near && pv.busy) { pv.token++; pv.task?.cancel(); }
       }
+      this.trim();
       this.schedule();
     }, { root: this.scroller, rootMargin: '120% 0px' });
     for (const pv of this.views) this.io.observe(pv.el);
@@ -577,6 +594,7 @@ class Reader {
     const token = ++pv.token;
     const scale = this.scale;
     const dpr = outputScale();
+    let canvas = null;
     try {
       const page = pv.page || (pv.page = await this.doc.getPage(pv.num));
       if (token !== pv.token || this.closed) return;
@@ -587,7 +605,7 @@ class Reader {
       const viewport = page.getViewport({ scale });
       let k = dpr;
       if (viewport.width * viewport.height * k * k > MAX_CANVAS_PX) k = Math.sqrt(MAX_CANVAS_PX / (viewport.width * viewport.height));
-      const canvas = h('canvas', { class: 'bk-pg-canvas', 'aria-hidden': 'true' });
+      canvas = h('canvas', { class: 'bk-pg-canvas', 'aria-hidden': 'true' });
       canvas.width = Math.max(1, Math.floor(viewport.width * k));
       canvas.height = Math.max(1, Math.floor(viewport.height * k));
       const task = page.render({
@@ -597,7 +615,7 @@ class Reader {
       });
       pv.task = task;
       try { await task.promise; } finally { if (pv.task === task) pv.task = null; }
-      if (token !== pv.token || this.closed) { canvas.width = 0; canvas.height = 0; return; }
+      if (token !== pv.token || this.closed) return;
       if (pv.canvas) { const old = pv.canvas; old.replaceWith(canvas); old.width = 0; old.height = 0; } else pv.el.prepend(canvas);
       pv.canvas = canvas;
       if (pv.textLayer) pv.textLayer.update({ viewport });
@@ -617,9 +635,27 @@ class Reader {
     } catch (err) {
       if (!/Cancel|Abort/i.test(err?.name || '')) console.warn('[book] page', pv.num, err?.message || err);
     } finally {
+      if (canvas && canvas !== pv.canvas) { canvas.width = 0; canvas.height = 0; } // cancelled or superseded
       pv.busy = false;
       this.running--;
-      if (!this.closed) this.schedule();
+      if (!this.closed) { this.trim(); this.schedule(); }
+    }
+  }
+
+  // Let the farthest drawn pages go once more than RENDER_KEEP pages (or RENDER_BUDGET_PX pixels) are kept.
+  // Runs after every render too: a page that finishes after it left the view gets no later observer call.
+  trim() {
+    const drawn = this.views.filter((v) => v.canvas);
+    let n = drawn.length;
+    let px = drawn.reduce((s, v) => s + v.canvas.width * v.canvas.height, 0);
+    if (n <= RENDER_KEEP && px <= RENDER_BUDGET_PX) return;
+    const far = drawn.filter((v) => !v.near && !v.busy)
+      .sort((a, b) => Math.abs(b.num - this.current) - Math.abs(a.num - this.current));
+    for (const pv of far) {
+      if (n <= RENDER_KEEP && px <= RENDER_BUDGET_PX) break;
+      n--;
+      px -= pv.canvas.width * pv.canvas.height;
+      this.free(pv);
     }
   }
 
@@ -709,8 +745,21 @@ class Reader {
     const below = top < this.scroller.scrollTop + 6;
     if (below) top = oy + Math.max(...ye) * pr.height + 12;
     m.classList.toggle('below', below);
-    m.style.left = `${clamp(cx, m.offsetWidth / 2 + 6, wr.width - m.offsetWidth / 2 - 6)}px`;
+    this.place(m, cx, 6);
     m.style.top = `${top}px`;
+  }
+
+  // Centre a menu / popover (it is translated -50%) on x, kept inside the part of the pages the player
+  // can see (zoomed pages are wider than the view). x is in .bk-pages coordinates, which are the
+  // scroller's content coordinates. Its arrow (--ax) keeps pointing at x.
+  place(el, x, margin) {
+    const sc = this.scroller;
+    const half = el.offsetWidth / 2;
+    const lo = sc.scrollLeft + half + margin;
+    const hi = sc.scrollLeft + sc.clientWidth - half - margin;
+    const left = hi < lo ? sc.scrollLeft + sc.clientWidth / 2 : clamp(x, lo, hi);
+    el.style.left = `${left}px`;
+    el.style.setProperty('--ax', `${Math.round(clamp(x - left, -half + 16, half - 16))}px`);
   }
 
   hideMenu() {
@@ -775,8 +824,7 @@ class Reader {
     const el = h('div', { class: 'bk-pop', role: 'dialog', 'aria-label': 'Note' }, ta, h('div', { class: 'bk-pop-row' }, ...dots, h('span', { class: 'bk-sp' }), ask, del));
     const last = a.rects[a.rects.length - 1] || { x: 0.3, y: 0.05, w: 0.4, h: 0.02 };
     this.pagesEl.append(el);
-    const left = pv.el.offsetLeft + (last.x + last.w / 2) * pv.el.offsetWidth;
-    el.style.left = `${clamp(left, el.offsetWidth / 2 + 8, this.pagesEl.offsetWidth - el.offsetWidth / 2 - 8)}px`;
+    this.place(el, pv.el.offsetLeft + (last.x + last.w / 2) * pv.el.offsetWidth, 8);
     el.style.top = `${pv.el.offsetTop + (last.y + last.h) * pv.el.offsetHeight + 12}px`;
     ta.addEventListener('input', () => {
       autogrow(ta);
@@ -857,7 +905,7 @@ class NotesPane {
     this.dirty = true;
     this.timers = new Map();
     this.list = h('div', { class: 'bk-col bk-ncol' });
-    this.scroll = h('div', { class: 'bk-pscroll' }, this.list);
+    this.scroll = h('div', { class: 'bk-pscroll', tabindex: '-1' }, this.list);
     this.empty = h('div', { class: 'bk-empty', 'aria-hidden': 'true', text: '✎' });
     this.root = h('section', { class: 'bk-pane bk-notes', role: 'tabpanel', 'aria-label': 'Notes' }, this.scroll, this.empty);
     this.unsub = this.notes.on((ch) => {
@@ -867,7 +915,11 @@ class NotesPane {
     });
   }
 
-  show() { this.visible = true; if (this.dirty) this.render(); }
+  show({ initial } = {}) {
+    this.visible = true;
+    if (this.dirty) this.render();
+    if (initial) this.book.home(this.scroll);
+  }
   hide() { this.visible = false; this.flush(); }
 
   render() {
@@ -958,6 +1010,11 @@ function sanitizeChat(list) {
 }
 
 const waitDots = () => h('span', { class: 'bk-dots', role: 'status', 'aria-label': '…' }, h('i'), h('i'), h('i'));
+// a cracked sigil: something did not come through (no words)
+const deadSigil = () => h('span', { class: 'bk-sigil bk-dead', 'aria-hidden': 'true', text: '✦' });
+
+// A half-typed question (and its ❝ passage) waits here for the next open, per chat. This session only.
+const drafts = new Map();
 
 class AskPane {
   constructor(book) {
@@ -965,8 +1022,12 @@ class AskPane {
     this.key = chatKey(book.regionId);
     this.items = sanitizeChat(ls.get(this.key, []));
     this.sel = null;
-    this.busy = false;
+    this.busy = false;    // an exchange is under way: waiting for the book, then writing its answer
+    this.skip = null;     // while writing: finish the answer at once
+    this.queued = false;  // Enter while writing: ask as soon as the answer is down
+    this.stick = true;    // the chat follows its newest line
     this.chat = h('div', { class: 'bk-chat', 'aria-live': 'polite' });
+    this.wrap = h('div', { class: 'bk-chatwrap', tabindex: '-1' }, this.chat);
     this.empty = h('div', { class: 'bk-empty', 'aria-hidden': 'true', text: '?' });
     this.off = h('div', { class: 'bk-off', title: 'offline', 'aria-label': 'offline', text: '⦸', hidden: true });
     this.chipText = h('span', { class: 'bk-chip-t' });
@@ -978,15 +1039,26 @@ class AskPane {
     this.form = h('form', { class: 'bk-compose', onsubmit: (e) => { e.preventDefault(); this.send(); } },
       this.chip, h('div', { class: 'bk-row' }, this.input, this.sendBtn));
     this.root = h('section', { class: 'bk-pane bk-ask', role: 'tabpanel', 'aria-label': 'Ask' },
-      h('div', { class: 'bk-chatwrap' }, this.chat), this.empty, this.off, this.form);
+      this.wrap, this.empty, this.off, this.form);
     for (const it of this.items) this.chat.append(this.exchange(it).el);
     this.syncEmpty();
+    const draft = drafts.get(this.key);
+    if (draft) { this.input.value = draft.text; this.attach(draft.sel); }
+    // the ❝ chip (or the window) changes the chat's height: keep its newest line in view
+    this.wrap.addEventListener('scroll', () => {
+      this.stick = this.wrap.scrollHeight - this.wrap.scrollTop - this.wrap.clientHeight < 8;
+    }, { passive: true });
+    this.ro = new ResizeObserver(() => { if (this.stick) this.scrollDown(); });
+    this.ro.observe(this.wrap);
     if (this.items.length && this.items[this.items.length - 1].offline) this.setOffline(true);
     serverStatus().then((s) => { if (s && s.ai === false && !this.book.closed) this.setOffline(true); });
   }
 
-  show() {
+  // Opening the book on Ask leaves the keys to the book (B closes, 1-4 turn tabs);
+  // choosing the Ask tab hands them to the quill.
+  show({ initial } = {}) {
     this.scrollDown();
+    if (initial) { this.book.home(this.wrap); return; }
     requestAnimationFrame(() => { if (!this.book.closed && this.book.tab === 'ask') this.input.focus({ preventScroll: true }); });
   }
 
@@ -994,7 +1066,7 @@ class AskPane {
 
   setOffline(on) { this.off.hidden = !on; }
   syncEmpty() { this.empty.hidden = this.chat.childElementCount > 0; }
-  scrollDown() { const w = this.chat.parentElement; w.scrollTop = w.scrollHeight; }
+  scrollDown() { this.wrap.scrollTop = this.wrap.scrollHeight; this.stick = true; }
 
   attach(text) {
     const t = typeof text === 'string' ? text.replace(/\s+/g, ' ').trim() : '';
@@ -1014,20 +1086,31 @@ class AskPane {
     return { el: h('div', { class: 'bk-ex' }, q, a), a };
   }
 
-  async send() {
-    if (this.busy) return;
-    const sel = this.sel;
-    const q = this.input.value.trim() || (sel ? '?' : '');
-    if (!q) {
-      this.form.classList.remove('nudge');
-      void this.form.offsetWidth;
-      this.form.classList.add('nudge');
+  nudge() {
+    this.form.classList.remove('nudge');
+    void this.form.offsetWidth;
+    this.form.classList.add('nudge');
+  }
+
+  send() {
+    if (this.busy) {
+      // the last answer is still being written: finish it at once, then ask; still waiting: not yet
+      if (this.skip) { this.queued = true; this.skip(); } else this.nudge();
       return;
     }
-    this.busy = true;
-    this.form.classList.add('busy');
+    const typed = this.input.value.trim();
+    const sel = this.sel;
+    if (!typed && !sel) { this.nudge(); return; }
     this.input.value = '';
     this.attach(null);
+    this.ask(typed, sel);
+  }
+
+  async ask(typed, sel) {
+    const q = typed || '?'; // only a passage: ask about the passage
+    this.busy = true;
+    this.form.classList.add('busy');
+    drafts.delete(this.key);
     const ex = this.exchange({ q, sel }, true);
     this.chat.append(ex.el);
     this.syncEmpty();
@@ -1049,18 +1132,42 @@ class AskPane {
       this.items = [...kept, item].slice(-CHAT_KEEP);
       ls.set(this.key, this.items);
     }
-    if (this.book.closed) return;
-    if (!item) {
-      ex.el.classList.add('failed');
-      await this.type(ex.a, FAIL_ASK, true);
-    } else {
+    if (this.book.closed) {
+      // shut while waiting and nothing came: the question waits in the quill for next time
+      if (!item && !drafts.has(this.key)) drafts.set(this.key, { text: typed, sel });
+      return;
+    }
+    this.form.classList.remove('busy');
+    if (!item) this.fail(ex, typed, sel);
+    else {
       this.setOffline(item.offline);
       ex.a.classList.toggle('offline', item.offline);
       await this.type(ex.a, answer, item.refused);
     }
     this.busy = false;
-    this.form.classList.remove('busy');
-    if (!this.book.closed && this.book.tab === 'ask') this.input.focus({ preventScroll: true });
+    if (this.book.closed) return;
+    if (this.queued) { this.queued = false; this.send(); return; }
+    if (this.book.tab === 'ask') this.input.focus({ preventScroll: true });
+  }
+
+  // Nothing came back (network, server, timeout). Not a refusal: no cold box, a cracked sigil and ↻.
+  // The question and its passage go back into the quill.
+  fail(ex, typed, sel) {
+    ex.el.classList.add('failed');
+    ex.a.className = 'bk-a';
+    ex.a.replaceChildren(deadSigil(),
+      h('button', { class: 'bk-ib bk-again', type: 'button', title: 'Again', 'aria-label': 'Again', text: '↻', onclick: () => this.again(ex, typed, sel) }));
+    if (!this.input.value.trim()) this.input.value = typed;
+    if (!this.sel && sel) this.attach(sel);
+    if (this.stick) this.scrollDown();
+  }
+
+  again(ex, typed, sel) {
+    if (this.busy) { this.nudge(); return; }
+    ex.el.remove();
+    if (this.input.value.trim() === typed) this.input.value = '';
+    if (this.sel === sel) this.attach(null);
+    this.ask(typed, sel);
   }
 
   // the answer seeps in letter by letter, each letter flaring as it lands
@@ -1069,23 +1176,30 @@ class AskPane {
     el.classList.toggle('refused', !!cold);
     el.classList.add('typing');
     let skip = reducedMotion();
-    el.addEventListener('pointerdown', () => { skip = true; }, { once: true });
+    this.skip = () => { skip = true; };
+    el.addEventListener('pointerdown', this.skip, { once: true });
     const chars = [...text];
     const step = clamp(2200 / Math.max(1, chars.length), 9, 30);
     for (const ch of chars) {
       if (this.book.closed) return;
       el.append(h('span', { class: 'bk-l', text: ch }));
       if (!skip) {
-        this.scrollDown();
+        if (this.stick) this.scrollDown();
         await wait(/[.!?…]/.test(ch) ? step * 5 : /[,;:]/.test(ch) ? step * 3 : ch === ' ' ? step * 0.6 : step);
       }
     }
-    this.scrollDown();
+    this.skip = null;
+    if (this.stick) this.scrollDown();
     el.classList.remove('typing');
     setTimeout(() => { if (el.isConnected) el.textContent = text; }, 1500); // the glow has faded; drop the spans
   }
 
-  destroy() {}
+  destroy() {
+    this.ro.disconnect();
+    const text = this.input.value;
+    if (text.trim() || this.sel) drafts.set(this.key, { text, sel: this.sel });
+    else drafts.delete(this.key);
+  }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1114,16 +1228,17 @@ class LearnedPane {
   constructor(book) {
     this.book = book;
     this.list = h('div', { class: 'bk-col bk-lcol' });
-    this.scroll = h('div', { class: 'bk-pscroll' }, this.list);
+    this.scroll = h('div', { class: 'bk-pscroll', tabindex: '-1' }, this.list);
     this.empty = h('div', { class: 'bk-empty', 'aria-hidden': 'true', text: '✦' });
     this.root = h('section', { class: 'bk-pane bk-learned', role: 'tabpanel', 'aria-label': 'Learned' }, this.scroll, this.empty);
   }
 
-  show() {
+  show({ initial } = {}) {
     const seen = Date.parse(ls.get(KEY_SEEN, '')) || 0;
     this.render(seen);
     ls.set(KEY_SEEN, new Date().toISOString());
     this.book.syncLearnedDot();
+    if (initial) this.book.home(this.scroll);
   }
 
   hide() {}
@@ -1156,93 +1271,67 @@ class LearnedPane {
 // ---------------------------------------------------------------------------------------------
 // faint drifting motes behind the pages
 
-function moteSprite(core, edge) {
-  const c = document.createElement('canvas');
-  c.width = c.height = 64;
-  const g = c.getContext('2d');
-  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-  gr.addColorStop(0, '#ffffff');
-  gr.addColorStop(0.14, core);
-  gr.addColorStop(0.45, edge);
-  gr.addColorStop(1, 'rgba(0,0,0,0)');
-  g.fillStyle = gr;
-  g.fillRect(0, 0, 64, 64);
-  return c;
-}
-
+// Each mote is a tiny element moved by compositor animations (transform + opacity), so the drift
+// costs the main thread nothing while the player reads. The top 30% fades out with a static mask.
 class Motes {
-  constructor(canvas) {
-    this.canvas = canvas;
-    this.ctx = canvas.getContext('2d');
-    this.parts = [];
+  constructor(host) {
+    this.host = host;
     this.w = 0;
     this.h = 0;
-    this.last = 0;
-    this.raf = 0;
-    this.still = reducedMotion();
-    this.sprites = [moteSprite('rgba(196,160,255,.95)', 'rgba(155,107,255,.18)'), moteSprite('rgba(200,236,255,.9)', 'rgba(120,190,255,.14)')];
-    this.tick = this.tick.bind(this);
-    this.ro = new ResizeObserver(() => this.resize());
-    this.ro.observe(canvas);
+    this.anims = [];
+    this.ro = new ResizeObserver(() => { clearTimeout(this.t); this.t = setTimeout(() => this.build(), 120); });
+    this.ro.observe(host);
   }
 
-  resize() {
-    const r = this.canvas.getBoundingClientRect();
-    if (!r.width || !r.height) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  build() {
+    const r = this.host.getBoundingClientRect();
+    if (!r.width || !r.height || (Math.abs(r.width - this.w) < 2 && Math.abs(r.height - this.h) < 2)) return;
+    this.stop();
     this.w = r.width;
     this.h = r.height;
-    this.canvas.width = Math.round(r.width * dpr);
-    this.canvas.height = Math.round(r.height * dpr);
-    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const still = reducedMotion() || typeof Element.prototype.animate !== 'function';
     const n = Math.round(clamp((r.width * r.height) / 12000, 24, 90));
-    while (this.parts.length < n) this.parts.push(this.spawn(true));
-    this.parts.length = n;
-    if (this.still) this.draw(0);
-    else if (!this.raf) this.raf = requestAnimationFrame(this.tick);
-  }
-
-  spawn(anywhere) {
-    const r = Math.random;
-    return {
-      x: r() * this.w, y: anywhere ? r() * this.h : this.h + 14,
-      s: 0.7 + r() ** 2 * 2.6, vy: 4 + r() * 13, sway: 4 + r() * 18, f: 0.15 + r() * 0.6,
-      ph: r() * 6.283, a: 0.1 + r() * 0.42, tw: 0.6 + r() * 2.2, k: r() < 0.15 ? 1 : 0,
+    const rnd = Math.random;
+    const frag = document.createDocumentFragment();
+    const loop = (el, frames, duration, more) => {
+      this.anims.push(el.animate(frames, { duration, iterations: Infinity, delay: -rnd() * duration * 2, ...more }));
     };
+    for (let i = 0; i < n; i++) {
+      const size = (0.7 + rnd() ** 2 * 2.6) * 7;
+      const alpha = 0.9 * (0.1 + rnd() * 0.42);
+      const dot = h('i');
+      const mote = h('i', { class: `bk-mote${rnd() < 0.15 ? ' cold' : ''}`, style: `left:${(rnd() * this.w).toFixed(1)}px;width:${size.toFixed(1)}px;height:${size.toFixed(1)}px` }, dot);
+      frag.append(mote);
+      if (still) {
+        mote.style.top = `${(rnd() * this.h).toFixed(1)}px`;
+        dot.style.opacity = (alpha * 0.8).toFixed(3);
+        continue;
+      }
+      // rise from just below the pages to just above them at 4-17 px/s, swaying and twinkling
+      mote.style.top = `${(this.h + 2).toFixed(1)}px`;
+      const rise = this.h + size + 4;
+      const riseMs = (rise / (4 + rnd() * 13)) * 1000;
+      this.anims.push(mote.animate([{ transform: 'translateY(0)' }, { transform: `translateY(${-rise.toFixed(1)}px)` }],
+        { duration: riseMs, iterations: Infinity, delay: -rnd() * riseMs, easing: 'linear' }));
+      const sway = (4 + rnd() * 18).toFixed(1);
+      loop(dot, [{ transform: `translateX(${-sway}px)` }, { transform: `translateX(${sway}px)` }],
+        (Math.PI / (0.15 + rnd() * 0.6)) * 1000, { direction: 'alternate', easing: 'ease-in-out' });
+      loop(dot, [{ opacity: (alpha * 0.1).toFixed(3) }, { opacity: alpha.toFixed(3) }],
+        (Math.PI / (0.6 + rnd() * 2.2)) * 1000, { direction: 'alternate', easing: 'ease-in-out' });
+    }
+    this.host.replaceChildren(frag);
   }
 
-  tick(now) {
-    this.raf = requestAnimationFrame(this.tick);
-    const t = now / 1000;
-    const dt = Math.min(0.05, this.last ? t - this.last : 0.016);
-    this.last = t;
-    for (const p of this.parts) {
-      p.y -= p.vy * dt;
-      if (p.y < -16) Object.assign(p, this.spawn(false));
-    }
-    this.draw(t);
-  }
-
-  draw(t) {
-    const { ctx } = this;
-    ctx.clearRect(0, 0, this.w, this.h);
-    ctx.globalCompositeOperation = 'lighter';
-    for (const p of this.parts) {
-      const fade = clamp(p.y / (this.h * 0.3), 0, 1);
-      const alpha = p.a * (0.55 + 0.45 * Math.sin(t * p.tw + p.ph)) * fade;
-      if (alpha < 0.01) continue;
-      const size = p.s * 7;
-      ctx.globalAlpha = alpha;
-      ctx.drawImage(this.sprites[p.k], p.x + Math.sin(t * p.f + p.ph) * p.sway - size / 2, p.y - size / 2, size, size);
-    }
-    ctx.globalAlpha = 1;
-    ctx.globalCompositeOperation = 'source-over';
+  stop() {
+    for (const a of this.anims) { try { a.cancel(); } catch { /* ignore */ } }
+    this.anims = [];
   }
 
   destroy() {
-    cancelAnimationFrame(this.raf);
-    this.raf = 0;
+    clearTimeout(this.t);
     this.ro.disconnect();
+    this.stop();
+    this.host.replaceChildren();
   }
 }
 
@@ -1265,8 +1354,8 @@ class Book {
     this.prevFocus = document.activeElement;
     this.notes = new NoteStore(this.arxivId);
 
-    this.motesCanvas = h('canvas', { class: 'bk-motes', 'aria-hidden': 'true' });
-    this.sheet = h('div', { class: 'bk-sheet' }, this.motesCanvas);
+    this.motesEl = h('div', { class: 'bk-motes', 'aria-hidden': 'true' });
+    this.sheet = h('div', { class: 'bk-sheet' }, this.motesEl);
     this.tabsEl = h('nav', { class: 'bk-tabs', role: 'tablist', 'aria-label': 'Book' });
     for (const t of TABS) {
       const b = h('button', { class: `bk-tab bk-tab-${t.id}`, type: 'button', role: 'tab', title: `${t.tip} (${TAB_IDS.indexOf(t.id) + 1})`, 'aria-label': t.tip, 'data-tab': t.id, onclick: () => this.show(t.id) },
@@ -1278,6 +1367,8 @@ class Book {
     const deco = (cls) => h('i', { class: cls, 'aria-hidden': 'true' });
     this.bookEl = h('div', { class: 'bk' },
       deco('bk-leaves'), this.sheet, this.tabsEl, this.closeBtn,
+      // two sparks of light crawling round the edge, on four thin rails
+      ...['t', 'r', 'b', 'l'].map((side) => h('i', { class: `bk-rail bk-rail-${side}`, 'aria-hidden': 'true' }, h('i'), h('i'))),
       deco('bk-cn bk-cn-tl'), deco('bk-cn bk-cn-bl'), deco('bk-cn bk-cn-br'));
     this.root = h('div', { class: 'bk-overlay', role: 'dialog', 'aria-modal': 'true', 'aria-label': str(this.paper.title) || 'Book', style: 'visibility:hidden' }, this.bookEl);
     this.root.addEventListener('pointerdown', (e) => { this.downOnBackdrop = e.target === this.root; });
@@ -1300,10 +1391,18 @@ class Book {
       if (this.closed) return;
       this.root.style.visibility = '';
       this.root.classList.add('is-open');
-      this.motes = new Motes(this.motesCanvas);
-      this.show(first);
+      this.motes = new Motes(this.motesEl);
+      this.show(first, { initial: true });
       this.syncLearnedDot();
       this.reader.start();
+    });
+  }
+
+  // Opening the book: give the keyboard to the pane (arrows scroll it; B and 1-4 still work),
+  // unless the player is already somewhere inside the book.
+  home(el) {
+    requestAnimationFrame(() => {
+      if (!this.closed && el.isConnected && !this.root.contains(document.activeElement)) el.focus({ preventScroll: true });
     });
   }
 
@@ -1317,11 +1416,12 @@ class Book {
     return this.panes[id];
   }
 
-  show(id) {
+  // opts.initial: the book is just opening (not the player choosing a tab)
+  show(id, opts = {}) {
     if (this.closed || !TAB_IDS.includes(id)) return;
     const prev = this.tab;
     const pane = this.pane(id);
-    if (prev === id) { pane.show?.(); return; }
+    if (prev === id) { pane.show?.(opts); return; }
     if (prev) this.panes[prev]?.hide?.();
     this.tab = id;
     for (const [k, p] of Object.entries(this.panes)) {
@@ -1334,7 +1434,7 @@ class Book {
     }
     this.root.dataset.tab = id;
     ls.set(KEY_TAB, id);
-    pane.show?.();
+    pane.show?.(opts);
   }
 
   jump(a) { this.show('read'); this.reader.jumpTo(a); }
@@ -1397,4 +1497,19 @@ export function isOpen() {
   return !!current && !current.closed;
 }
 
-export default { open, isOpen };
+// A new game: forget every note, highlight, chat, page position and preference the book keeps
+// (localStorage etl-notes-* and etl-book-*, plus unsent drafts). For resetSave() to call.
+export function clearBookData() {
+  current?.close(); // an open book would write its page and tab back on closing
+  drafts.clear();
+  try {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && (k.startsWith('etl-notes-') || k.startsWith('etl-book-'))) keys.push(k);
+    }
+    for (const k of keys) localStorage.removeItem(k);
+  } catch { /* storage unavailable: nothing kept anyway */ }
+}
+
+export default { open, isOpen, clearBookData };
