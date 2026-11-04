@@ -26,7 +26,7 @@ const W = 960, H = 540;
 const CSS = `
 .mg-wrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 14px;
   background: radial-gradient(circle at 50% 40%, rgba(255, 214, 120, .35), rgba(43, 34, 51, .55)); animation: mg-in .25s ease-out; }
-.mg-stage { position: relative; width: min(1000px, 96vw); border: 5px solid var(--ink); border-radius: 26px; overflow: hidden;
+.mg-stage { position: relative; width: min(1000px, 96vw, calc((100vh - 100px) * 16 / 9)); border: 5px solid var(--ink); border-radius: 26px; overflow: hidden;
   background: #fffdf6; box-shadow: 0 10px 0 rgba(43, 34, 51, .35), 0 30px 60px rgba(0, 0, 0, .3); font-family: var(--font-ui); color: var(--ink); }
 .mg-top { display: flex; align-items: center; gap: 12px; padding: 8px 14px; background: repeating-linear-gradient(-45deg, #ffd35a 0 18px, #ffc53a 18px 36px); border-bottom: 4px solid var(--ink); }
 .mg-title { font-weight: 700; font-size: 22px; background: var(--paper); border: 3px solid var(--ink); border-radius: 12px; padding: 1px 14px; transform: rotate(-1.5deg); }
@@ -96,25 +96,28 @@ export function runMinigame(container, spec = {}, api = {}, game = {}) {
     e.preventDefault();
     if (down && !held[k]) pressed.add(k);
     held[k] = down;
-    if (down && k === 'action' && (phase === 'intro' || phase === 'retry')) startCountdown();
+    // the rules card is read first: a key still mashed from the intro lines (or held) must not skip it
+    if (down && k === 'action' && (phase === 'intro' || phase === 'retry')) { if (!e.repeat && performance.now() - cardAt > 600) startCountdown(); }
     // the win card: a fresh press continues (not a key still held or mashed from the last move)
     else if (down && k === 'action' && phase === 'result' && !e.repeat && performance.now() - resultAt > 400) keepWin();
   };
   const kd = (e) => onKey(e, true), ku = (e) => onKey(e, false);
   window.addEventListener('keydown', kd, true); window.addEventListener('keyup', ku, true);
   const toCanvas = (e) => { const r = canvas.getBoundingClientRect(); pointer.x = ((e.clientX - r.left) / r.width) * W; pointer.y = ((e.clientY - r.top) / r.height) * H; };
-  canvas.addEventListener('pointerdown', (e) => { toCanvas(e); pointer.down = true; pointer.clicked = true; canvas.setPointerCapture?.(e.pointerId); });
+  canvas.addEventListener('pointerdown', (e) => { if (e.button !== 0) return; toCanvas(e); pointer.down = true; pointer.clicked = true; canvas.setPointerCapture?.(e.pointerId); });
+  canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   canvas.addEventListener('pointermove', toCanvas);
   canvas.addEventListener('pointerup', (e) => { toCanvas(e); pointer.down = false; });
   close.addEventListener('click', () => closeNow());
 
   // ---- flow
   let phase = 'intro'; // intro | countdown | play | finish | result | retry | done
-  let S = null; let last = 0; let raf = 0; let closed = false; let outcome = null; let overlay = null; let resultAt = 0;
+  let S = null; let last = 0; let raf = 0; let closed = false; let outcome = null; let overlay = null; let resultAt = 0; let cardAt = 0;
   const setOverlay = (node) => { overlay?.remove(); overlay = node; if (node) stage.append(node); };
   const freshState = () => { S = { W, H, t: 0, score: 0 }; game.setup?.(S, spec); };
 
   function rulesCard(again) {
+    cardAt = performance.now();
     const card = el('div', 'mg-card');
     card.append(el('div', 'mg-ribbon', again ? 'AGAIN?' : 'MINI-GAME'), el('h2', '', title), el('div', 'mg-goal', spec.goal || game.goal || ''));
     const ctr = el('div', 'mg-controls');

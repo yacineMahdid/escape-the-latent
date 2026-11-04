@@ -22,12 +22,16 @@ export function createEngine(host) {
   }
   window.addEventListener('resize', resize);
 
-  function frame() {
+  // While a full-screen overlay (a puzzle board, a mini-game, the book, the terminal, the creator) covers the
+  // world, it is redrawn only a few times a second: it is only a backdrop then, and slow GPUs need the time.
+  const COVERS = '.puzzle-host, .bk-overlay, .term-overlay, .ex-overlay, .cr-overlay';
+  let lastDraw = 0;
+  function frame(now) {
     const dt = Math.min(clock.getDelta(), 1 / 20);
     elapsed += dt;
     if (current) {
       current.update?.(dt, elapsed);
-      renderer.render(current.scene, current.camera);
+      if (now - lastDraw > 150 || !document.querySelector(COVERS)) { renderer.render(current.scene, current.camera); lastDraw = now; }
     }
     requestAnimationFrame(frame);
   }
