@@ -51,12 +51,19 @@ that only mutters cryptic hints, and keyword-based grading.
 * **E** or **Space** talks to villagers and uses things.
 * **B** opens the Cursed Book of Dimensionality: the real arXiv PDF, highlights and notes, an Ask tab,
   and the **Learned** pages where the book records basic concepts you have shown
-  you understand (it never asks you about those again).
-* **M** opens Becancourt's map in the lab, or leaves a region.
+  you understand (it never asks you about those again, in any world). B also works
+  on top of a puzzle board.
+* **M** opens Becancourt's map in the lab, or leaves a region. To travel, walk down
+  the ruler to the little door in the wall.
+* **Esc** pauses.
 
-Each region has world puzzles, a Python coding challenge (runs in your browser
-with Pyodide and numpy) and an explain-it conversation. Win the artefact, bring
-it back to Becancourt, enjoy his face.
+Each world asks a lot of you: basic-concept questions from the villagers, two
+hands-on board puzzles, a Python coding challenge (runs in your browser with
+Pyodide and numpy), an explain-it conversation, a Mario Party-style mini-game,
+a puzzle you solve by walking around the world itself, and a villager's quiz.
+Each world's landmark machine (the Listening Bell, the Twin Lens, the Belly
+Scanner) wakes up as you go. Win the artefact, carry it back through the little
+door, put it in Becancourt's hands, enjoy his face.
 
 ## Project layout
 
@@ -67,15 +74,27 @@ server, the UI modules and the region content files in `content/regions/`.
 npm test        # server tests (offline, with a stubbed Claude client)
 ```
 
-With the server running, every world puzzle can be solve-tested in a headless
-browser (needs Playwright):
+With the server running, the browser tests drive the real game headless (they need
+Playwright and set `BASE`, e.g. `BASE=http://localhost:3000`):
 
 ```bash
 BASE=http://localhost:3000 npm run test:puzzles
 ```
 
-`npm run test:play` does the same inside the real regions: it walks to each
-puzzle's villager, talks, solves, and checks the save and the artefact.
+```bash
+BASE=http://localhost:3000 npm run test:play
+```
 
-Dev pages: `/dev/puzzle.html?region=attention&challenge=c1` opens one puzzle on
-its own, `/dev/kit.html` shows the shared puzzle board kit.
+```bash
+BASE=http://localhost:3000 npm run test:extras
+```
+
+`test:puzzles` solves every board puzzle on its own page; `test:play` walks to
+each puzzle's villager inside the worlds, solves it and picks up the artefact;
+`test:extras` plays each world's mini-game, world puzzle and quiz in the game
+(solvers in `test/play/extras/`).
+
+Dev pages: `/dev/puzzle.html?region=attention&challenge=c1` (one board puzzle),
+`/dev/minigame.html?region=clip&challenge=m1` (one mini-game), `/dev/kit.html`
+(the board kit), `/dev/landmarks.html?m=bell` (the landmark and artefact models),
+`/dev/scientist.html` (Becancourt).
