@@ -7,6 +7,7 @@ import { pageWipe } from './game/fx.js';
 import { say, ask, toast } from './game/dialogue.js';
 import { openModal, closeModal } from './ui/modal.js';
 import { createBackdropScene } from './game/scenes/backdrop.js';
+import { createTitleScene, buildLogo } from './game/scenes/title.js';
 
 const engine = createEngine(document.getElementById('game'));
 engine.start();
@@ -18,7 +19,7 @@ const ctx = { engine, goto, openBook, pauseMenu, get status() { return status; }
 
 async function goto(name, param) {
   let next;
-  document.querySelectorAll('.title-card, .ending-card').forEach((el) => el.remove());
+  document.querySelectorAll('.title-card, .title-status, .ending-card').forEach((el) => el.remove());
   await pageWipe(async () => {
     if (name === 'region') next = await (await import('./game/scenes/region.js')).createRegionScene(ctx, param);
     else if (name === 'lab') next = await (await import('./game/scenes/lab.js')).createLabScene(ctx);
@@ -108,21 +109,24 @@ async function characterCreation(initial) {
 
 async function showTitle() {
   hideHud();
-  const bg = createBackdropScene('meadow', { cast: [['bunny', 'lane-mid'], ['frog', 'bridge'], ['cat', 'terrace-3']] });
+  document.querySelectorAll('.title-card, .title-status').forEach((el) => el.remove());
+  const bg = await createTitleScene();
   current = bg;
   engine.setScene(bg);
   const save = getSave();
+  try { await Promise.race([document.fonts.load('700 132px Fredoka'), new Promise((r) => setTimeout(r, 1500))]); } catch { /* fallback font */ }
   const card = document.createElement('div');
   card.className = 'title-card';
-  card.innerHTML = `<div class="title-logo">Escape <span>the</span> Latent</div>
-    <div class="title-btns"></div>
-    <div class="title-status"></div>`;
+  card.appendChild(buildLogo());
+  const btnRow = document.createElement('div'); btnRow.className = 'title-btns'; card.appendChild(btnRow);
+  const statusTag = document.createElement('div'); statusTag.className = 'title-status';
   ui.appendChild(card);
-  const btns = card.querySelector('.title-btns');
+  ui.appendChild(statusTag);
+  const btns = btnRow;
   const mk = (label, primary, fn) => { const b = document.createElement('button'); b.className = 'etl-btn' + (primary ? ' primary' : ''); b.textContent = label; b.onclick = fn; btns.appendChild(b); return b; };
   const hasSave = !!save.character;
   const go = async (fresh) => {
-    card.remove();
+    card.remove(); statusTag.remove();
     if (fresh) resetSave();
     const s = getSave();
     if (!s.character) {
@@ -138,7 +142,7 @@ async function showTitle() {
     go(true);
   });
   status = await api.status().catch(() => ({ ai: false }));
-  const st = card.querySelector('.title-status');
+  const st = statusTag;
   st.textContent = status.ai ? '● Book online' : '○ Book offline (no API key)';
   st.title = status.ai ? 'Claude answers the book, makes your character and grades explanations' : 'Set ANTHROPIC_API_KEY and restart the server for the full game';
 }

@@ -25,7 +25,7 @@ export const ANCHORS = {
 
 export const WORLD_X = [-37, 43];
 
-export function buildDiorama(biomeId, { seed = 11 } = {}) {
+export function buildDiorama(biomeId, { seed = 11, fences = true } = {}) {
   const B = BIOMES[biomeId] || BIOMES.meadow;
   const r = createRng(seed);
   const K = createKit(r);
@@ -305,7 +305,7 @@ export function buildDiorama(biomeId, { seed = 11 } = {}) {
     }
     if (y === 0) rect(x0 - 0.2, x1 + 0.2, z - 0.25, z + 0.35);
   }
-  fence(-31, -26, 3.0); fence(-4, 3, 3.0); fence(32, 38, 3.0); fence(-38, -28, -3.5, 1.7); fence(0, 5.4, -3.5, 1.7);
+  if (fences) { fence(-31, -26, 3.0); fence(-4, 3, 3.0); fence(32, 38, 3.0); fence(-38, -28, -3.5, 1.7); fence(0, 5.4, -3.5, 1.7); }
 
   // ---------------- props ----------------
   function flower(x, y, z, c, s = 1) { add(new THREE.CylinderGeometry(0.03 * s, 0.03 * s, 0.4 * s, 5), L(0x3d9a4e), x, y + 0.2 * s, z); const pm = L(c); for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; add(new THREE.SphereGeometry(0.09 * s, 8, 6), pm, x + Math.cos(a) * 0.11 * s, y + 0.42 * s, z + Math.sin(a) * 0.11 * s); } add(new THREE.SphereGeometry(0.07 * s, 8, 6), L(0xffe14d), x, y + 0.44 * s, z); }

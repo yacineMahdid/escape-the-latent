@@ -150,7 +150,7 @@ async function main() {
 
     await step('zoom − / + resizes and re-renders the pages', async () => {
       const w0 = await page.$eval('.bk-pg[data-page="1"]', (e) => e.getBoundingClientRect().width);
-      await page.click('.bk-rbar .bk-ib[title="Zoom in"]');
+      await page.click('.bk-rbar .bk-ib[aria-label="Zoom in"]');
       await page.waitForFunction(() => document.querySelector('.bk-rbar').dataset.zoom === '1.15');
       const w1 = await page.$eval('.bk-pg[data-page="1"]', (e) => e.getBoundingClientRect().width);
       assert.ok(Math.abs(w1 / w0 - 1.15) < 0.01, `zoomed in (${w0} -> ${w1})`);
@@ -159,8 +159,8 @@ async function main() {
         const c = pg.querySelector('canvas');
         return pg.dataset.rendered && c && Math.abs(c.width - Math.floor(pg.getBoundingClientRect().width * devicePixelRatio)) <= 2;
       });
-      await page.click('.bk-rbar .bk-ib[title="Zoom out"]');
-      await page.click('.bk-rbar .bk-ib[title="Zoom out"]');
+      await page.click('.bk-rbar .bk-ib[aria-label="Zoom out"]');
+      await page.click('.bk-rbar .bk-ib[aria-label="Zoom out"]');
       await page.waitForFunction(() => document.querySelector('.bk-rbar').dataset.zoom === '0.9');
       await page.keyboard.press('0');
       await page.waitForFunction(() => document.querySelector('.bk-rbar').dataset.zoom === '1');

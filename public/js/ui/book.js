@@ -16,7 +16,7 @@ const PDFJS_URL = '/vendor/pdfjs/pdf.mjs';
 const PDFJS_WORKER = '/vendor/pdfjs/pdf.worker.mjs';
 
 const TABS = [
-  { id: 'read', icon: '📄', tip: 'Read', emoji: true },
+  { id: 'read', icon: '📄', tip: 'Read', emoji: true },     // tooltips carry the key hint: "Read (1)"
   { id: 'notes', icon: '✎', tip: 'Notes' },
   { id: 'ask', icon: '?', tip: 'Ask' },
   { id: 'learned', icon: '✦', tip: 'Learned' },
@@ -280,8 +280,8 @@ class Reader {
     this.status = h('div', { class: 'bk-status' });
     this.pnum = h('input', { class: 'bk-pnum', value: '·', inputmode: 'numeric', autocomplete: 'off', spellcheck: 'false', title: 'Page', 'aria-label': 'Page' });
     this.ptotal = h('span', { class: 'bk-ptotal' });
-    this.zOut = h('button', { class: 'bk-ib', type: 'button', title: 'Zoom out', 'aria-label': 'Zoom out', text: '−', onclick: () => this.zoomBy(-1) });
-    this.zIn = h('button', { class: 'bk-ib', type: 'button', title: 'Zoom in', 'aria-label': 'Zoom in', text: '+', onclick: () => this.zoomBy(1) });
+    this.zOut = h('button', { class: 'bk-ib', type: 'button', title: 'Zoom out (−)', 'aria-label': 'Zoom out', text: '−', onclick: () => this.zoomBy(-1) });
+    this.zIn = h('button', { class: 'bk-ib', type: 'button', title: 'Zoom in (+)', 'aria-label': 'Zoom in', text: '+', onclick: () => this.zoomBy(1) });
     // a slim clasp on the book's right edge (outside the page, so it never covers the paper)
     this.bar = h('div', { class: 'bk-rbar', hidden: true },
       this.zIn,
@@ -974,7 +974,7 @@ class AskPane {
       h('span', { class: 'bk-chip-q', 'aria-hidden': 'true', text: '❝' }), this.chipText,
       h('button', { class: 'bk-chip-x', type: 'button', title: 'Drop', 'aria-label': 'Drop', text: '✕', onclick: () => { this.attach(null); this.input.focus(); } }));
     this.input = h('input', { class: 'bk-qin', placeholder: '?', maxlength: '600', autocomplete: 'off', spellcheck: 'false', 'aria-label': 'Ask' });
-    this.sendBtn = h('button', { class: 'bk-send', type: 'submit', title: 'Ask', 'aria-label': 'Ask', text: '➤' });
+    this.sendBtn = h('button', { class: 'bk-send', type: 'submit', title: 'Ask (Enter)', 'aria-label': 'Ask', text: '➤' });
     this.form = h('form', { class: 'bk-compose', onsubmit: (e) => { e.preventDefault(); this.send(); } },
       this.chip, h('div', { class: 'bk-row' }, this.input, this.sendBtn));
     this.root = h('section', { class: 'bk-pane bk-ask', role: 'tabpanel', 'aria-label': 'Ask' },
@@ -1269,12 +1269,12 @@ class Book {
     this.sheet = h('div', { class: 'bk-sheet' }, this.motesCanvas);
     this.tabsEl = h('nav', { class: 'bk-tabs', role: 'tablist', 'aria-label': 'Book' });
     for (const t of TABS) {
-      const b = h('button', { class: `bk-tab bk-tab-${t.id}`, type: 'button', role: 'tab', title: t.tip, 'aria-label': t.tip, 'data-tab': t.id, onclick: () => this.show(t.id) },
+      const b = h('button', { class: `bk-tab bk-tab-${t.id}`, type: 'button', role: 'tab', title: `${t.tip} (${TAB_IDS.indexOf(t.id) + 1})`, 'aria-label': t.tip, 'data-tab': t.id, onclick: () => this.show(t.id) },
         h('span', { class: `bk-ico${t.emoji ? ' bk-emoji' : ''}`, 'aria-hidden': 'true', text: t.icon }));
       this.tabBtns[t.id] = b;
       this.tabsEl.append(b);
     }
-    this.closeBtn = h('button', { class: 'bk-x', type: 'button', title: 'Close', 'aria-label': 'Close', text: '✕', onclick: () => this.close() });
+    this.closeBtn = h('button', { class: 'bk-x', type: 'button', title: 'Close (Esc)', 'aria-label': 'Close', text: '✕', onclick: () => this.close() });
     const deco = (cls) => h('i', { class: cls, 'aria-hidden': 'true' });
     this.bookEl = h('div', { class: 'bk' },
       deco('bk-leaves'), this.sheet, this.tabsEl, this.closeBtn,
