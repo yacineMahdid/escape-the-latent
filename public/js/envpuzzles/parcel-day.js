@@ -517,20 +517,41 @@ export default {
       interactables.push(it);
       spots.set(r.id, { r, x, g, marble, sand });
     }
-    function showSpot(id, pop = false) {
+    // a new marble or pinch of sand drops into its spot from above the head of the player using it
+    function dropIn(o) {
+      const y0 = 0, h = 2.3 / PROP;
+      o.scale.setScalar(1); o.position.y = y0 + h;
+      tween(0.5, (u) => {
+        if (u < 0.72) { const v = u / 0.72; o.position.y = y0 + h * (1 - v * v); } else o.position.y = y0 + 0.09 * Math.sin(Math.PI * (u - 0.72) / 0.28);
+        if (u >= 1) o.position.y = y0;
+      });
+    }
+    function showSpot(id, drop = false) {
       const s = spots.get(id), v = placed[id];
       s.marble.visible = v === 'marble'; s.sand.visible = v === 'sand';
-      if (pop && v !== 'none') popIn(v === 'marble' ? s.marble : s.sand);
+      if (drop && v !== 'none') dropIn(v === 'marble' ? s.marble : s.sand);
+    }
+    // the menu offers what can change, and its last option (Escape) always leaves the spot as it is
+    const PUT = { marble: '◯ Clear marble ({n} left)', sand: '∴ Pinch of sand', ...(menu.put || {}) };
+    const TAKE = { marble: 'Take the marble back', sand: 'Sweep the sand away', ...(menu.take || {}) };
+    const KEEP = { none: 'Leave it empty', marble: 'Keep the marble', sand: 'Keep the sand', ...(menu.keep || {}) };
+    function menuFor(id) {
+      const now = placed[id];
+      const items = now === 'marble' ? [['sand', PUT.sand], ['none', TAKE.marble]]
+        : now === 'sand' ? [['marble', PUT.marble], ['none', TAKE.sand]]
+          : [['marble', PUT.marble], ['sand', PUT.sand]];
+      items.push([now, KEEP[now] || KEEP.none]);
+      return items.map(([want, label]) => ({ want, label: fill(label, { n: marblesLeft() }) }));
     }
     async function useRibbon(id) {
       if (running || solved || destroyed) return;
       const r = spots.get(id).r;
       const q = fill(menu.question || "Between {a}'s and {b}'s parcels:", { a: nameOf(r.between?.[0]), b: nameOf(r.between?.[1]) });
-      const opts = (menu.options || ['◯ Clear marble ({n} left)', '∴ Pinch of sand', 'Nothing', 'Leave']).map((o) => fill(o, { n: marblesLeft() }));
-      const pick = await w.ask(q, opts, { neutral: true });
+      const items = menuFor(id);
+      const pick = await w.ask(q, items.map((it) => it.label), { neutral: true });
       if (destroyed || solved || running) return;
-      const want = ['marble', 'sand', 'none'][pick];
-      if (!want || want === placed[id]) return; // Leave (or Escape), or already there: no change
+      const want = items[pick]?.want;
+      if (!want || want === placed[id]) return; // the last option (or Escape): no change
       if (want === 'marble' && marblesLeft() <= 0) { w.toast(menu.empty || 'No clear marbles left.', 2200); return; }
       placed[id] = want; // a marble taken off this spot goes back to the stock
       showSpot(id, true);
@@ -554,14 +575,36 @@ export default {
     colliders.push(w.addCollider({ type: 'circle', x: at[0], z: at[2], r: disp.collider ?? 0.25 }));
     interactables.push(w.addInteractable({
       id: disp.id || 'dispatch', label: disp.label || 'Dispatch bell', icon: disp.icon || '🔔',
-      pos: { x: at[0], y: at[1], z: at[2] }, radius: disp.radius ?? 1.1, promptHeight: disp.promptHeight ?? 1.9,
+      pos: { x: at[0], y: at[1], z: at[2] }, radius: disp.radius ?? 1.6, promptHeight: disp.promptHeight ?? 1.9,
       onInteract: () => deliver(),
     }));
 
-    // the row pops up when the puzzle starts, left to right
-    root.children.forEach((o, k) => { if (o.isGroup) popIn(o, 0.4, 0.15 + 0.012 * k); });
+    // ---------- the camera: one shot frames the whole road (spec.camera) ----------
+    const cam = { ...SHOT, ...(spec.camera || {}) };
+    const span = [RUN.start[0] - 0.6, (lastPost ? lastPost.x : xOf(slots.length - 1)) + CARD.r * 0.45 + FLAG.w + 0.05];
+    function roadShot() {
+      const host = document.getElementById('game');
+      const wpx = host?.clientWidth || window.innerWidth || 16, hpx = host?.clientHeight || window.innerHeight || 9;
+      const tanV = Math.tan(((cam.fov / 2) * Math.PI) / 180), tanH = tanV * Math.max(0.6, wpx / hpx);
+      const cx = (span[0] + span[1]) / 2, half = (span[1] - span[0]) / 2 + cam.margin;
+      const d = Math.max(half / tanH, 2.4 / tanV), a = (cam.pitch * Math.PI) / 180;
+      const look = [cx, cam.lookY, row.z + cam.lookDz];
+      return { pos: [cx, look[1] + d * Math.sin(a), look[2] + d * Math.cos(a)], look };
+    }
+    let shot = 0; // which shot holds the camera (0: none); a newer shot or back() takes over
+    function shotTo(ms = cam.fly) { const s = roadShot(); shot++; w.camera?.to?.(s.pos, s.look, ms); return shot; }
+    function shotBack(id, ms = cam.back) { if (!shot || (id && id !== shot)) return; shot = 0; w.camera?.back?.(ms); }
 
-    // ---------- Noodle (his real mesh), his belly glow ----------
+    // the row pops up when the puzzle starts, left to right; from afar, the camera goes to look
+    const pp = w.player.pos, far = Math.abs(pp.x - (span[0] + span[1]) / 2) > 9 || Math.abs(pp.z - row.z) > 6;
+    root.children.forEach((o, k) => { if (o.isGroup) popIn(o, 0.4, (far ? 0.7 : 0.15) + 0.012 * k); });
+    if (far && w.camera) {
+      const id = shotTo();
+      wait(cam.reveal + 0.7).then(() => { if (!destroyed && !running) shotBack(id); });
+    }
+
+    // ---------- Noodle (his real mesh), his belly glow; Tumble stays home, off Penny's parcel ----------
+    w.villager('tumble');
     let noodle = w.villager('noodle'), standIn = null;
     if (!noodle) {
       const a = w.anchors['lane-left'] || [-21, 0, 1.4];
