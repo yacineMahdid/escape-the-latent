@@ -25,10 +25,26 @@ export function createWalkScene({ engine, world, player, light, fog, background,
   let cooldownUntil = 0; // swallow the key press that closed a dialogue
   let disposed = false;
 
+  // Camera shots: blend from pose a to pose b (null = the follow camera).
+  const tmpCam = new THREE.PerspectiveCamera();
+  let shot = null;
+  const pose = (pos, look) => { tmpCam.position.set(...pos); tmpCam.lookAt(...look); return { p: tmpCam.position.clone(), q: tmpCam.quaternion.clone() }; };
+  const followPose = () => { camCfg.place(tmpCam, cam); return { p: tmpCam.position.clone(), q: tmpCam.quaternion.clone() }; };
+  const ease = (u) => (u < 0.5 ? 2 * u * u : 1 - (-2 * u + 2) ** 2 / 2);
+  function startShot(a, b, ms, hold) {
+    return new Promise((resolve) => { shot?.resolve(); shot = { a, b, ms, hold, t0: performance.now(), resolve }; });
+  }
+
   function placeCamera(dt, snap) {
     const k = snap ? 1 : Math.min(1, dt * 4);
     cam.x += (player.pos.x - cam.x) * k; cam.y += (player.pos.y - cam.y) * k; cam.z += (player.pos.z - cam.z) * k;
-    camCfg.place(camera, cam);
+    if (shot) {
+      const u = Math.min(1, (performance.now() - shot.t0) / shot.ms);
+      const a = shot.a || followPose(); const b = shot.b || followPose();
+      camera.position.lerpVectors(a.p, b.p, ease(u));
+      camera.quaternion.slerpQuaternions(a.q, b.q, ease(u));
+      if (u >= 1 && !shot.done) { shot.done = true; shot.resolve(); if (!shot.hold) shot = null; }
+    } else camCfg.place(camera, cam);
     const dir = light.dir || [-14, 26, 22];
     sun.position.set(cam.x + dir[0], cam.y + dir[1], cam.z + dir[2]);
     sun.target.position.set(cam.x, cam.y, cam.z - 4);
@@ -60,6 +76,10 @@ export function createWalkScene({ engine, world, player, light, fog, background,
     addInteractable(it) { interactables.push(it); return it; },
     removeInteractable(it) { const i = interactables.indexOf(it); if (i >= 0) interactables.splice(i, 1); },
     snapCamera() { placeCamera(0, true); },
+    // move the camera to look at `look` from `pos`, and stay there
+    cameraTo(pos, look, ms = 700) { return startShot({ p: camera.position.clone(), q: camera.quaternion.clone() }, pose(pos, look), ms, true); },
+    // start at a pose and ease back into the follow camera
+    cameraFrom(pos, look, ms = 1000) { const a = pose(pos, look); camera.position.copy(a.p); camera.quaternion.copy(a.q); return startShot(a, null, ms, false); },
     update(dt, t) {
       if (disposed) return;
       world.update?.(dt, t);

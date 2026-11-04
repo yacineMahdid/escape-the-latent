@@ -179,7 +179,9 @@ export async function createLabScene(ctx) {
   setExpr('grumpy');
 
   const player = await createPlayer(save.character);
-  player.place(0, 0, 2.6);
+  // back from the Latent: pop out next to the paper map
+  const fromLatent = String(save.lastScene || '').startsWith('region:');
+  if (fromLatent) player.place(5.6, 0, 3.4); else player.place(0, 0, 2.6);
 
   const ws = createWalkScene({
     engine: ctx.engine, world, player,
@@ -263,7 +265,10 @@ export async function createLabScene(ctx) {
     if (!s.introSeen) { toast('Talk to Grumm first', 2200); return; }
     const { openMapOverlay } = await import('./map.js');
     const choice = await openMapOverlay(ctx);
-    if (choice) ctx.goto('region', choice);
+    if (!choice) return;
+    // dive into the paper map on the desk
+    await ws.cameraTo([7.4, 2.6, 5.6], [7.8, 0.7, 1.8], 750);
+    ctx.goto('region', choice);
   }
 
   async function openTaskBook() {
@@ -302,9 +307,10 @@ export async function createLabScene(ctx) {
 
   return {
     scene: ws.scene, camera: ws.camera, update: ws.update, dispose: ws.dispose,
-    async onEnter() { await refreshHud(); ws.snapCamera(); },
+    async onEnter() { await refreshHud(); ws.snapCamera(); if (fromLatent) ws.cameraTo([7.4, 2.6, 5.6], [7.8, 0.7, 1.8], 1); },
     async start() {
       const s = getSave();
+      if (fromLatent) await ws.run(() => ws.cameraFrom([7.4, 2.6, 5.6], [7.8, 0.7, 1.8], 1100));
       if (!s.introSeen) {
         await ws.run(() => say(['You wake up on a desk. Everything is enormous. Including him.'], { style: 'narration' }));
         await ws.run(talkToGrumm);
