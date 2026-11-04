@@ -99,8 +99,11 @@ export function createBoard(container, spec = {}, api = {}, opts = {}) {
       if (solved) return;
       fails++;
       sfx('buzz');
+      // key: 'name' | ['a', 'b'] | [{ key: 'peeking', vars: { desk: 3 } }, ...]
       const keys = Array.isArray(key) ? key : [key];
-      show(keys.map((k) => h('div', { class: 'pz-line' }, feedbackNodes(k, vars, fallback))), 'bad');
+      show(keys.map((k) => h('div', { class: 'pz-line' }, k && typeof k === 'object'
+        ? feedbackNodes(k.key, { ...vars, ...k.vars }, fallback)
+        : feedbackNodes(k, vars, fallback))), 'bad');
       root.classList.remove('pz-shake'); void root.offsetWidth; root.classList.add('pz-shake');
       showHint();
     },
