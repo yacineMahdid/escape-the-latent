@@ -14,14 +14,14 @@ export const ANCHORS = {
   arrival: [-33, 0, 1.6],
   'lane-left': [-21, 0, 1.4],
   'lane-mid': [-6, 0, 1.4],
-  bridge: [11.5, 0.7, 1.6],
+  bridge: [11.5, 0.7, 0.8],        // by the back railing: the Speck can still cross in front
   'lane-right': [16.4, 0, 1.2],
   'path-to-gate': [18.8, 0, -5.6],
   gate: [21, 0, -10.6],
   'terrace-1': [-24, 1.7, -4.7],
   'terrace-2': [-15.5, 1.7, -4.7],
   'terrace-3': [-3.5, 1.7, -4.6],
-  hilltop: [-23.5, 3.4, -10.8],
+  hilltop: [-21, 3.4, -11.4],      // in the gap between terrace houses 1 and 2, so the camera sees it
   rightstep: [31.5, 0.9, -6.6],
   'bank-left': [15, -0.95, 7.8],
   'bank-right': [28, -0.95, 7.8],
@@ -374,13 +374,20 @@ export function buildDiorama(biomeId, { seed = 11, fences = true } = {}) {
   function tuft(x, z, s, cols) { for (let i = 0; i < 7; i++) blade(x + (i - 3) * 0.22 * s, z + (r() - 0.5) * 0.3, (1.6 + r() * 1.4) * s, cols[i % cols.length], (r() - 0.5) * 0.8 * s); }
   function bigLeaves(x, z, s) { const ls = new THREE.Shape(); ls.moveTo(0, 0); ls.bezierCurveTo(0.6, 0.7, 1.6, 0.7, 2.2, 0); ls.bezierCurveTo(1.6, -0.7, 0.6, -0.7, 0, 0); for (let k = 0; k < 5; k++) { const piv = grp(x, -0.95, z, s, (k - 2) * 0.5); const up = new THREE.Group(); up.rotation.z = 0.9 + r() * 0.4; piv.add(up); up.add(new THREE.Mesh(new THREE.ShapeGeometry(ls, 10), L(k % 2 ? 0x2a8a44 : 0x37a052, { side: THREE.DoubleSide }))); } }
   function starfish(x, z) { const s = new THREE.Shape(); for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2 + Math.PI / 2, rr = i & 1 ? 0.12 : 0.3; i ? s.lineTo(Math.cos(a) * rr, Math.sin(a) * rr) : s.moveTo(Math.cos(a) * rr, Math.sin(a) * rr); } const m = add(new THREE.ExtrudeGeometry(s, { depth: 0.06, bevelEnabled: true, bevelSize: 0.03, bevelThickness: 0.03 }), L(0xff7a50), x, -0.9, z); m.rotation.x = -Math.PI / 2; }
+  const bankSpots = [ANCHORS['bank-left'][0], ANCHORS['bank-right'][0]];
   for (let x = -46; x < 56; x += 2.6 + r() * 2.8) {
     const k = r(), z = 9.6 + r() * 1.2;
+    // in front of the bank villagers, plants stay low so the camera can see them (same random draws either way)
+    const n0 = root.children.length;
     if (B.fg === 'meadow') { if (k < 0.55) tuft(x, z, 1 + r() * 0.4, [0x58b648, 0x6cc957, 0x4aa63e, 0xa6d94c]); else if (k < 0.8) flower(x, -0.95, z - 0.2, [0xff8ab8, 0xffd35a, 0xffffff][(r() * 3) | 0], 2.4); else bush(x, -0.95, z, 1.3, 0x3d9a4a); }
     if (B.fg === 'snow') { if (k < 0.45) tuft(x, z, 0.8 + r() * 0.3, [0xcfe2f2, 0xe6f2fb, 0xb8d4ea]); else if (k < 0.75) bush(x, -0.95, z, 1.3, 0x2f7a60, true); else treePine(x, -0.95, z + 0.3, 0.9); }
     if (B.fg === 'desert') { if (k < 0.45) tuft(x, z, 0.8 + r() * 0.4, [0xd9b44a, 0xc9a040, 0xe8c860]); else if (k < 0.75) cactus(x, -0.95, z, 0.8); else { const rk = add(new THREE.DodecahedronGeometry(0.7 + r() * 0.5, 0), L(0xc98a52), x, -0.7, z); rk.scale.y = 0.6; } }
     if (B.fg === 'dusk') { if (k < 0.5) tuft(x, z, 1 + r() * 0.3, [0x6a5a4a, 0x5a4a5a, 0x7a6a50]); else if (k < 0.78) pumpkin(x, -0.95, z, 1.6, true); else treeDead(x, -0.95, z + 0.4, 0.75); }
     if (B.fg === 'tropic') { if (k < 0.5) bigLeaves(x, z, 1.1 + r() * 0.4); else if (k < 0.75) starfish(x, z - 0.4); else tuft(x, z, 0.9, [0x3fb05a, 0x5fcf7a]); }
+    if (bankSpots.some((ax) => Math.abs(x - ax) < 1.9)) {
+      const kk = 0.38; // shrink towards the spot on the ground, so loose parts (bush balls) come down too
+      for (const o of root.children.slice(n0)) { o.position.set(x + (o.position.x - x) * kk, -0.95 + (o.position.y + 0.95) * kk, z + (o.position.z - z) * kk); o.scale.multiplyScalar(kk); }
+    }
   }
 
   // ---------------- particles ----------------

@@ -1,5 +1,7 @@
-// Procedural artefact models: a paper pedestal with a glowing relic tinted per region.
+// Artefacts on a paper pedestal: the relic itself comes from engine/landmarks.js (built to the region's
+// artefact.look); the simple shapes below are only a fallback for a region without one.
 import * as THREE from 'three';
+import { buildRelic } from '../engine/landmarks.js';
 
 const TINTS = { attention: 0xffb84d, clip: 0x4fd8e8, mamba: 0x7fdc5a };
 
@@ -12,7 +14,10 @@ export function buildArtefact(regionId, { pedestal = true } = {}) {
     const rim = new THREE.Mesh(new THREE.TorusGeometry(0.58, 0.05, 8, 28), M(tint)); rim.rotation.x = Math.PI / 2; rim.position.y = 0.5; g.add(rim);
   }
   const relic = new THREE.Group(); relic.position.y = pedestal ? 1.35 : 0.6; g.add(relic);
-  if (regionId === 'attention') {
+  const model = buildRelic(regionId);
+  if (model) {
+    relic.add(model);
+  } else if (regionId === 'attention') {
     // a lens of many heads: a faceted gem ringed by eight little eyes
     relic.add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.35, 0), M(tint, { emissive: tint, emissiveIntensity: 0.4, flatShading: true })));
     for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; const e = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), M(0xfffdf6, { emissive: 0xffffff, emissiveIntensity: 0.3 })); e.position.set(Math.cos(a) * 0.62, Math.sin(a) * 0.62, 0); relic.add(e); const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), M(0x2b2233)); pupil.position.set(Math.cos(a) * 0.62, Math.sin(a) * 0.62, 0.06); relic.add(pupil); }
@@ -38,7 +43,7 @@ export function buildArtefact(regionId, { pedestal = true } = {}) {
   relic.add(glow);
   g.traverse((o) => { if (o.isMesh && o !== glow) o.castShadow = true; });
   let t = 0;
-  g.userData.update = (dt) => { t += dt; relic.rotation.y += dt * 0.9; relic.position.y = (pedestal ? 1.35 : 0.6) + Math.sin(t * 2) * 0.08; glow.scale.setScalar(1 + Math.sin(t * 3) * 0.06); };
+  g.userData.update = (dt) => { t += dt; model?.userData.update?.(dt, t); relic.rotation.y += dt * 0.9; relic.position.y = (pedestal ? 1.35 : 0.6) + Math.sin(t * 2) * 0.08; glow.scale.setScalar(1 + Math.sin(t * 3) * 0.06); };
   return g;
 }
 

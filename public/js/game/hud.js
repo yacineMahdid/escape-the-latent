@@ -33,7 +33,7 @@ export function setHud({ place, task, artefacts, mapLabel } = {}) {
     el.textContent = task ? `📜 ${task}` : ''; el.title = place || ''; el.style.display = task ? '' : 'none';
   }
   if (artefacts !== undefined) { const el = bar.querySelector('.hud-artefacts'); el.textContent = `✦ ${artefacts.length}/3`; }
-  if (mapLabel !== undefined) bar.querySelector('.hud-map-label').textContent = mapLabel === 'Leave' ? '✈️ Leave' : '🗺️ Map';
+  if (mapLabel !== undefined) bar.querySelector('.hud-map-label').textContent = mapLabel === 'Leave' ? '🚪 Leave' : '🗺️ Map';
 }
 
 export function hideHud() { if (bar) bar.style.display = 'none'; hidePrompt(); }

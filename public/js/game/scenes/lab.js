@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { createPlayer, loadScientist, scientistStandIn } from '../player.js';
 import { createWalkScene } from '../walkscene.js';
 import { buildArtefact, theName } from '../artefacts.js';
-import { getSave, updateSave, regionState } from '../save.js';
+import { getSave, updateSave, regionState, deliveredArtefacts } from '../save.js';
 import { say, ask, toast } from '../dialogue.js';
 import { confetti } from '../fx.js';
 import { setHud, pulseHud } from '../hud.js';
@@ -69,7 +69,7 @@ export async function createLabScene(ctx) {
     g.fillText('Attention(Q,K,V) = softmax(QKᵀ/√dₖ) V', 60, 100);
     g.fillText('L = ½ [CE(logits) + CE(logitsᵀ)]', 120, 210);
     g.fillText('hₜ = Āhₜ₋₁ + B̄xₜ ,  yₜ = Chₜ', 80, 320);
-    g.font = 'bold 40px Georgia'; g.fillText('?!', 860, 420); g.font = '32px Georgia'; g.fillText('(do NOT erase  — G.)', 520, 460);
+    g.font = 'bold 40px Georgia'; g.fillText('?!', 860, 420); g.font = '32px Georgia'; g.fillText('(do NOT erase  — J.-L. de B.)', 440, 460);
     g.strokeStyle = 'rgba(245,245,235,.8)'; g.lineWidth = 4; g.beginPath(); g.arc(780, 160, 60, 0, 6.28); g.stroke();
   }, 4);
   add(rbox(34, 16, 0.6, 0.4), L(0x8a5a36), -2, 15, -23.4);
@@ -346,7 +346,7 @@ export async function createLabScene(ctx) {
       const rs = regionState(cur);
       task = rs.artefact && !rs.returned ? `Give Becancourt ${theName(rg?.artefact?.name)}` : (rg?.scientist?.taskTitle || '');
     }
-    setHud({ place: 'Lab', task, artefacts: s.artefacts, mapLabel: 'Map' });
+    setHud({ place: 'Lab', task, artefacts: deliveredArtefacts(), mapLabel: 'Map' });
   }
 
   ws.addInteractable({ label: 'Becancourt', icon: '💬', pos: { x: 0, y: 0, z: -2.8 }, radius: 4.0, promptHeight: 2.6, onInteract: talkToScientist });
@@ -371,8 +371,6 @@ export async function createLabScene(ctx) {
       if (!s.introSeen) {
         await ws.run(() => say(['You wake up on a desk. Everything is enormous. Including him.'], { style: 'narration' }));
         await ws.run(talkToScientist);
-      } else if (REGION_ORDER.some((id) => regionState(id).artefact && !regionState(id).returned)) {
-        toast('Give Becancourt the artefact', 2600);
       }
     },
   };

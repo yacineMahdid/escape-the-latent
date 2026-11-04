@@ -135,7 +135,7 @@
           "I've got SO many questions. Later. You look busy."
         ],
         "afterSolved": [
-          "I asked the Lens 'what's this?' fifty times. It got bored. I didn't."
+          "You answered TWO of my whys! Only nine thousand to go."
         ]
       }
     }
@@ -404,7 +404,7 @@
       },
       "design": "A fishing-net board of cut paper strung between two bamboo poles, spec.controlsHint along the top, ✕ top right calls api.onClose(). LEFT: four photo cards clipped to the left rope, one per row (🐢 🥥 ⛵ 🦀), fixed. TOP: four word tags pegged to the top rope (turtle, coconut, boat, crab) in spec.initialCaptionOrder; drag a tag onto another slot to swap the two (api.sfx('paper')). CENTRE: a 4×4 net; every knot is a bead whose colour and size show the Lens's current guess (spec.math, spec.beads), recomputed live after every change. A split bead (both floats hung) is two half-discs, each using its own p for colour and radius. Bead tooltip, 2 decimals, only the hung floats: '→ 0.69 · ↓ 0.34', '→ 0.69' or '↓ 0.34'; with no float hung: 'cos 0.47'. BOTTOM-LEFT: two paper floats, → and ↓ (tooltips from spec.floats); click a float to hang it on the net (→ hooks onto the right edge, ↓ onto the bottom edge) or click again to take it off. RIGHT: the Tide Knob, a big paper dial on spec.valueGrid: press anywhere on the dial and drag; the needle follows the pointer's angle (clamped to −135°…+135°) and snaps to the nearest grid value in log10 space; ◀ ▶ under it or the mouse wheel step one grid value; its value is printed under it ('×1.0'). Beside it a pin cushion holding one red pin: drag the pin onto the dial to stick it at the value under the pointer (readout '📌 ×value' beside the cushion), drag its head to move it, ◀ ▶ beside its readout step it, drag it back to the cushion (or click the cushion) to remove it. A press on the pin head grabs the pin, even where it overlaps the needle. The pin does not limit the player's own knob setting. A big 🎣 Haul button runs spec.evaluation. Win: spec.animations.win, then board.solve() (stamp + spec.successText; it calls api.onSolved() once). Failure: spec.animations.runaway (pin missing) or spec.animations.tug, then board.fail with the failing keys: each badge and its one-word title sit in the feedback line. Never show which slot a tag belongs in, never show the solution values, never say whether a value is too high or too low. From the 4th failed haul on, show spec.hintAfterFailures.text in a corner.",
       "paperLink": "Fig. 3 · §2.3 · §2.5 · Tab. 18",
-      "worldEffect": "Postcards flutter up onto a line between the palms, photo and words together.",
+      "worldEffect": "Postcards go up on lines: each photo pegged next to its words.",
       "intro": [
         "The storm unglued my postcards, and the new Lens thinks turtles are crabs!",
         "Gran's Pairing Net can teach it. Nobody remembers how she set it."
@@ -953,7 +953,7 @@
       },
       "design": "A bamboo wall outside Blink's shack, spec.controlsHint along the top, ✕ top right calls api.onClose(). Four racks left to right (spec.racks); the twin crane racks differ only by the little ⚓ / 🌊 painted on their posts. Each rack has a wooden sign printed with spec.signFrame (e.g. 'A photo of a crane.') and a dashed slot just before the full stop; a stamped tag prints its full 'text' in the slot ('A photo of a boxer, a type of pet.'). BOTTOM: a tray of the five stamps, each showing only its 'label' (icon + 1 word), and spec.paint paint dabs (🖌️🖌️) beside it. Drag a stamp onto a sign's slot to set it (api.sfx('stamp')): onto an empty slot it uses one dab; onto a slot that already has a tag it replaces that tag at no cost. With no dab left, a drop onto an empty slot is refused: the dabs shake, api.sfx('buzz'), nothing changes. Click a stamped tag to wash it off: its dab comes back (api.sfx('paper')). Stamps are never used up; stamped tags are not dragged sign to sign. LEFT: the Lens, a brass eye. The eight photos (spec.photos) hang on the racks chosen by spec.math and slide there (0.4 s) after every change; a rack fans out up to 8 polaroids (2 rows of 4). Tied photos wobble between their tied racks with ⚖️ and no ✗. A photo alone on a wrong rack shows a small red ✗ corner. No feedback line while playing: the marks are the feedback. Hover a photo for its four cosines, 2 decimals (boxer1 at the start: 'cos ⚓ 0.41 · 🌊 0.41 · boxer 0.42 · pug 0.50'). No submit button: when spec.winCondition holds, wait 0.6 s (any change cancels the wait), the Lens's eye turns gold, every sign glows, api.sfx('ding'), then board.solve() (stamp + spec.successText; it calls api.onSolved() once). Never suggest which tag goes where.",
       "paperLink": "§3.1.2 · §3.1.4",
-      "worldEffect": "Blink's racks fill up: dock cranes, lagoon cranes, boxers, pugs. Every sign glows.",
+      "worldEffect": "Lanterns light the beach.",
       "intro": [
         "The Lens hangs my photos by the rack signs. Grandpa wrote CRANE twice!",
         "And it files my boxers under pug. They are NOT pugs!",
@@ -1065,7 +1065,21 @@
           "less compute",
           "more compute",
           "computation",
-          "cheaper"
+          "cheaper",
+          "harder",
+          "slower",
+          "takes longer",
+          "so many",
+          "many possible",
+          "lots of possible",
+          "lots of ways",
+          "so many ways",
+          "many captions",
+          "any number of",
+          "endless",
+          "infinite",
+          "guess the exact",
+          "exactly right"
         ],
         [
           "can't generate",
@@ -1104,7 +1118,25 @@
           "invent",
           "generative",
           "from scratch",
-          "own words"
+          "own words",
+          "can not",
+          "unable",
+          "can't describe",
+          "can’t describe",
+          "cannot describe",
+          "wasn't given",
+          "wasn’t given",
+          "isn't given",
+          "isn’t given",
+          "not given",
+          "it is given",
+          "it was given",
+          "of its own",
+          "write a new",
+          "write new",
+          "only choose from",
+          "only pick from",
+          "only what"
         ]
       ],
       "paperLink": "§2.3 · Fig. 2 · §6",

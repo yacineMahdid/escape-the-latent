@@ -6,6 +6,8 @@
 //   board.fail(key | [keys], vars)  wrong attempt: shows spec.feedback[key] ({var} filled in),
 //                                   shakes, and after spec.hintAfterFailures.after fails shows its text
 //   board.note(text)                neutral line in the feedback area
+//   board.clear()                   empty the feedback area (also happens by itself when the player touches the
+//                                   board after a wrong attempt: those lines describe a board that is gone)
 //   board.solve()                   stamp + spec.successText, then api.onSolved() exactly once
 //
 //   const dnd = createDnd(board.root, { onDrop(itemData, targetData, itemEl, targetEl), canDrop, sfx: board.sfx })
@@ -46,7 +48,10 @@ export function createBoard(container, spec = {}, api = {}, opts = {}) {
   const sfx = (n) => { try { (api.sfx || gameSfx)(n); } catch { /* sound is optional */ } };
   const root = h('div', { class: `pz-board pz-${opts.theme || 'cork'}`, role: 'dialog', 'aria-label': spec.title || 'Puzzle' });
   const close = h('button', { class: 'pz-close', title: 'Close (Esc)', 'aria-label': 'Close', text: '✕' });
-  const head = h('div', { class: 'pz-head' }, [h('div', { class: 'pz-title', text: spec.title || '' }), close]);
+  // the book opens on top of the board (hints point into the paper); B does the same, see region.js runPuzzle
+  const bookBtn = api.openBook ? h('button', { class: 'etl-btn pz-book', title: 'Open the Cursed Book (B)', text: '📖 Book' }) : null;
+  bookBtn?.addEventListener('click', () => api.openBook());
+  const head = h('div', { class: 'pz-head' }, [h('div', { class: 'pz-title', text: spec.title || '' }), ...(bookBtn ? [bookBtn] : []), close]);
   const controls = spec.controlsHint ? h('div', { class: 'pz-controls', text: spec.controlsHint }) : null;
   const body = h('div', { class: 'pz-body' });
   const feedback = h('div', { class: 'pz-feedback', 'aria-live': 'polite' });
@@ -62,8 +67,13 @@ export function createBoard(container, spec = {}, api = {}, opts = {}) {
   let hintShown = false;
   let solveTimer = 0;
   close.addEventListener('click', () => { if (!solved) api.onClose?.(); });
+  // empty the feedback area but keep its height, so nothing under the pointer moves mid-click
+  const blank = () => { feedback.style.minHeight = `${feedback.offsetHeight}px`; feedback.className = 'pz-feedback'; feedback.replaceChildren(); };
+  const clearBad = () => { if (!solved && feedback.classList.contains('pz-bad')) blank(); };
+  for (const ev of ['pointerup', 'input', 'change', 'keydown']) body.addEventListener(ev, clearBad, true);
 
   function show(nodes, kind) {
+    feedback.style.minHeight = '';
     feedback.className = `pz-feedback pz-${kind}`;
     feedback.replaceChildren(...nodes);
     feedback.classList.remove('pz-pulse'); void feedback.offsetWidth; feedback.classList.add('pz-pulse');
@@ -95,6 +105,7 @@ export function createBoard(container, spec = {}, api = {}, opts = {}) {
       return b;
     },
     note(text, kind = 'info') { show([h('div', { class: 'pz-line' }, [h('span', { text })])], kind); },
+    clear() { if (!solved) blank(); },
     fail(key, vars = {}, fallback = 'Not yet.') {
       if (solved) return;
       fails++;

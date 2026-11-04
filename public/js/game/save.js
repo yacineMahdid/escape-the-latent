@@ -37,13 +37,17 @@ export function updateSave(mutator) {
 
 export function regionState(id) {
   const s = getSave();
-  // fill in anything missing (older or hand-edited saves)
-  s.regions[id] = { arrived: false, artefact: false, returned: false, ...(s.regions[id] || {}) };
+  // fill in anything missing (older or hand-edited saves), in place: scenes keep this object for the whole visit
+  if (!s.regions[id] || typeof s.regions[id] !== 'object') s.regions[id] = {};
   const rs = s.regions[id];
+  for (const k of ['arrived', 'artefact', 'returned']) if (typeof rs[k] !== 'boolean') rs[k] = !!rs[k];
   if (!rs.solved || typeof rs.solved !== 'object') rs.solved = {};
   if (!rs.talked || typeof rs.talked !== 'object') rs.talked = {};
   return rs;
 }
+
+// regions whose artefact Becancourt has (what the HUD's ✦ n/3 counts)
+export const deliveredArtefacts = () => Object.entries(getSave().regions || {}).filter(([, r]) => r?.returned).map(([id]) => id);
 
 export function isLearned(concept) {
   return !!getSave().learned?.[concept];
