@@ -1,8 +1,10 @@
-// Character creator: the game's first screen. No words on the surface: icons, swatches, tooltips.
+// Character creator: the game's first screen ("Make your Speck").
 //   open({ initial }) -> Promise<params>   character params (docs/ARCHITECTURE.md); an existing `name` is kept
-// Left: a photo zone (drop, click, paste or webcam) that asks Claude for a character (api.avatar),
-// offered only when /api/status says the AI is on. Middle: a live 3D turntable, 🎲 random, ✓ done.
-// Right: folder tabs of swatches and icon chips. The photo is downscaled in the browser and sent once.
+// Left: "From a photo" (choose, drop, paste or take one with the webcam) asks Claude for a look-alike
+// (api.avatar), offered only when /api/status says the AI is on. Middle: a live 3D turntable, 🎲 Random, ✓ Done.
+// Right: folder tabs (Face, Hair, Clothes, Extras) of labelled rows of swatches and icon chips.
+// Words follow docs/ARCHITECTURE.md "Concise text": short labels and one-line status lines; tooltips are extras.
+// The photo is downscaled in the browser, sent once and never kept.
 import * as THREE from 'three';
 import { openModal, closeModal } from './modal.js';
 import { api } from '../api.js';
@@ -15,24 +17,36 @@ import {
 const CSS_HREF = '/css/creator.css';
 const MAX_SIDE = 768;
 const JPEG_Q = 0.85;
-const TIP = {
-  photo: 'Photo → you · never saved',
-  cam: 'Webcam',
+// every word on the creator's surface
+const T = {
+  title: 'Make your Speck',
+  random: 'Random',
+  done: 'Done',
+  doneTip: 'Done (Enter)',
+  photo: 'From a photo',
+  pick: 'Choose or drop one',
+  pickLabel: 'Choose a photo',
+  cam: 'Take one',
+  camTip: 'Webcam',
   snap: 'Snap',
   cancel: 'Cancel',
-  dice: 'Random',
-  ok: 'Done',
+  cancelTip: 'Cancel (Esc)',
+  note: 'We make a look-alike.\nThe photo isn’t kept.',
   any: 'Any colour',
 };
-// what the ⦸ badge says (tooltip): a symbol and a word or two, like the server's own errors
+// the status line under the photo
 const SAY = {
-  offline: '✕ offline',
-  notPhoto: '✕ not a photo',
-  camBlocked: '✕ camera blocked',
-  noCam: '✕ no camera',
-  tooBig: '✕ too big',
-  noNet: '✕ no connection',
-  cloudy: '✕ cloudy',
+  working: 'Making your look-alike…',
+  done: '✓ Look-alike ready',
+  offline: '✕ Offline',
+  notPhoto: '✕ Not a photo',
+  unreadable: '✕ Couldn’t read that photo',
+  tooBig: '✕ Photo too big',
+  busy: '✕ Busy. Try again.',
+  noNet: '✕ No connection',
+  camBlocked: '✕ Camera blocked',
+  noCam: '✕ No camera found',
+  failed: '✕ That didn’t work. Try again.',
 };
 
 // ---------------------------------------------------------------------------------------------
@@ -50,7 +64,6 @@ const NONE = `<circle cx="16" cy="16" r="9" fill="none" ${S}/><path d="M9.6 22.4
 const STACHE = `<path d="M11 23.2 C12.5 21.2 15 21.6 16 22.9 C17 21.6 19.5 21.2 21 23.2 C19 25 17 24.2 16 23.8 C15 24.2 13 25 11 23.2 Z" fill="var(--hc)" ${S}/>`;
 const TEE_BODY = 'M11 6 L5.5 8.5 L3 14 L7.5 16 L9.5 12.5 L9.5 27 L22.5 27 L22.5 12.5 L24.5 16 L29 14 L26.5 8.5 L21 6 C20 8.5 12 8.5 11 6 Z';
 const LONG_BODY = 'M11 6.5 L6 9 L3.5 25 L8 25.5 L9.5 14 L9.5 27.5 L22.5 27.5 L22.5 14 L24 25.5 L28.5 25 L26 9 L21 6.5 C20 9 12 9 11 6.5 Z';
-const DROP = (v) => `<path d="M16 4 C16 4 7 15 7 20 A9 9 0 0 0 25 20 C25 15 16 4 16 4 Z" fill="var(${v})" ${S}/>`;
 
 const ICON = {
   hair: {
@@ -96,14 +109,8 @@ const ICON = {
     bow: svg(`<path d="M16 16 L5.5 9.5 L5.5 22.5 Z M16 16 L26.5 9.5 L26.5 22.5 Z" fill="var(--ac)" ${S}/><circle cx="16" cy="16" r="2.8" fill="var(--ac)" ${S}/>`, VB_WIDE),
     earrings: svg([9.5, 22.5].map((x) => `<path d="M${x} 7 L${x} 13" fill="none" ${S}/><circle cx="${x}" cy="7" r="1.6" fill="#ffd35a" ${S}/><path d="M${x} 13 C${x - 4} 17 ${x - 3} 23 ${x} 23 C${x + 3} 23 ${x + 4} 17 ${x} 13 Z" fill="#ffd35a" ${S}/>`).join('')),
   },
-  row: {
-    skin: svg(DROP('--sk')),
-    eyes: svg(`<path d="M3 16 C8 8 24 8 29 16 C24 24 8 24 3 16 Z" fill="#fff" ${S}/><circle cx="16" cy="16" r="4.6" fill="var(--ec)" ${S}/>`),
-    hair: svg(DROP('--hc')),
-    top: svg(`<path d="${TEE_BODY}" fill="var(--tc)" ${S}/>`),
-    bottom: svg(`<path d="M9 5 L23 5 L24.4 27 L18.4 27 L16 13.5 L13.6 27 L7.6 27 Z" fill="var(--bc)" ${S}/>`),
-    shoes: svg(`<path d="M3.5 22 C3.5 15.5 8.5 13 11.5 14 C14.5 15 17 17.2 22 17.6 C26.5 18 28.5 20.5 28.5 23 L28.5 25.5 L3.5 25.5 Z" fill="var(--fc)" ${S}/><path d="M3.5 22.5 L28.5 22.5" fill="none" ${S}/>`),
-  },
+  picture: svg(`<rect x="2.5" y="5.5" width="27" height="21" rx="3.5" fill="#e6f6ff" ${S}/><circle cx="10" cy="12" r="2.8" fill="#ffd35a" ${S}/><path d="M3.5 25.5 L12.5 16.5 L18 22 L21.5 18.5 L28.5 25.5 Z" fill="#7bcd5d" ${S}/>`),
+  webcam: svg(`<rect x="3" y="9" width="19" height="15" rx="4" fill="#8fd3ff" ${S}/><path d="M22 14 L29 10 L29 23 L22 19 Z" fill="#8fd3ff" ${S}/><circle cx="12.5" cy="16.5" r="3.4" fill="#fffdf6" ${S}/>`),
   tab: {
     face: svg(`<circle cx="16" cy="16" r="11" fill="var(--sk)" ${S}/><ellipse cx="12" cy="15.4" rx="1.5" ry="2" fill="${INK}"/><ellipse cx="20" cy="15.4" rx="1.5" ry="2" fill="${INK}"/><path d="M12.6 20.4 Q16 23.4 19.4 20.4" fill="none" ${S}/>`),
     clothes: svg(`<path d="${TEE_BODY}" fill="var(--tc)" ${S}/>`),
@@ -121,26 +128,27 @@ const NAMES = {
 };
 const tipOf = (field, v) => NAMES[field]?.[String(v)] || cap(String(v));
 
+// every tab and every row of choices has a short visible label
 const TABS = [
-  { id: 'face', tip: 'Face', rows: [
-    { field: 'skin', palette: SKIN_TONES, icon: ICON.row.skin, tip: 'Skin' },
-    { field: 'eyeColor', palette: EYE_COLORS, icon: ICON.row.eyes, tip: 'Eyes' },
-    { field: 'facialHair', options: FACIAL_HAIR, icons: ICON.facial },
-    { field: 'freckles', options: [false, true], icons: ICON.freckles },
+  { id: 'face', label: 'Face', rows: [
+    { field: 'skin', label: 'Skin', palette: SKIN_TONES },
+    { field: 'eyeColor', label: 'Eyes', palette: EYE_COLORS },
+    { field: 'facialHair', label: 'Facial hair', options: FACIAL_HAIR, icons: ICON.facial },
+    { field: 'freckles', label: 'Freckles', options: [false, true], icons: ICON.freckles },
   ] },
-  { id: 'hair', tip: 'Hair', rows: [
-    { field: 'hairStyle', options: HAIR_STYLES, icons: ICON.hair },
-    { field: 'hairColor', palette: HAIR_COLORS, icon: ICON.row.hair, tip: 'Hair colour' },
+  { id: 'hair', label: 'Hair', rows: [
+    { field: 'hairStyle', label: 'Style', options: HAIR_STYLES, icons: ICON.hair },
+    { field: 'hairColor', label: 'Colour', palette: HAIR_COLORS },
   ] },
-  { id: 'clothes', tip: 'Clothes', rows: [
-    { field: 'topStyle', options: TOP_STYLES, icons: ICON.top },
-    { field: 'topColor', palette: CLOTH_COLORS, icon: ICON.row.top, tip: 'Top' },
-    { field: 'bottomColor', palette: CLOTH_COLORS, icon: ICON.row.bottom, tip: 'Bottoms' },
-    { field: 'shoeColor', palette: SHOE_COLORS, icon: ICON.row.shoes, tip: 'Shoes' },
+  { id: 'clothes', label: 'Clothes', rows: [
+    { field: 'topStyle', label: 'Top', options: TOP_STYLES, icons: ICON.top },
+    { field: 'topColor', label: 'Top colour', palette: CLOTH_COLORS },
+    { field: 'bottomColor', label: 'Bottom', palette: CLOTH_COLORS },
+    { field: 'shoeColor', label: 'Shoes', palette: SHOE_COLORS },
   ] },
-  { id: 'extras', tip: 'Extras', rows: [
-    { field: 'glasses', options: GLASSES, icons: ICON.glasses },
-    { field: 'accessory', options: ACCESSORIES, icons: ICON.accessory },
+  { id: 'extras', label: 'Extras', rows: [
+    { field: 'glasses', label: 'Glasses', options: GLASSES, icons: ICON.glasses },
+    { field: 'accessory', label: 'Accessory', options: ACCESSORIES, icons: ICON.accessory },
   ] },
 ];
 
@@ -209,18 +217,22 @@ async function fileToDataUrl(file) {
 }
 
 // Claude cannot be used on this server at all (no key, or a key that is turned away): stop offering
-// the photo. A retryable failure (e.g. "✕ unreachable") keeps the photo zone.
+// the photo. A retryable failure (e.g. the server cannot reach Claude) keeps the photo zone.
 const claudeAsleep = (e) => !!(e?.body && (e.body.offline === true || e.body.code === 'offline') && !e.body.retryable);
 
-function errorTip(e) {
+// What went wrong, as a status line that says what to do next. Read from the status and the code
+// (server/index.js), not from the server's own one-word message.
+function errorLine(e) {
   if (e?.code === 'type') return SAY.notPhoto;
   if (e?.code === 'cam') return e.denied ? SAY.camBlocked : SAY.noCam;
   if (claudeAsleep(e)) return SAY.offline;
-  if (e?.status === 413) return SAY.tooBig;
-  const said = typeof e?.body?.error === 'string' ? e.body.error.trim() : '';
-  if (said) return said.slice(0, 32); // the server already answers in a word or two ("✕ busy", "✕ clouded")
-  if (e instanceof TypeError) return SAY.noNet;
-  return SAY.cloudy;
+  const code = e?.body?.code, status = e?.status;
+  if (status === 413 || code === 'too_large') return SAY.tooBig;
+  if (code === 'bad_input') return SAY.notPhoto;
+  if (status === 422 || code === 'refused') return SAY.unreadable;
+  if (code === 'busy' || code === 'timeout' || status === 429 || status === 504) return SAY.busy;
+  if (code === 'offline' || e instanceof TypeError) return SAY.noNet;
+  return SAY.failed;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -449,29 +461,35 @@ async function run(initial, resolve) {
   const openedAt = performance.now();
 
   // ---- DOM
+  const ic = (cls, html) => h('span', { class: cls, 'aria-hidden': 'true', html });
   const fileInput = h('input', { type: 'file', accept: 'image/*', class: 'cr-file', hidden: true, tabindex: -1 });
   const photoImg = h('img', { class: 'cr-photo-img', alt: '', draggable: 'false' });
   const video = h('video', { class: 'cr-video', playsinline: true, muted: true, autoplay: true });
-  const badge = h('div', { class: 'cr-badge', role: 'img' });
-  const camBtn = h('button', { type: 'button', class: 'cr-mini cr-cam', title: TIP.cam, 'aria-label': TIP.cam, html: svg(`<rect x="3" y="9" width="19" height="15" rx="4" fill="#8fd3ff" ${S}/><path d="M22 14 L29 10 L29 23 L22 19 Z" fill="#8fd3ff" ${S}/><circle cx="12.5" cy="16.5" r="3.4" fill="#fffdf6" ${S}/>`) });
-  const snapBtn = h('button', { type: 'button', class: 'cr-snap', title: TIP.snap, 'aria-label': TIP.snap });
-  const camX = h('button', { type: 'button', class: 'cr-mini cr-camx', title: TIP.cancel, 'aria-label': TIP.cancel, text: '✕' });
-  // the frame is the one "pick a photo" button; the camera buttons sit beside it, not inside it
-  const frame = h('div', { class: 'cr-frame', role: 'button', tabindex: 0 }, h('div', { class: 'cr-photo-icon', text: '📷' }), photoImg, video, h('div', { class: 'cr-spin' }));
-  const photo = h('div', { class: 'cr-photo' },
+  const status = h('div', { class: 'cr-status', role: 'status' });
+  const camBtn = h('button', { type: 'button', class: 'cr-pill cr-cam', title: T.camTip }, ic('cr-pill-ic', ICON.webcam), T.cam);
+  const snapBtn = h('button', { type: 'button', class: 'cr-pill cr-snap' }, ic('cr-pill-ic', '📸'), T.snap);
+  const cancelBtn = h('button', { type: 'button', class: 'cr-pill cr-cancel', title: T.cancelTip }, ic('cr-pill-ic', '✕'), T.cancel);
+  // the frame is the one "choose a photo" button; the other buttons sit below it, not inside it
+  const frame = h('div', { class: 'cr-frame', role: 'button', tabindex: 0 },
+    h('div', { class: 'cr-pick' }, ic('cr-pick-ic', ICON.picture), h('span', { class: 'cr-pick-text', text: T.pick })),
+    photoImg, video, h('div', { class: 'cr-spin' }));
+  const photo = h('section', { class: 'cr-photo', 'aria-labelledby': 'cr-photo-head' },
     h('div', { class: 'cr-tape' }),
-    h('div', { class: 'cr-shot' }, frame, snapBtn),
-    h('div', { class: 'cr-photo-foot' }, camBtn, camX),
-    badge, fileInput);
+    h('h3', { class: 'cr-photo-head', id: 'cr-photo-head' }, ic('cr-head-ic', '📷'), T.photo),
+    h('div', { class: 'cr-shot' }, frame, status),
+    h('div', { class: 'cr-photo-foot' }, camBtn, snapBtn, cancelBtn),
+    h('p', { class: 'cr-note', text: T.note }),
+    fileInput);
   const canvas = h('canvas', { class: 'cr-canvas' });
   const poofLayer = h('div', { class: 'cr-poof' });
-  const diceBtn = h('button', { type: 'button', class: 'cr-round cr-dice', title: TIP.dice, 'aria-label': TIP.dice, text: '🎲' });
-  const okBtn = h('button', { type: 'button', class: 'cr-round cr-ok', title: TIP.ok, 'aria-label': TIP.ok, text: '✓' });
+  const diceBtn = h('button', { type: 'button', class: 'cr-act cr-dice' }, ic('cr-act-ic', '🎲'), T.random);
+  const okBtn = h('button', { type: 'button', class: 'cr-act cr-ok', title: T.doneTip }, ic('cr-act-ic', '✓'), T.done);
   const stage = h('div', { class: 'cr-stage' }, canvas, poofLayer, h('div', { class: 'cr-actions' }, diceBtn, okBtn));
   const tabsEl = h('div', { class: 'cr-tabs', role: 'tablist' });
   const panel = h('div', { class: 'cr-panel', role: 'tabpanel' });
   const controls = h('div', { class: 'cr-controls' }, tabsEl, panel);
-  const card = h('div', { class: 'cr-card etl-panel checking', tabindex: -1 }, photo, stage, controls);
+  const title = h('h2', { class: 'cr-title', id: 'cr-title', text: T.title });
+  const card = h('div', { class: 'cr-card etl-panel checking', tabindex: -1, role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'cr-title' }, title, photo, stage, controls);
   const overlay = h('div', { class: 'cr-overlay' }, card);
   let preview = null;
   teardown = () => {
@@ -542,28 +560,31 @@ async function run(initial, resolve) {
   function renderPanel() {
     panel.replaceChildren();
     const t = TABS.find((x) => x.id === tab);
+    panel.setAttribute('aria-label', t.label);
     for (const row of t.rows) {
       const opts = h('div', { class: 'cr-opts' });
       if (row.palette) {
         for (const c of row.palette) {
-          opts.append(h('button', { type: 'button', class: 'cr-sw', style: `--c:${c}`, 'data-field': row.field, 'data-value': c, 'aria-label': `${row.tip} ${c}`, onclick: () => set(row.field, c) }));
+          opts.append(h('button', { type: 'button', class: 'cr-sw', style: `--c:${c}`, 'data-field': row.field, 'data-value': c, 'aria-label': `${row.label} ${c}`, onclick: () => set(row.field, c) }));
         }
-        const input = h('input', { type: 'color', 'aria-label': `${row.tip}: ${TIP.any}` });
+        const input = h('input', { type: 'color', 'aria-label': `${row.label}: ${T.any}` });
         input.addEventListener('input', () => set(row.field, input.value));
-        opts.append(h('label', { class: 'cr-sw cr-any', title: TIP.any, 'data-field': row.field }, input));
-        panel.append(h('div', { class: 'cr-row', title: row.tip }, h('div', { class: 'cr-row-icon', html: row.icon }), opts));
+        opts.append(h('label', { class: 'cr-sw cr-any', title: T.any, 'data-field': row.field }, input));
       } else {
         for (const v of row.options) {
           const tip = tipOf(row.field, v);
           opts.append(h('button', { type: 'button', class: 'cr-chip', title: tip, 'aria-label': tip, 'data-field': row.field, 'data-value': String(v), html: row.icons[String(v)], onclick: () => set(row.field, v) }));
         }
-        panel.append(h('div', { class: 'cr-row cr-row-chips' }, opts));
       }
+      const id = `cr-row-${row.field}`;
+      panel.append(h('div', { class: `cr-row${row.palette ? '' : ' cr-row-chips'}`, role: 'group', 'aria-labelledby': id },
+        h('div', { class: 'cr-row-label', id, text: row.label }), opts));
     }
     sync();
   }
   for (const t of TABS) {
-    tabsEl.append(h('button', { type: 'button', class: 'cr-tab', role: 'tab', 'data-tab': t.id, title: t.tip, 'aria-label': t.tip, html: ICON.tab[t.id], onclick: () => { tab = t.id; renderPanel(); } }));
+    tabsEl.append(h('button', { type: 'button', class: 'cr-tab', role: 'tab', 'data-tab': t.id, onclick: () => { tab = t.id; renderPanel(); } },
+      ic('cr-tab-ic', ICON.tab[t.id]), h('span', { class: 'cr-tab-word', text: t.label })));
   }
   renderPanel();
   rebuild();
@@ -582,18 +603,16 @@ async function run(initial, resolve) {
 
   // ---- photo -> Claude
   // While Claude looks: 🎲 and ✓ wait, the swatches stay live (those choices win over the answer),
-  // and the frame (or Esc) cancels.
-  function setPhoto(state, tip = '') {
+  // and Cancel (or the frame, or Esc) cancels. The status line says what is going on.
+  function setPhoto(state, line = '') {
     const busy = state === 'busy';
     photo.dataset.state = state;
     card.classList.toggle('busy', busy);
     diceBtn.disabled = busy;
     okBtn.disabled = busy;
-    badge.textContent = state === 'error' ? '⦸' : state === 'done' ? '✓' : '';
-    badge.title = tip;
-    badge.setAttribute('aria-label', tip || state);
-    frame.title = busy ? TIP.cancel : tip || TIP.photo;
-    frame.setAttribute('aria-label', frame.title);
+    status.textContent = busy ? SAY.working : state === 'done' ? SAY.done : state === 'error' ? line : '';
+    if (busy) frame.title = T.cancel; else frame.removeAttribute('title');
+    frame.setAttribute('aria-label', busy ? T.cancel : T.pickLabel);
   }
   setPhoto('idle');
 
@@ -625,8 +644,8 @@ async function run(initial, resolve) {
       if (token !== photoToken || closed) return;
       touched = null;
       console.warn('creator: avatar failed', e);
-      setPhoto('error', errorTip(e));
-      if (claudeAsleep(e)) setTimeout(() => { if (!closed && photo.dataset.state === 'error') hidePhoto(true); }, 1400);
+      setPhoto('error', errorLine(e));
+      if (claudeAsleep(e)) setTimeout(() => { if (!closed && photo.dataset.state === 'error') hidePhoto(true); }, 2000);
     }
   }
   function cancelPhoto() {
@@ -716,13 +735,14 @@ async function run(initial, resolve) {
     } catch (err) {
       if (mine !== camToken || closed) return;
       stopCam();
-      setPhoto('error', errorTip({ code: 'cam', denied: err?.name === 'NotAllowedError' || err?.name === 'SecurityError' }));
+      setPhoto('error', errorLine({ code: 'cam', denied: err?.name === 'NotAllowedError' || err?.name === 'SecurityError' }));
     } finally {
       camPending = false;
       camBtn.classList.remove('wait');
     }
   });
-  camX.addEventListener('click', (e) => { e.stopPropagation(); stopCam(); });
+  // Cancel: shown while the camera is on or while Claude looks (Esc does the same)
+  cancelBtn.addEventListener('click', (e) => { e.stopPropagation(); if (stream || camPending) stopCam(); else cancelPhoto(); });
   snapBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     if (!stream || !video.videoWidth) return;

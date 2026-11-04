@@ -1,6 +1,7 @@
-// The Cursed Book of Dimensionality: the player's dark tome.
+// The Cursed Book of Dimensionality ("the Cursed Book"): the player's dark tome. Its name sits on a
+// plate on the cover; four ribbon tabs, each an icon and its word:
 //   📄 Read     the real arXiv PDF (PDF.js): lazy pages, crisp at devicePixelRatio, zoom, text layer,
-//               select text -> 🖍 highlight / ✎ note / ? ask
+//               select text -> 🖍 Highlight / ✎ Note / ? Ask
 //   ✎ Notes    every highlight + note for this paper (localStorage etl-notes-<arxivId>)
 //   ? Ask      terse talk with the book (api.book); last 20 exchanges per region (etl-book-chat-<regionId>)
 //   ✦ Learned  concepts the player has proven (getSave().learned), newest first, grouped by region
@@ -10,6 +11,9 @@
 //   clearBookData()   forget every note, chat, page and preference the book keeps (for a new game)
 // localStorage: etl-notes-<arxivId>, etl-book-chat-<regionId|lab>, etl-book-page-<arxivId>,
 //               etl-book-tab, etl-book-ink, etl-book-learned-seen
+// Text rule (docs/ARCHITECTURE.md, "Concise text"): every control and state a first-time player must
+// understand gets a short word or one line (all in SAY below); universal glyphs (✕ close, ➤ send,
+// + − zoom, 🗑 erase, ink dots) stand alone; tooltips only add extras such as key hints.
 // All player / AI text goes in with textContent, never as HTML.
 import { openModal, closeModal, topModal } from './modal.js';
 import { api } from '../api.js';
@@ -19,11 +23,30 @@ const CSS_HREF = '/css/book.css';
 const PDFJS_URL = '/vendor/pdfjs/pdf.mjs';
 const PDFJS_WORKER = '/vendor/pdfjs/pdf.worker.mjs';
 
+// Every word the player reads in the book's own chrome (answers, notes and records are theirs / the book's).
+const SAY = {
+  name: 'The Cursed Book of Dimensionality',
+  loadFail: 'The paper would not load.',
+  retry: 'Try again',
+  onArxiv: 'Read on arXiv',
+  noPaper: 'Nothing to read yet.',
+  highlight: 'Highlight',
+  note: 'Note',
+  ask: 'Ask',
+  notePlaceholder: 'Write a note…',
+  erase: 'Erase?',                     // a 🗑 pressed once: press again to erase
+  notesEmpty: 'No notes yet. Select text in Read to highlight it or add a note.',
+  askPlaceholder: "Ask about the paper. It's terse and won't solve challenges.",
+  offline: 'Offline (no API key): the book only mutters hints.',
+  askFail: 'No answer came.',
+  learnedEmpty: 'Nothing learned yet. Concepts you prove to villagers are recorded here.',
+};
+
 const TABS = [
-  { id: 'read', icon: '📄', tip: 'Read', emoji: true },     // tooltips carry the key hint: "Read (1)"
-  { id: 'notes', icon: '✎', tip: 'Notes' },
-  { id: 'ask', icon: '?', tip: 'Ask' },
-  { id: 'learned', icon: '✦', tip: 'Learned' },
+  { id: 'read', icon: '📄', label: 'Read', emoji: true },   // tooltips add the key: "Read (1)"
+  { id: 'notes', icon: '✎', label: 'Notes' },
+  { id: 'ask', icon: '?', label: 'Ask' },
+  { id: 'learned', icon: '✦', label: 'Learned' },
 ];
 const TAB_IDS = TABS.map((t) => t.id);
 const INKS = ['#b48cff', '#ff8fcf', '#6fe3d2', '#ffd36b'];
@@ -77,6 +100,12 @@ function h(tag, attrs, ...kids) {
   return e;
 }
 
+// a glyph and its word, for a control: ...iw('↻', 'Try again')
+const iw = (icon, word, emoji) => [
+  h('span', { class: `bk-gi${emoji ? ' bk-emoji' : ''}`, 'aria-hidden': 'true', text: icon }),
+  h('span', { class: 'bk-w', text: word }),
+];
+
 // localStorage, always guarded (private mode, blocked storage, quota)
 const ls = {
   get(key, fallback = null) {
@@ -100,7 +129,7 @@ function autogrow(ta) {
   ta.style.height = `${ta.scrollHeight + 2}px`;
 }
 
-// Two-step destructive button: the first press arms it (it trembles), the second does it.
+// Two-step destructive button: the first press arms it (it trembles and says "Erase?"), the second does it.
 function armed(btn, fn) {
   let timer = 0;
   btn.addEventListener('click', (e) => {
@@ -110,6 +139,15 @@ function armed(btn, fn) {
     timer = setTimeout(() => btn.classList.remove('armed'), 2600);
   });
 }
+
+// an empty page: a faint breathing glyph and one line saying how the page fills up
+const emptyState = (icon, line, emoji) => h('div', { class: 'bk-empty' },
+  h('span', { class: `bk-empty-ico${emoji ? ' bk-emoji' : ''}`, 'aria-hidden': 'true', text: icon }),
+  line ? h('p', { class: 'bk-empty-t', text: line }) : null);
+
+// 🗑, armed by armed(): its word shows only while it waits for the second press
+const eraseBtn = () => h('button', { class: 'bk-ib bk-del', type: 'button', title: 'Erase', 'aria-label': 'Erase' },
+  h('span', { class: 'bk-emoji', 'aria-hidden': 'true', text: '🗑' }), h('span', { class: 'bk-arm', text: SAY.erase }));
 
 function ensureCss() {
   if (ensureCss.p) return ensureCss.p;
@@ -291,7 +329,7 @@ class Reader {
       this.zIn,
       h('label', { class: 'bk-pc', title: 'Page' }, this.pnum, this.ptotal),
       this.zOut,
-      this.id ? h('a', { class: 'bk-ib bk-ext', href: absUrl(this.id), target: '_blank', rel: 'noopener noreferrer', title: 'arXiv', 'aria-label': 'arXiv', text: '↗' }) : null);
+      this.id ? h('a', { class: 'bk-ib bk-ext', href: absUrl(this.id), target: '_blank', rel: 'noopener noreferrer', title: 'Open on arXiv', 'aria-label': 'Open on arXiv', text: '↗' }) : null);
     this.menu = this.buildMenu();
     this.root = h('section', { class: 'bk-pane bk-read', role: 'tabpanel', 'aria-label': 'Read', 'data-state': 'loading' },
       this.scroller, this.status, this.progress);
@@ -300,12 +338,11 @@ class Reader {
   }
 
   buildMenu() {
-    const b = (icon, tip, fn, emoji) => h('button', { class: 'bk-mb', type: 'button', title: tip, 'aria-label': tip, onclick: fn },
-      h('span', { class: `bk-mi${emoji ? ' bk-emoji' : ''}`, text: icon }));
+    const b = (act, icon, word, fn, emoji) => h('button', { class: 'bk-mb', type: 'button', 'data-act': act, onclick: fn }, ...iw(icon, word, emoji));
     const menu = h('div', { class: 'bk-selmenu', role: 'toolbar', hidden: true },
-      b('🖍', 'Highlight', () => this.highlight(false), true),
-      b('✎', 'Note', () => this.highlight(true)),
-      b('?', 'Ask', () => this.askSelection()));
+      b('highlight', '🖍', SAY.highlight, () => this.highlight(false), true),
+      b('note', '✎', SAY.note, () => this.highlight(true)),
+      b('ask', '?', SAY.ask, () => this.askSelection()));
     // keep the text selection alive while the menu is pressed
     const keep = (e) => e.preventDefault();
     menu.addEventListener('pointerdown', keep);
@@ -400,14 +437,15 @@ class Reader {
     this.bar.hidden = state !== 'ready';
     this.status.replaceChildren();
     if (state === 'loading') this.status.append(h('div', { class: 'bk-sigil', 'aria-hidden': 'true', text: '✦' }));
-    if (state === 'blank') this.status.append(h('div', { class: 'bk-empty bk-emoji', 'aria-hidden': 'true', text: '📄' }));
+    if (state === 'blank') this.status.append(emptyState('📄', SAY.noPaper, true));
     if (state === 'error') {
-      // no words: a cracked sigil, ↻ to try again, ↗ to read it on arXiv
-      this.status.append(h('div', { class: 'bk-fail', role: 'alert', 'aria-label': 'Paper lost' },
+      // a cracked sigil, what happened, and the two ways on: try again, or read it on arXiv
+      this.status.append(h('div', { class: 'bk-fail', role: 'alert' },
         h('div', { class: 'bk-sigil bk-dead', 'aria-hidden': 'true', text: '✦' }),
+        h('p', { class: 'bk-fail-t', text: SAY.loadFail }),
         h('div', { class: 'bk-fail-row' },
-          h('button', { class: 'bk-ib bk-again', type: 'button', title: 'Again', 'aria-label': 'Again', text: '↻', onclick: () => this.start() }),
-          h('a', { class: 'bk-ib bk-fail-link', href: absUrl(this.id), target: '_blank', rel: 'noopener noreferrer', title: 'arXiv', 'aria-label': 'arXiv', text: '↗' }))));
+          h('button', { class: 'bk-btn bk-again', type: 'button', onclick: () => this.start() }, ...iw('↻', SAY.retry)),
+          h('a', { class: 'bk-btn bk-fail-link', href: absUrl(this.id), target: '_blank', rel: 'noopener noreferrer' }, ...iw('↗', SAY.onArxiv)))));
     }
   }
 
@@ -696,7 +734,7 @@ class Reader {
     pv.marks.replaceChildren(mk);
   }
 
-  // ---- selection -> tiny icon menu
+  // ---- selection -> a small menu: 🖍 Highlight / ✎ Note / ? Ask
 
   selectionInfo() {
     const s = window.getSelection();
@@ -806,7 +844,7 @@ class Reader {
     const a = this.notes.get(id);
     const pv = a && this.views[a.page - 1];
     if (!pv) return;
-    const ta = h('textarea', { class: 'bk-pop-ta', rows: '2', placeholder: '✎', maxlength: '2000', 'aria-label': 'Note' });
+    const ta = h('textarea', { class: 'bk-pop-ta', rows: '2', placeholder: SAY.notePlaceholder, maxlength: '2000', 'aria-label': 'Note' });
     ta.value = a.note;
     const dots = INKS.map((c) => h('button', {
       class: `bk-dot${c === a.color ? ' on' : ''}`, type: 'button', title: 'Ink', 'aria-label': 'Ink', style: `--c:${c}`,
@@ -817,8 +855,8 @@ class Reader {
       },
     }));
     const dotFor = (c) => dots[INKS.indexOf(c)];
-    const ask = h('button', { class: 'bk-ib', type: 'button', title: 'Ask', 'aria-label': 'Ask', text: '?', onclick: () => { const t = a.text; this.closePop(); this.book.askAbout(t); } });
-    const del = h('button', { class: 'bk-ib bk-del', type: 'button', title: 'Erase', 'aria-label': 'Erase' }, h('span', { class: 'bk-emoji', text: '🗑' }));
+    const ask = h('button', { class: 'bk-btn bk-pop-ask', type: 'button', 'data-act': 'ask', onclick: () => { const t = a.text; this.closePop(); this.book.askAbout(t); } }, ...iw('?', SAY.ask));
+    const del = eraseBtn();
     armed(del, () => { this.closePop(false); this.notes.remove(id, 'pop'); });
     const el = h('div', { class: 'bk-pop', role: 'dialog', 'aria-label': 'Note' }, ta, h('div', { class: 'bk-pop-row' }, ...dots, h('span', { class: 'bk-sp' }), ask, del));
     const last = a.rects[a.rects.length - 1] || { x: 0.3, y: 0.05, w: 0.4, h: 0.02 };
@@ -905,7 +943,7 @@ class NotesPane {
     this.timers = new Map();
     this.list = h('div', { class: 'bk-col bk-ncol' });
     this.scroll = h('div', { class: 'bk-pscroll', tabindex: '-1' }, this.list);
-    this.empty = h('div', { class: 'bk-empty', 'aria-hidden': 'true', text: '✎' });
+    this.empty = emptyState('✎', SAY.notesEmpty);
     this.root = h('section', { class: 'bk-pane bk-notes', role: 'tabpanel', 'aria-label': 'Notes' }, this.scroll, this.empty);
     this.unsub = this.notes.on((ch) => {
       if (ch.source === 'notes') return;
@@ -933,8 +971,8 @@ class NotesPane {
     const frag = document.createDocumentFragment();
     for (const [page, list] of groups) {
       frag.append(h('section', { class: 'bk-ng', 'data-page': String(page) },
-        h('button', { class: 'bk-ng-h', type: 'button', title: 'Read', 'aria-label': `Page ${page}`, onclick: () => this.book.jump({ page }) },
-          h('span', { class: 'bk-ng-n', text: String(page) })),
+        h('button', { class: 'bk-ng-h', type: 'button', title: 'Turn to this page', onclick: () => this.book.jump({ page }) },
+          h('span', { class: 'bk-ng-n', text: `Page ${page}` })),
         ...list.map((a) => this.card(a))));
     }
     this.list.replaceChildren(frag);
@@ -946,11 +984,11 @@ class NotesPane {
 
   card(a) {
     const quote = h('blockquote', {
-      class: 'bk-nq', title: 'Read', role: 'button', tabindex: '0', text: a.text || '…',
+      class: 'bk-nq', title: 'Show it in the paper', role: 'button', tabindex: '0', text: a.text || '…',
       onclick: () => this.book.jump(a),
       onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.book.jump(a); } },
     });
-    const ta = h('textarea', { class: 'bk-nn', rows: '1', placeholder: '✎', maxlength: '2000', 'aria-label': 'Note' });
+    const ta = h('textarea', { class: 'bk-nn', rows: '1', placeholder: SAY.notePlaceholder, maxlength: '2000', 'aria-label': 'Note' });
     ta.value = a.note;
     ta.addEventListener('input', () => { autogrow(ta); this.saveSoon(a.id, ta.value); });
     ta.addEventListener('blur', () => this.flush(a.id));
@@ -964,7 +1002,7 @@ class NotesPane {
         setInk(c);
       },
     });
-    const del = h('button', { class: 'bk-ib bk-del', type: 'button', title: 'Erase', 'aria-label': 'Erase' }, h('span', { class: 'bk-emoji', text: '🗑' }));
+    const del = eraseBtn();
     const card = h('article', { class: 'bk-note', 'data-id': a.id, style: `--c:${a.color}` },
       quote, h('div', { class: 'bk-ntools' }, dot, del), ta);
     armed(del, () => {
@@ -1009,7 +1047,7 @@ function sanitizeChat(list) {
 }
 
 const waitDots = () => h('span', { class: 'bk-dots', role: 'status', 'aria-label': '…' }, h('i'), h('i'), h('i'));
-// a cracked sigil: something did not come through (no words)
+// a cracked sigil: something did not come through (a line beside it says what)
 const deadSigil = () => h('span', { class: 'bk-sigil bk-dead', 'aria-hidden': 'true', text: '✦' });
 
 // A half-typed question (and its ❝ passage) waits here for the next open, per chat. This session only.
@@ -1027,18 +1065,19 @@ class AskPane {
     this.stick = true;    // the chat follows its newest line
     this.chat = h('div', { class: 'bk-chat', 'aria-live': 'polite' });
     this.wrap = h('div', { class: 'bk-chatwrap', tabindex: '-1' }, this.chat);
-    this.empty = h('div', { class: 'bk-empty', 'aria-hidden': 'true', text: '?' });
-    this.off = h('div', { class: 'bk-off', title: 'offline', 'aria-label': 'offline', text: '⦸', hidden: true });
+    this.empty = emptyState('?'); // the placeholder says what to do
+    // no API key (or Claude unreachable): one line under the quill, so the player knows what answers to expect
+    this.off = h('p', { class: 'bk-off', hidden: true }, h('span', { class: 'bk-off-i', 'aria-hidden': 'true', text: '⦸' }), SAY.offline);
     this.chipText = h('span', { class: 'bk-chip-t' });
     this.chip = h('div', { class: 'bk-chip', hidden: true },
       h('span', { class: 'bk-chip-q', 'aria-hidden': 'true', text: '❝' }), this.chipText,
-      h('button', { class: 'bk-chip-x', type: 'button', title: 'Drop', 'aria-label': 'Drop', text: '✕', onclick: () => { this.attach(null); this.input.focus(); } }));
-    this.input = h('input', { class: 'bk-qin', placeholder: '?', maxlength: '600', autocomplete: 'off', spellcheck: 'false', 'aria-label': 'Ask' });
+      h('button', { class: 'bk-chip-x', type: 'button', title: 'Remove the passage', 'aria-label': 'Remove the passage', text: '✕', onclick: () => { this.attach(null); this.input.focus(); } }));
+    this.input = h('input', { class: 'bk-qin', placeholder: SAY.askPlaceholder, maxlength: '600', autocomplete: 'off', spellcheck: 'false', 'aria-label': 'Ask the book' });
     this.sendBtn = h('button', { class: 'bk-send', type: 'submit', title: 'Ask (Enter)', 'aria-label': 'Ask', text: '➤' });
     this.form = h('form', { class: 'bk-compose', onsubmit: (e) => { e.preventDefault(); this.send(); } },
-      this.chip, h('div', { class: 'bk-row' }, this.input, this.sendBtn));
+      this.chip, h('div', { class: 'bk-row' }, this.input, this.sendBtn), this.off);
     this.root = h('section', { class: 'bk-pane bk-ask', role: 'tabpanel', 'aria-label': 'Ask' },
-      this.wrap, this.empty, this.off, this.form);
+      this.wrap, this.empty, this.form);
     for (const it of this.items) this.chat.append(this.exchange(it).el);
     this.syncEmpty();
     const draft = drafts.get(this.key);
@@ -1149,13 +1188,13 @@ class AskPane {
     if (this.book.tab === 'ask') this.input.focus({ preventScroll: true });
   }
 
-  // Nothing came back (network, server, timeout). Not a refusal: no cold box, a cracked sigil and ↻.
-  // The question and its passage go back into the quill.
+  // Nothing came back (network, server, timeout). Not a refusal: no cold box, a cracked sigil, one line
+  // and ↻ Try again. The question and its passage go back into the quill.
   fail(ex, typed, sel) {
     ex.el.classList.add('failed');
     ex.a.className = 'bk-a';
-    ex.a.replaceChildren(deadSigil(),
-      h('button', { class: 'bk-ib bk-again', type: 'button', title: 'Again', 'aria-label': 'Again', text: '↻', onclick: () => this.again(ex, typed, sel) }));
+    ex.a.replaceChildren(deadSigil(), h('span', { class: 'bk-fail-t', text: SAY.askFail }),
+      h('button', { class: 'bk-btn bk-again', type: 'button', onclick: () => this.again(ex, typed, sel) }, ...iw('↻', SAY.retry)));
     if (!this.input.value.trim()) this.input.value = typed;
     if (!this.sel && sel) this.attach(sel);
     if (this.stick) this.scrollDown();
@@ -1210,9 +1249,16 @@ function learnedEntries() {
   if (!learned || typeof learned !== 'object') return [];
   return Object.entries(learned)
     .filter(([, v]) => v && typeof v === 'object')
-    .map(([id, v]) => ({ id, title: str(v.title).trim() || id, record: str(v.record).trim(), region: str(v.region).trim(), at: str(v.at), t: Date.parse(v.at) || 0 }))
+    .map(([id, v]) => ({ id, title: str(v.title).trim(), record: str(v.record).trim(), region: str(v.region).trim(), at: str(v.at), t: Date.parse(v.at) || 0 }))
     .sort((a, b) => b.t - a.t);
 }
+
+// content/concepts.json, only fetched for an entry that lacks its title or the book's note (an old save)
+let conceptsP = null;
+const concepts = () => (conceptsP ??= fetch('/content/concepts.json')
+  .then((r) => (r.ok ? r.json() : []))
+  .then((list) => (Array.isArray(list) ? list : []))
+  .catch(() => { conceptsP = null; return []; }));
 
 const regionNames = new Map();
 function regionName(value) {
@@ -1228,7 +1274,7 @@ class LearnedPane {
     this.book = book;
     this.list = h('div', { class: 'bk-col bk-lcol' });
     this.scroll = h('div', { class: 'bk-pscroll', tabindex: '-1' }, this.list);
-    this.empty = h('div', { class: 'bk-empty', 'aria-hidden': 'true', text: '✦' });
+    this.empty = emptyState('✦', SAY.learnedEmpty);
     this.root = h('section', { class: 'bk-pane bk-learned', role: 'tabpanel', 'aria-label': 'Learned' }, this.scroll, this.empty);
   }
 
@@ -1256,12 +1302,25 @@ class LearnedPane {
       if (region !== '·') regionName(region).then((n) => { if (n && name.isConnected) name.textContent = n; });
       frag.append(h('section', { class: 'bk-lg' },
         h('div', { class: 'bk-lg-h' }, name),
-        ...list.map((e) => h('article', { class: `bk-le${e.t > seen ? ' fresh' : ''}`, 'data-concept': e.id, title: e.at ? new Date(e.at).toLocaleDateString() : null },
-          h('h3', { class: 'bk-lt', text: e.title }),
-          e.record ? h('p', { class: 'bk-lr', text: e.record }) : null))));
+        ...list.map((e) => this.entry(e, seen))));
     }
     this.list.replaceChildren(frag);
     this.empty.hidden = entries.length > 0;
+  }
+
+  // the concept's title and the book's note on it; an entry missing either borrows it from concepts.json
+  entry(e, seen) {
+    const title = h('h3', { class: 'bk-lt', text: e.title || e.id });
+    const note = h('p', { class: 'bk-lr', text: e.record, hidden: !e.record });
+    if (!e.title || !e.record) {
+      concepts().then((list) => {
+        const c = list.find((x) => x && x.id === e.id);
+        if (!c || !title.isConnected) return;
+        if (!e.title && str(c.title).trim()) title.textContent = c.title.trim();
+        if (!e.record && str(c.summary).trim()) { note.textContent = c.summary.trim(); note.hidden = false; }
+      });
+    }
+    return h('article', { class: `bk-le${e.t > seen ? ' fresh' : ''}`, 'data-concept': e.id, title: e.at ? new Date(e.at).toLocaleDateString() : null }, title, note);
   }
 
   destroy() {}
@@ -1359,8 +1418,9 @@ class Book {
     this.sheet = h('div', { class: 'bk-sheet' }, this.motesEl);
     this.tabsEl = h('nav', { class: 'bk-tabs', role: 'tablist', 'aria-label': 'Book' });
     for (const t of TABS) {
-      const b = h('button', { class: `bk-tab bk-tab-${t.id}`, type: 'button', role: 'tab', title: `${t.tip} (${TAB_IDS.indexOf(t.id) + 1})`, 'aria-label': t.tip, 'data-tab': t.id, onclick: () => this.show(t.id) },
-        h('span', { class: `bk-ico${t.emoji ? ' bk-emoji' : ''}`, 'aria-hidden': 'true', text: t.icon }));
+      const b = h('button', { class: `bk-tab bk-tab-${t.id}`, type: 'button', role: 'tab', title: `${t.label} (${TAB_IDS.indexOf(t.id) + 1})`, 'data-tab': t.id, onclick: () => this.show(t.id) },
+        h('span', { class: `bk-ico${t.emoji ? ' bk-emoji' : ''}`, 'aria-hidden': 'true', text: t.icon }),
+        h('span', { class: 'bk-tl', text: t.label }));
       this.tabBtns[t.id] = b;
       this.tabsEl.append(b);
     }
@@ -1370,8 +1430,10 @@ class Book {
       deco('bk-leaves'), this.sheet, this.tabsEl, this.closeBtn,
       // two sparks of light crawling round the edge, on four thin rails
       ...['t', 'r', 'b', 'l'].map((side) => h('i', { class: `bk-rail bk-rail-${side}`, 'aria-hidden': 'true' }, h('i'), h('i'))),
-      deco('bk-cn bk-cn-tl'), deco('bk-cn bk-cn-bl'), deco('bk-cn bk-cn-br'));
-    this.root = h('div', { class: 'bk-overlay', role: 'dialog', 'aria-modal': 'true', 'aria-label': str(this.paper.title) || 'Book', style: 'visibility:hidden' }, this.bookEl);
+      deco('bk-cn bk-cn-tl'), deco('bk-cn bk-cn-bl'), deco('bk-cn bk-cn-br'),
+      // its name, on a plate across the top of the cover (the dialog's name too, so hidden from readers here)
+      h('div', { class: 'bk-name', 'aria-hidden': 'true', text: SAY.name }));
+    this.root = h('div', { class: 'bk-overlay', role: 'dialog', 'aria-modal': 'true', 'aria-label': SAY.name, style: 'visibility:hidden' }, this.bookEl);
     this.root.addEventListener('pointerdown', (e) => { this.downOnBackdrop = e.target === this.root; });
     this.root.addEventListener('click', (e) => { if (e.target === this.root && this.downOnBackdrop) this.close(); });
 

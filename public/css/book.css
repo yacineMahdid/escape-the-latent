@@ -33,9 +33,9 @@
 
 .bk {
   position: relative;
-  width: min(900px, calc(100vw - 112px));
+  width: min(900px, calc(100vw - 128px));
   height: min(940px, calc(100vh - 40px));
-  margin-right: 44px;                     /* the ribbon tabs hang off the right edge */
+  margin-right: 56px;                     /* the ribbon tabs hang off the right edge */
   padding: 12px 12px 14px 22px;           /* cover thickness; the left side is the spine */
   border-radius: 10px 16px 16px 10px;
   background:
@@ -136,6 +136,18 @@
 .bk-cn-bl::after { bottom: 4px; left: 4px; }
 .bk-cn-br::after { bottom: 4px; right: 4px; }
 
+/* its name, on a plate across the top edge of the cover (inside the 12px cover, never over the paper) */
+.bk-name {
+  position: absolute; top: -12px; left: 50%; z-index: 6; transform: translateX(-50%);
+  max-width: calc(100% - 140px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: 5px 22px 6px; pointer-events: none;
+  border: 1px solid rgba(155, 107, 255, .5); border-radius: 999px;
+  background: linear-gradient(180deg, #24183a, #0e0917);
+  box-shadow: 0 0 16px rgba(155, 107, 255, .45), 0 4px 10px rgba(0, 0, 0, .6), inset 0 1px 0 rgba(214, 186, 255, .16);
+  font: 14px/1 var(--bk-serif); font-variant: small-caps; letter-spacing: .14em;
+  color: #e6d8ff; text-shadow: 0 0 8px rgba(155, 107, 255, .95);
+}
+
 .bk-motes {
   position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none;
   -webkit-mask-image: linear-gradient(transparent, #000 30%); mask-image: linear-gradient(transparent, #000 30%);
@@ -149,13 +161,14 @@
 
 /* ---------------- ribbon tabs + close seal ---------------- */
 
-.bk-tabs { position: absolute; top: 58px; right: -44px; z-index: 0; display: flex; flex-direction: column; gap: 9px; }
+/* each ribbon: its icon, and its word under it */
+.bk-tabs { position: absolute; top: 56px; right: -56px; z-index: 0; display: flex; flex-direction: column; gap: 8px; }
 .bk-tab {
-  position: relative; width: 46px; height: 46px; padding: 0 0 0 4px; cursor: pointer;
-  display: grid; place-items: center;
+  position: relative; width: 58px; height: 56px; padding: 2px 0 0 8px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
   border: 1px solid rgba(155, 107, 255, .32); border-left: 0; border-radius: 0 13px 13px 0;
   background: linear-gradient(90deg, #08060d, #171024 40%, #1f1531);
-  color: var(--bk-dim); font-size: 22px; line-height: 1;
+  color: var(--bk-dim); font-size: 20px; line-height: 1;
   box-shadow: 5px 6px 14px rgba(0, 0, 0, .5);
   transform: translateX(-8px);
   transition: transform .22s cubic-bezier(.3, 1.4, .5, 1), color .2s, background .2s, box-shadow .2s;
@@ -167,10 +180,12 @@
   border-color: rgba(190, 160, 255, .65);
   box-shadow: 0 0 18px rgba(155, 107, 255, .55), 5px 6px 14px rgba(0, 0, 0, .5);
 }
-.bk-ico { display: block; transition: text-shadow .2s, filter .2s; }
+.bk-ico { display: block; height: 20px; line-height: 20px; transition: text-shadow .2s, filter .2s; }
 .bk-tab.on .bk-ico, .bk-tab:hover .bk-ico { text-shadow: 0 0 10px rgba(190, 150, 255, .95), 0 0 2px #fff; }
-.bk-tab-ask .bk-ico { font-size: 24px; font-weight: bold; }
-.bk-tab-learned .bk-ico { font-size: 20px; }
+.bk-tab-ask .bk-ico { font-size: 22px; font-weight: bold; }
+.bk-tab-learned .bk-ico { font-size: 18px; }
+.bk-tl { display: block; font-size: 12px; line-height: 1; letter-spacing: .02em; white-space: nowrap; }
+.bk-tab.on .bk-tl { text-shadow: 0 0 8px rgba(190, 150, 255, .9); }
 /* something new on the Learned pages: a pulsing ember on the ribbon */
 .bk-tab.bk-new::after {
   content: ''; position: absolute; top: 7px; right: 7px; width: 7px; height: 7px; border-radius: 50%;
@@ -181,7 +196,7 @@
 
 /* colour emoji, tinted to belong to the book */
 .bk-emoji { filter: grayscale(1) sepia(1) hue-rotate(218deg) saturate(2.6) brightness(1.08) contrast(.95); }
-.bk-tab .bk-emoji { font-size: 20px; }
+.bk-tab .bk-emoji { font-size: 18px; }
 .bk-tab.on .bk-emoji, .bk-tab:hover .bk-emoji { filter: grayscale(1) sepia(1) hue-rotate(218deg) saturate(3) brightness(1.5) drop-shadow(0 0 5px rgba(170, 130, 255, .9)); text-shadow: none; }
 
 .bk-x {
@@ -203,15 +218,33 @@
 .bk-pscroll { position: absolute; inset: 0; overflow: auto; scrollbar-gutter: stable; }
 .bk-col { max-width: 700px; margin: 0 auto; padding: 50px 46px 70px; }
 
+/* an empty page: a faint breathing glyph and one line on how the page fills up */
 .bk-empty {
-  position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none;
-  font-size: 128px; line-height: 1; color: rgba(155, 107, 255, .13);
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px;
+  padding: 0 40px; pointer-events: none; text-align: center;
+}
+.bk-empty[hidden] { display: none; }
+.bk-empty-ico {
+  font-size: 112px; line-height: 1; color: rgba(155, 107, 255, .13);
   text-shadow: 0 0 40px rgba(155, 107, 255, .3);
   animation: bk-breathe 5.5s ease-in-out infinite;
 }
-.bk-empty[hidden] { display: none; }
-.bk-empty.bk-emoji { color: initial; opacity: .12; }
+.bk-empty-ico.bk-emoji { color: initial; opacity: .12; }
+.bk-empty-t {
+  margin: 0; max-width: 34em; font-size: 17px; line-height: 1.5; font-style: italic;
+  color: var(--bk-dim); text-shadow: 0 0 10px rgba(155, 107, 255, .35);
+}
 @keyframes bk-breathe { 50% { opacity: .55; transform: scale(.97); } }
+
+/* a control with a glyph and its word (Try again, Read on arXiv, Ask) */
+.bk-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 17px 0 13px; cursor: pointer;
+  border: 1px solid rgba(155, 107, 255, .42); border-radius: 999px; background: rgba(155, 107, 255, .07);
+  color: var(--bk-ink); font: 15px/1 var(--bk-serif); text-decoration: none; white-space: nowrap;
+  transition: color .15s, background .15s, border-color .15s, text-shadow .15s, box-shadow .15s;
+}
+.bk-btn:hover { color: #fff; background: rgba(155, 107, 255, .2); border-color: rgba(190, 160, 255, .75); text-shadow: 0 0 8px rgba(190, 150, 255, .9); box-shadow: 0 0 14px rgba(155, 107, 255, .35); }
+.bk-gi { font-size: 1.15em; line-height: 1; }
 
 /* small round glyph buttons */
 .bk-ib {
@@ -223,7 +256,10 @@
 .bk-ib:hover:not(:disabled) { color: #fff; background: rgba(155, 107, 255, .16); text-shadow: 0 0 8px rgba(190, 150, 255, .9); }
 .bk-ib:disabled { opacity: .28; cursor: default; }
 
-/* armed (press again to erase) */
+/* armed (press again to erase): it trembles, turns red and says "Erase?" */
+.bk-arm { display: none; font-size: 13px; line-height: 1; white-space: nowrap; }
+.bk-ib.bk-del.armed { display: inline-flex; gap: 5px; width: auto; padding: 0 11px 0 8px; border-radius: 999px; }
+.bk-del.armed .bk-arm { display: inline; }
 .bk-del.armed { color: #ff9cb0; background: rgba(255, 90, 130, .14); animation: bk-tremble .11s linear 4; }
 .bk-del.armed .bk-emoji { filter: grayscale(1) sepia(1) hue-rotate(300deg) saturate(4) brightness(1.2); }
 @keyframes bk-tremble { 25% { transform: translate(1px, -1px); } 50% { transform: translate(-1px, 1px); } 75% { transform: translate(1px, 1px); } }
@@ -292,8 +328,8 @@
 
 /* the clasp on the right edge: + 3/15 − ↗ (Read tab only) */
 .bk-rbar {
-  position: absolute; right: -40px; bottom: 30px; z-index: 0;
-  display: flex; flex-direction: column; align-items: center; gap: 2px; width: 40px; padding: 7px 0 7px 2px;
+  position: absolute; right: -48px; bottom: 30px; z-index: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; width: 48px; padding: 7px 0 7px 2px;
   border: 1px solid rgba(155, 107, 255, .28); border-left: 0; border-radius: 0 13px 13px 0;
   background: linear-gradient(90deg, #08060d, #150f21 45%, #1b1329);
   box-shadow: 5px 6px 14px rgba(0, 0, 0, .5);
@@ -325,10 +361,10 @@
   animation: bk-spin 6s linear infinite, bk-breathe 2.4s ease-in-out infinite;
 }
 @keyframes bk-spin { to { rotate: 360deg; } }
-/* the paper would not come: a cracked sigil, ↻ again, ↗ arXiv (no words) */
-.bk-fail { display: flex; flex-direction: column; align-items: center; gap: 16px; pointer-events: auto; }
-.bk-fail-row { display: flex; gap: 14px; }
-.bk-fail .bk-ib { width: 42px; height: 42px; font-size: 20px; border: 1px solid rgba(155, 107, 255, .4); }
+/* the paper would not come: a cracked sigil, one line, ↻ Try again and ↗ Read on arXiv */
+.bk-fail { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 0 30px; pointer-events: auto; text-align: center; }
+.bk-fail-t { margin: 0; font-size: 20px; line-height: 1.4; font-style: italic; color: var(--bk-ink); text-shadow: 0 0 12px rgba(155, 107, 255, .45); }
+.bk-fail-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 4px; }
 /* the sigil split in two along a jagged crack, the halves drifting apart */
 .bk-sigil.bk-dead { position: relative; animation: none; color: transparent; text-shadow: none; }
 .bk-sigil.bk-dead::before, .bk-sigil.bk-dead::after {
@@ -338,7 +374,7 @@
 .bk-sigil.bk-dead::before { clip-path: polygon(0 0, 54% 0, 45% 33%, 56% 51%, 46% 73%, 52% 100%, 0 100%); transform: translate(-.05em, .03em) rotate(-6deg); }
 .bk-sigil.bk-dead::after { clip-path: polygon(54% 0, 100% 0, 100% 100%, 52% 100%, 46% 73%, 56% 51%, 45% 33%); transform: translate(.05em, -.02em) rotate(5deg); }
 
-/* selection menu: 🖍 ✎ ? */
+/* selection menu: 🖍 Highlight · ✎ Note · ? Ask */
 .bk-selmenu {
   position: absolute; z-index: 8; transform: translateX(-50%);
   display: flex; gap: 2px; padding: 4px;
@@ -353,12 +389,13 @@
 }
 .bk-selmenu.below::after { bottom: auto; top: -6px; border-width: 1px 0 0 1px; }
 .bk-mb {
-  width: 36px; height: 34px; padding: 0; border: 0; border-radius: 999px; cursor: pointer; background: transparent;
-  display: grid; place-items: center; color: var(--bk-ink); font-size: 18px; line-height: 1;
+  height: 34px; padding: 0 14px 0 10px; border: 0; border-radius: 999px; cursor: pointer; background: transparent;
+  display: inline-flex; align-items: center; gap: 7px; color: var(--bk-ink); font: 15px/1 var(--bk-serif); white-space: nowrap;
   transition: background .15s, text-shadow .15s;
 }
 .bk-mb:hover { background: rgba(155, 107, 255, .25); text-shadow: 0 0 8px #c9a8ff; }
-.bk-mb:nth-child(3) .bk-mi { font-weight: bold; font-size: 19px; }
+.bk-mb .bk-gi { font-size: 17px; }
+.bk-mb[data-act="ask"] .bk-gi { font-weight: bold; }
 @keyframes bk-pop { from { opacity: 0; transform: translate(-50%, 4px) scale(.92); } }
 
 /* note popover on the page */
@@ -380,11 +417,14 @@
   user-select: text; -webkit-user-select: text;
 }
 .bk-pop-ta { min-height: 52px; }
-.bk-pop-ta::placeholder, .bk-nn::placeholder { color: rgba(190, 160, 255, .35); }
+.bk-pop-ta::placeholder, .bk-nn::placeholder { color: rgba(190, 160, 255, .45); font-style: italic; }
 .bk-pop-ta:focus, .bk-nn:focus { border-bottom-color: rgba(190, 160, 255, .8); }
 .bk-pop-row { display: flex; align-items: center; gap: 9px; padding: 6px 2px 0; }
 .bk-sp { flex: 1; }
 .bk-pop .bk-ib { width: 28px; height: 28px; font-size: 16px; }
+.bk-pop .bk-btn { height: 28px; padding: 0 11px 0 9px; gap: 6px; font-size: 14px; border-color: transparent; background: none; }
+.bk-pop .bk-btn:hover { background: rgba(155, 107, 255, .18); border-color: rgba(155, 107, 255, .4); box-shadow: none; }
+.bk-pop-ask .bk-gi { font-weight: bold; }
 
 /* ---------------- ✎ Notes ---------------- */
 
@@ -395,7 +435,7 @@
 }
 .bk-ng-h::before, .bk-ng-h::after { content: ''; height: 1px; flex: 1; background: linear-gradient(90deg, transparent, var(--bk-line)); }
 .bk-ng-h::after { background: linear-gradient(90deg, var(--bk-line), transparent); }
-.bk-ng-n { min-width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--bk-line); text-shadow: 0 0 10px rgba(155, 107, 255, .8); transition: color .15s, border-color .15s; }
+.bk-ng-n { height: 32px; padding: 0 16px; display: grid; place-items: center; white-space: nowrap; border-radius: 999px; border: 1px solid var(--bk-line); font-size: 17px; text-shadow: 0 0 10px rgba(155, 107, 255, .8); transition: color .15s, border-color .15s; }
 .bk-ng-h:hover .bk-ng-n { color: #fff; border-color: rgba(190, 160, 255, .7); }
 
 .bk-note {
@@ -448,12 +488,13 @@
 .bk-a.refused .bk-l { animation: bk-frost .9s ease-out both; }
 @keyframes bk-frost { 0% { opacity: 0; color: #e8f4ff; text-shadow: 0 0 6px rgba(200, 230, 255, .8); } 100% { color: inherit; text-shadow: none; } }
 
-/* nothing came back (network, server): not a refusal, so no cold box. A small cracked sigil and ↻ */
+/* nothing came back (network, server): not a refusal, so no cold box. A small cracked sigil, one line, ↻ Try again */
 .bk-ex.failed .bk-q { opacity: .6; }
-.bk-ex.failed .bk-a { display: flex; align-items: center; gap: 12px; min-height: 0; text-shadow: none; }
+.bk-ex.failed .bk-a { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; min-height: 0; text-shadow: none; }
 .bk-ex.failed .bk-sigil { font-size: 28px; line-height: 1; }
 .bk-ex.failed .bk-sigil::before, .bk-ex.failed .bk-sigil::after { color: rgba(190, 160, 255, .45); }
-.bk-again { border: 1px solid rgba(155, 107, 255, .35); }
+.bk-ex.failed .bk-fail-t { font-size: 17px; font-style: italic; color: var(--bk-dim); }
+.bk-ex.failed .bk-btn { height: 32px; font-size: 14px; }
 
 .bk-dots { display: inline-flex; gap: 7px; padding: 10px 0 4px; }
 .bk-dots i { width: 6px; height: 6px; border-radius: 50%; background: #c2a4ff; box-shadow: 0 0 8px #9b6bff; animation: bk-dot 1.2s ease-in-out infinite; }
@@ -461,21 +502,20 @@
 .bk-dots i:nth-child(3) { animation-delay: .32s; }
 @keyframes bk-dot { 0%, 100% { opacity: .2; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-4px); } }
 
-.bk-off {
-  position: absolute; top: 16px; right: 22px; z-index: 3; font-size: 17px; line-height: 1; cursor: help;
-  color: rgba(163, 184, 203, .6);
-}
+/* offline (no API key): one cold line under the quill */
+.bk-off { display: flex; align-items: center; gap: 8px; margin: 10px 2px 0; font-size: 14px; line-height: 1.3; font-style: italic; color: rgba(163, 184, 203, .82); }
 .bk-off[hidden] { display: none; }
+.bk-off-i { font-style: normal; font-size: 15px; }
 
 .bk-compose { flex: none; width: min(680px, 100%); margin: 0 auto; padding: 8px 46px 26px; }
 .bk-row { display: flex; align-items: center; gap: 8px; border-bottom: 1px solid rgba(155, 107, 255, .45); box-shadow: 0 1px 0 rgba(0, 0, 0, .6), 0 10px 18px -12px rgba(155, 107, 255, .6); transition: border-color .2s; }
 .bk-row:focus-within { border-bottom-color: rgba(200, 175, 255, .9); }
 .bk-qin {
   flex: 1; min-width: 0; padding: 10px 2px; border: 0; outline: none; background: transparent;
-  color: #fff; font: 20px var(--bk-serif); caret-color: #c9a8ff;
+  color: #fff; font: 20px var(--bk-serif); caret-color: #c9a8ff; text-overflow: ellipsis;
   user-select: text; -webkit-user-select: text;
 }
-.bk-qin::placeholder { color: rgba(190, 160, 255, .35); font-style: italic; }
+.bk-qin::placeholder { color: rgba(190, 160, 255, .55); font-style: italic; font-size: 17px; }
 .bk-send {
   width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; cursor: pointer; background: transparent;
   color: rgba(190, 160, 255, .8); font-size: 17px; transition: color .15s, text-shadow .15s, transform .15s;
@@ -531,17 +571,21 @@
   .bk-lt { font-size: 26px; }
   .bk-a { font-size: 19px; }
   .bk-tabs { top: 40px; }
+  .bk-empty-ico { font-size: 92px; }
 }
 @media (max-width: 760px) {
-  .bk { width: calc(100vw - 72px); margin-right: 40px; padding: 8px 8px 10px 14px; }
+  .bk { width: calc(100vw - 84px); margin-right: 50px; padding: 8px 8px 10px 14px; }
   .bk-col, .bk-chat { padding-left: 22px; padding-right: 22px; }
   .bk-compose { padding-left: 22px; padding-right: 22px; }
-  .bk-tab { width: 40px; height: 42px; }
-  .bk-tabs { right: -38px; }
+  .bk-tab { width: 52px; height: 52px; }
+  .bk-tabs { right: -50px; }
+  .bk-tl { font-size: 11px; letter-spacing: 0; }
+  .bk-rbar { right: -42px; width: 42px; }
+  .bk-name { top: -10px; font-size: 12px; letter-spacing: .08em; padding: 4px 14px 5px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bk::after, .bk-empty, .bk-sigil, .bk-del.armed, .bk-tab.bk-new::after, .bk-dots i,
+  .bk::after, .bk-empty-ico, .bk-sigil, .bk-del.armed, .bk-tab.bk-new::after, .bk-dots i,
   .bk-l, .bk-a.refused .bk-l, .bk-le.fresh .bk-lt, .bk-le.fresh::before { animation: none; }
   .bk-rail, .bk-pg.near:not([data-rendered])::after { display: none; }
   .is-open .bk, .is-closing .bk, .bk-overlay.is-open, .bk-overlay.is-closing { animation-duration: .01s; }

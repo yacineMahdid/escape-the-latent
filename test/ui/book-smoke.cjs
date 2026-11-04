@@ -169,14 +169,14 @@ async function main() {
     });
 
     let firstText = '';
-    await step('selecting text pops the icon menu; 🖍 highlights it', async () => {
+    await step('selecting text pops the menu (🖍 Highlight, ✎ Note, ? Ask); Highlight highlights it', async () => {
       firstText = await selectSpan(page, 1, 'dominant sequence');
       assert.ok(firstText, 'found the abstract on page 1');
       await page.waitForSelector('.bk-selmenu:not([hidden])', { timeout: 5000 });
-      const icons = await page.$$eval('.bk-selmenu button', (bs) => bs.map((b) => [b.textContent.trim(), b.title]));
-      assert.deepEqual(icons, [['🖍', 'Highlight'], ['✎', 'Note'], ['?', 'Ask']]);
+      const items = await page.$$eval('.bk-selmenu button', (bs) => bs.map((b) => [b.dataset.act, b.querySelector('.bk-gi')?.textContent, b.querySelector('.bk-w')?.textContent]));
+      assert.deepEqual(items, [['highlight', '🖍', 'Highlight'], ['note', '✎', 'Note'], ['ask', '?', 'Ask']], 'each choice has its icon and its word');
       await shot(page, 'select');
-      await page.click('.bk-selmenu button[title="Highlight"]');
+      await page.click('.bk-selmenu button[data-act="highlight"]');
       await page.waitForSelector('.bk-selmenu[hidden]', { state: 'attached' });
       const notes = await storage(page, NOTES_KEY);
       assert.equal(notes.length, 1);
@@ -188,11 +188,13 @@ async function main() {
       assert.ok(await page.$$eval('.bk-pg[data-page="1"] .bk-hl', (els) => els.length) >= 1, 'highlight overlay on the page');
     });
 
-    await step('✎ adds a note in a popover on the page; Esc closes only the popover', async () => {
+    await step('✎ Note adds a note in a popover on the page; Esc closes only the popover', async () => {
       assert.ok(await selectSpan(page, 1, 'Attention Is All You Need'), 'found the title');
       await page.waitForSelector('.bk-selmenu:not([hidden])');
-      await page.click('.bk-selmenu button[title="Note"]');
+      await page.click('.bk-selmenu button[data-act="note"]');
       await page.waitForSelector('.bk-pop textarea');
+      assert.equal(await page.$eval('.bk-pop textarea', (e) => e.placeholder), 'Write a note…', 'the empty note says what it is for');
+      assert.equal(await page.$eval('.bk-pop .bk-pop-ask .bk-w', (e) => e.textContent), 'Ask', 'the popover\'s Ask has its word');
       await page.click('.bk-pop textarea');
       await page.keyboard.type('the heart of it');
       await shot(page, 'note-pop');
@@ -213,7 +215,7 @@ async function main() {
       await page.waitForSelector('.bk-pop', { state: 'detached' });
     });
 
-    await step('zoomed past fit, the note popover and the 🖍✎? menu stay in view, pointing at the text', async () => {
+    await step('zoomed past fit, the note popover and the selection menu stay in view, pointing at the text', async () => {
       for (let i = 0; i < 12; i++) await page.keyboard.press('+');
       await page.waitForFunction(() => document.querySelector('.bk-rbar').dataset.zoom === '3');
       // put the noted title's centre 60px inside the left edge of the view, then open its note
@@ -303,7 +305,7 @@ async function main() {
       await page.waitForSelector('.bk-hl.flash');
     });
 
-    await step('🗑 erases on the second press', async () => {
+    await step('🗑 erases on the second press (the first one asks "Erase?")', async () => {
       await page.click('.bk-tab[data-tab="notes"]');
       await page.evaluate(() => {
         // a third, throwaway annotation on page 2
@@ -315,8 +317,10 @@ async function main() {
       await page.reload();
       await page.click('.bk-tab[data-tab="notes"]');
       await page.waitForSelector('.bk-notes.on .bk-note[data-id="tmp"]');
+      assert.ok(await page.$eval('.bk-note[data-id="tmp"] .bk-arm', (e) => !e.offsetParent), 'no word before it is pressed');
       await page.click('.bk-note[data-id="tmp"] .bk-del');
       assert.ok(await page.$('.bk-note[data-id="tmp"] .bk-del.armed'), 'armed after one press');
+      assert.equal(await page.$eval('.bk-note[data-id="tmp"] .bk-del.armed .bk-arm', (e) => e.offsetParent && e.textContent), 'Erase?', 'armed, it asks');
       assert.equal((await storage(page, NOTES_KEY)).length, 3, 'nothing erased yet');
       // force: the armed button trembles; don't wait for it to hold still (the armed window is 2.6s)
       await page.click('.bk-note[data-id="tmp"] .bk-del', { force: true });
@@ -343,9 +347,14 @@ async function main() {
     });
 
     console.log('ask');
-    await step('? Ask: the book answers (offline) letter by letter, ⦸ shows offline', async () => {
+    await step('? Ask: the quill says what to ask, the book answers (offline) letter by letter, a line says it is offline', async () => {
       await page.click('.bk-tab[data-tab="ask"]');
       await page.waitForSelector('.bk-ask.on .bk-empty:not([hidden])');
+      const ph = await page.$eval('.bk-qin', (e) => e.placeholder);
+      assert.ok(/ask about the paper/i.test(ph) && /terse/i.test(ph) && /challenge/i.test(ph), `the placeholder says what to do (${ph})`);
+      await page.waitForSelector('.bk-ask .bk-off:not([hidden])'); // no API key on the test server
+      const off = await page.$eval('.bk-off', (e) => e.textContent.trim());
+      assert.ok(/offline/i.test(off) && /API key/.test(off) && /hints/.test(off), `the offline line (${off})`);
       await page.fill('.bk-qin', 'what about softmax?');
       await page.press('.bk-qin', 'Enter');
       await page.waitForSelector('.bk-ex .bk-dots, .bk-ex .bk-l', { timeout: 5000 });
@@ -353,7 +362,7 @@ async function main() {
       await waitAnswer(page, 1);
       const a = await page.$eval('.bk-ex .bk-a', (e) => e.textContent);
       assert.ok(a.includes('Exponents grow wild'), `offline hint answer (${a})`);
-      assert.equal(await page.$eval('.bk-off', (e) => !e.hidden && e.title), 'offline');
+      assert.ok(await page.$('.bk-off:not([hidden])'), 'still offline after an offline answer');
       const chat = await storage(page, CHAT_KEY);
       assert.equal(chat.length, 1);
       assert.equal(chat[0].q, 'what about softmax?');
@@ -366,8 +375,9 @@ async function main() {
       const t = await selectSpan(page, 3, 'query');
       assert.ok(t, 'found a line about queries on page 3');
       await page.waitForSelector('.bk-selmenu:not([hidden])');
-      await page.click('.bk-selmenu button[title="Ask"]');
+      await page.click('.bk-selmenu button[data-act="ask"]');
       await page.waitForSelector('.bk-ask.on .bk-chip:not([hidden])');
+      await shot(page, 'ask-chip');
       assert.equal(await page.$eval('.bk-chip', (e) => e.title), t.replace(/\s+/g, ' ').trim());
       assert.equal(await page.evaluate(() => document.activeElement?.className), 'bk-qin');
       await sleep(100);
@@ -380,20 +390,22 @@ async function main() {
       assert.ok(await page.$('.bk-chip[hidden]'), 'chip consumed');
     });
 
-    await step('a failed ask: a cracked sigil + ↻ (no refusal box), the question and passage come back; ↻ asks again', async () => {
+    await step('a failed ask: a cracked sigil, one line and "↻ Try again" (no refusal box), the question and passage come back; Try again asks again', async () => {
       const n = await page.$$eval('.bk-ex', (els) => els.length);
       const kept = (await storage(page, CHAT_KEY)).length;
       await page.click('.bk-tab[data-tab="read"]');
       const t = (await selectSpan(page, 3, 'query')).replace(/\s+/g, ' ').trim();
       await page.waitForSelector('.bk-selmenu:not([hidden])');
-      await page.click('.bk-selmenu button[title="Ask"]');
+      await page.click('.bk-selmenu button[data-act="ask"]');
       await page.waitForSelector('.bk-ask.on .bk-chip:not([hidden])');
       await page.route('**/api/book', (route) => route.fulfill({ status: 504, contentType: 'application/json', body: '{"error":"timeout","retryable":true}' }));
       await page.fill('.bk-qin', 'anything');
       await page.press('.bk-qin', 'Enter');
-      await page.waitForSelector('.bk-ex.failed .bk-again[title="Again"]');
-      const f = await page.$eval('.bk-ex.failed .bk-a', (e) => ({ text: e.textContent.trim(), cls: e.className, bg: getComputedStyle(e).backgroundImage }));
-      assert.ok(!/[a-z]/i.test(f.text), `no words (${f.text})`);
+      await page.waitForSelector('.bk-ex.failed .bk-again');
+      const f = await page.$eval('.bk-ex.failed .bk-a', (e) => ({ line: e.querySelector('.bk-fail-t')?.textContent, again: e.querySelector('.bk-again .bk-w')?.textContent, sigil: !!e.querySelector('.bk-sigil.bk-dead'), cls: e.className, bg: getComputedStyle(e).backgroundImage }));
+      assert.equal(f.line, 'No answer came.', 'one short sentence says what happened');
+      assert.equal(f.again, 'Try again', 'the retry button has its word');
+      assert.ok(f.sigil, 'a cracked sigil');
       assert.ok(!f.cls.includes('refused') && f.bg === 'none', 'not dressed as a refusal');
       assert.equal(await page.$eval('.bk-qin', (e) => e.value), 'anything', 'the question is back in the quill');
       assert.equal(await page.$eval('.bk-chip', (e) => !e.hidden && e.title), t, 'the passage is back on its chip');
@@ -421,7 +433,7 @@ async function main() {
       assert.ok(await page.$('.bk-ex:last-child .bk-a.refused'));
       const style = await page.$eval('.bk-ex:last-child .bk-a', (e) => getComputedStyle(e).textShadow);
       assert.equal(style, 'none', 'no glow on refusals');
-      assert.ok(await page.$('.bk-off[hidden]'), 'online answer hides ⦸');
+      assert.ok(await page.$('.bk-off[hidden]'), 'an online answer hides the offline line');
       await page.unroute('**/api/book');
       await shot(page, 'ask-refused');
       assert.equal((await storage(page, CHAT_KEY)).length, kept + 1);
@@ -446,7 +458,7 @@ async function main() {
     });
 
     console.log('learned');
-    await step('✦ Learned shows the save\'s concepts, newest first, grouped by region', async () => {
+    await step('✦ Learned shows the save\'s concepts (title + the book\'s note), newest first, grouped by region', async () => {
       assert.ok(await page.$('.bk-tab[data-tab="learned"].bk-new'), 'ember on the ribbon for unseen entries');
       await page.click('.bk-tab[data-tab="learned"]');
       await page.waitForSelector('.bk-learned.on .bk-le');
@@ -455,6 +467,8 @@ async function main() {
       const groups = await page.$$eval('.bk-lg-name', (els) => els.map((e) => e.textContent));
       assert.deepEqual(groups, ['Mamba desert', 'Attendale']);
       assert.ok((await page.$eval('.bk-le', (e) => e.textContent)).includes('pocket of memory'), 'record text shown');
+      const shown = await page.$$eval('.bk-le', (els) => els.map((e) => [e.querySelector('.bk-lt')?.offsetParent && e.querySelector('.bk-lt').textContent, e.querySelector('.bk-lr')?.offsetParent && e.querySelector('.bk-lr').textContent]));
+      assert.ok(shown.every(([t, r]) => t && r), `every entry shows its title and the book's note (${JSON.stringify(shown)})`);
       assert.ok(!(await page.$('.bk-tab[data-tab="learned"].bk-new')), 'ember gone once seen');
       await sleep(2600);
       await shot(page, 'learned');
@@ -538,13 +552,41 @@ async function main() {
       await page.waitForSelector('.bk-overlay', { state: 'detached' });
     });
 
-    await step('empty Learned pages show one faint glyph, no words', async () => {
+    // an empty page: a faint glyph and one short line on how the page fills up
+    const emptyLine = (pane) => page.$eval(`.bk-${pane}.on .bk-empty:not([hidden]) .bk-empty-t`, (e) => ({
+      text: e.textContent,
+      lines: Math.round(e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight)),
+    }));
+
+    await step('empty Learned pages say, in one line, how they fill up', async () => {
       await seedLearned(page, {});
       await page.goto(`${BASE}/dev/book.html?tab=learned`);
       await page.waitForSelector('.bk-learned.on .bk-empty:not([hidden])');
       assert.equal(await page.$$eval('.bk-le', (els) => els.length), 0);
-      assert.equal(await page.$eval('.bk-learned', (e) => e.innerText.trim()), '✦');
+      const { text, lines } = await emptyLine('learned');
+      assert.ok(/nothing learned yet/i.test(text) && /villagers/.test(text), `says what fills it (${text})`);
+      assert.equal(lines, 1, 'one line');
       await shot(page, 'learned-empty');
+    });
+
+    await step('empty Notes pages say, in one line, how they fill up', async () => {
+      await page.evaluate((k) => localStorage.removeItem(k), NOTES_KEY);
+      await page.goto(`${BASE}/dev/book.html?tab=notes`);
+      await page.waitForSelector('.bk-notes.on .bk-empty:not([hidden])');
+      const { text, lines } = await emptyLine('notes');
+      assert.ok(/no notes yet/i.test(text) && /select text/i.test(text), `says what fills it (${text})`);
+      assert.equal(lines, 1, 'one line');
+      await shot(page, 'notes-empty');
+    });
+
+    await step('a Learned entry saved without its note or title borrows them from concepts.json', async () => {
+      await seedLearned(page, { softmax: { title: '', record: '', region: 'Attendale', at: new Date().toISOString() } });
+      await page.goto(`${BASE}/dev/book.html?tab=learned`);
+      await page.waitForSelector('.bk-learned.on .bk-le[data-concept="softmax"] .bk-lr:not([hidden])');
+      const [title, note] = await page.$eval('.bk-le[data-concept="softmax"]', (e) => [e.querySelector('.bk-lt').textContent, e.querySelector('.bk-lr').textContent]);
+      const concept = JSON.parse(fs.readFileSync(path.join(ROOT, 'content', 'concepts.json'), 'utf8')).find((c) => c.id === 'softmax');
+      assert.equal(title, concept.title);
+      assert.equal(note, concept.summary);
     });
 
     await step('in the lab (no region, no paper): blank pages, the book still mutters', async () => {
@@ -557,23 +599,23 @@ async function main() {
       assert.equal((await storage(page, 'etl-book-chat-lab')).length, 1);
       await page.click('.bk-tab[data-tab="read"]');
       await page.waitForSelector('.bk-read[data-state="blank"] .bk-empty');
+      assert.equal(await page.$eval('.bk-read .bk-empty-t', (e) => e.textContent), 'Nothing to read yet.', 'the blank page says so');
       await page.keyboard.press('Escape');
       await page.waitForSelector('.bk-overlay', { state: 'detached' });
     });
 
-    await step('a paper that will not load: a cracked sigil, ↻ and ↗ arXiv, no words', async () => {
+    await step('a paper that will not load: a cracked sigil, one line, "↻ Try again" and "↗ Read on arXiv"', async () => {
       await page.goto(`${BASE}/dev/book.html?tab=read&arxiv=nope`);
       await page.waitForSelector('.bk-read[data-state="error"] .bk-fail', { timeout: 20000 });
-      const text = await page.$eval('.bk-fail', (e) => e.innerText.replace(/\s+/g, ''));
-      assert.ok(!/[a-z]/i.test(text), `no words (${text})`);
-      assert.equal(await page.$eval('.bk-fail .bk-again', (e) => e.title), 'Again');
+      const f = await page.$eval('.bk-fail', (e) => ({ line: e.querySelector('.bk-fail-t')?.textContent, again: e.querySelector('.bk-again .bk-w')?.textContent, link: e.querySelector('.bk-fail-link .bk-w')?.textContent }));
+      assert.deepEqual(f, { line: 'The paper would not load.', again: 'Try again', link: 'Read on arXiv' });
       assert.equal(await page.$eval('.bk-fail-link', (e) => e.href), 'https://arxiv.org/abs/nope');
       await shot(page, 'pdf-fail');
       await page.keyboard.press('Escape');
       await page.waitForSelector('.bk-overlay', { state: 'detached' });
     });
 
-    await step('↻ tries the paper again', async () => {
+    await step('↻ Try again tries the paper again', async () => {
       let fails = 1;
       await page.route('**/api/paper/*/pdf', (route) => (fails-- > 0 ? route.abort() : route.continue()));
       await page.goto(`${BASE}/dev/book.html?tab=read`);
@@ -637,17 +679,34 @@ async function main() {
       await page.waitForSelector('.bk-overlay', { state: 'detached' }); // an open book closes first
     });
 
-    await step('almost no words: every control is an icon (≤ 2 chars) with a tooltip', async () => {
+    // The text rule (docs/ARCHITECTURE.md, "Concise text"): words where a first-time player needs them,
+    // short ones, never paragraphs; a bare glyph only where everyone knows it, and then with a tooltip.
+    await step('words where they are needed: the book\'s name, icon + word tabs and controls, short lines', async () => {
       await page.goto(`${BASE}/dev/book.html?tab=read`);
       await page.waitForSelector('.bk-read[data-state="ready"]', { timeout: 30000 });
+      const name = await page.$eval('.bk-name', (e) => { const r = e.getBoundingClientRect(); return { text: e.textContent, shown: r.width > 0 && r.top >= 0 && r.bottom <= innerHeight }; });
+      assert.deepEqual(name, { text: 'The Cursed Book of Dimensionality', shown: true }, 'the book\'s name is on its cover');
+      assert.equal(await page.$eval('.bk-overlay', (e) => e.getAttribute('aria-label')), 'The Cursed Book of Dimensionality');
+      const tabs = await page.$$eval('.bk-tab', (els) => els.map((e) => [e.querySelector('.bk-ico').textContent, e.querySelector('.bk-tl').textContent]));
+      assert.deepEqual(tabs, [['📄', 'Read'], ['✎', 'Notes'], ['?', 'Ask'], ['✦', 'Learned']], 'each tab: its icon and its word');
+      const GLYPHS = ['✕', '➤', '+', '−', '↗', '🗑', '✎', '']; // close, send, zoom, arXiv, erase, a note's mark, ink dots
       for (const tab of ['read', 'notes', 'ask', 'learned']) {
         await page.click(`.bk-tab[data-tab="${tab}"]`);
         await sleep(300);
-        const bad = await page.$$eval('.bk-overlay button, .bk-overlay a', (els) => els
-          .filter((e) => e.offsetParent && !e.closest('.bk-ng-h'))
-          .filter((e) => [...e.textContent.trim()].length > 2 || !(e.title || e.getAttribute('aria-label')))
-          .map((e) => e.outerHTML.slice(0, 80)));
-        assert.deepEqual(bad, [], `controls with words or without tooltip on ${tab}`);
+        const bad = await page.$$eval('.bk-overlay button, .bk-overlay a', (els, glyphs) => els
+          .filter((e) => e.offsetParent)
+          .filter((e) => {
+            const word = e.querySelector('.bk-w, .bk-tl, .bk-ng-n');
+            if (word?.offsetParent && /[a-z]{2}/i.test(word.textContent)) return false; // it says what it does
+            return !glyphs.includes(e.innerText.trim()) || !(e.title || e.getAttribute('aria-label'));
+          })
+          .map((e) => e.outerHTML.slice(0, 90)), GLYPHS);
+        assert.deepEqual(bad, [], `controls with neither a word nor a known glyph + tooltip on ${tab}`);
+        const long = await page.evaluate(() => [...document.querySelectorAll('.bk-overlay :is(.bk-name, .bk-tl, .bk-w, .bk-ng-n, .bk-empty-t, .bk-fail-t, .bk-off)')]
+          .filter((e) => e.offsetParent).map((e) => e.textContent.trim())
+          .concat([...document.querySelectorAll('.bk-overlay [placeholder]')].map((e) => e.placeholder))
+          .filter((s) => s.length > 75));
+        assert.deepEqual(long, [], `no paragraphs: lines over 75 characters on ${tab}`);
       }
     });
 
@@ -662,12 +721,19 @@ async function main() {
         await sleep(700);
         const r = await page.evaluate(() => {
           const box = (s) => { const e = document.querySelector(s); if (!e || !e.offsetParent) return null; const b = e.getBoundingClientRect(); return { l: b.left, t: b.top, r: b.right, b: b.bottom }; };
-          return { book: box('.bk'), tabs: box('.bk-tabs'), x: box('.bk-x'), bar: box('.bk-rbar'), sw: document.documentElement.scrollWidth };
+          return { book: box('.bk'), name: box('.bk-name'), tabs: box('.bk-tabs'), x: box('.bk-x'), bar: box('.bk-rbar'), sw: document.documentElement.scrollWidth };
         });
         for (const [k, b] of Object.entries(r)) {
           if (!b || typeof b !== 'object') continue;
           assert.ok(b.l >= 0 && b.t >= 0 && b.r <= 900 && b.b <= 600, `${k} inside the window on ${tab}: ${JSON.stringify(b)}`);
         }
+        assert.ok(await page.$eval('.bk-name', (e) => e.scrollWidth <= e.clientWidth), `the book's name is not cut on ${tab}`);
+        // each tab's word shows in full: beside the book (not under its cover) and inside its ribbon
+        const words = await page.$$eval('.bk-tab', (els) => {
+          const edge = document.querySelector('.bk').getBoundingClientRect().right;
+          return els.map((t) => { const w = t.querySelector('.bk-tl').getBoundingClientRect(), r = t.getBoundingClientRect(); return [t.dataset.tab, w.left >= edge - 1 && w.right <= r.right]; });
+        });
+        assert.ok(words.every(([, ok]) => ok), `tab words in full on ${tab}: ${JSON.stringify(words)}`);
         await shot(page, `900-${tab}`);
       }
     });

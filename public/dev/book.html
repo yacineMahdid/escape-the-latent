@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Book harness</title>
+<title>Cursed Book harness</title>
 <link rel="stylesheet" href="/css/game.css">
 <style>
   /* a stand-in for the cozy diorama behind the book */
@@ -20,10 +20,13 @@
 <body>
 <div id="game"></div>
 <div id="ui-root"></div>
-<button class="etl-btn harness-open" id="open" title="Book (B)">📖</button>
+<button class="etl-btn harness-open" id="open" title="Open the book (B)">📖 Book</button>
 <script type="module">
-// /dev/book.html?arxiv=1706.03762&region=fixture&tab=read&auto=1
-//   region= (empty) opens the lab book (regionId null). window.__book exposes { opens, closes, open } for tests.
+// The Cursed Book of Dimensionality on its own (public/js/ui/book.js), like the game's 📖 Book button / B key.
+// /dev/book.html?tab=read|notes|ask|learned&arxiv=1706.03762&region=attention
+//   region defaults to "fixture" (the test server's region); region= (empty) opens the lab book (regionId null);
+//   arxiv=nope shows the paper failing to load; arxiv= (empty) gives blank Read pages; auto=0 waits for B.
+//   window.__book exposes { opens, closes, open } for tests.
 import { open } from '/js/ui/book.js';
 
 const q = new URLSearchParams(location.search);

@@ -1,0 +1,695 @@
+{
+  "challenges": [
+    {
+      "id": "m1",
+      "type": "minigame",
+      "title": "Belly vs. Cart",
+      "giver": "kayvee",
+      "requires": [
+        "c1",
+        "f3"
+      ],
+      "minigame": "belly-vs-cart",
+      "spec": {
+        "goal": "Beat Kayvee to the post! Gulp every bead, let sand slide, shout at every 🔔.",
+        "controls": [
+          [
+            "Space",
+            "gulp"
+          ],
+          [
+            "↑",
+            "shout"
+          ],
+          [
+            "click",
+            "the buttons"
+          ]
+        ],
+        "duration": 0,
+        "durationNote": "0 = no kit clock (the kit hides its bar). The race ends when a racer reaches the post office: about 36-42 s.",
+        "successText": "One belly beats the cart!",
+        "loseText": "Kayvee's cart got there first. Every hiccup costs you!",
+        "hud": "🔔 {right}/{bells}",
+        "roadCode": {
+          ".": "sand",
+          "r": "ruby",
+          "l": "lapis",
+          "e": "emerald",
+          "u": "um",
+          "!": "bell"
+        },
+        "roads": [
+          "...r...!..l..e...!..u..!..l.....!.r..!..e.l..u.!..!.r..!....",
+          "....l..!.e....!..!.r.u..l..!....e.!..u.r...!.l.e..!...!.r...",
+          "...e..r...!..u.!.l......!.e.!..r.u.l...!..!.e....!.l.r..!..."
+        ],
+        "roadsNote": "Every setup call takes the next road in order (0, 1, 2, 0, ...; the kit's idle preview uses one call). All three are equally fair: 60 tiles, 8 bells, 8-9 beads, 2 ums, 3 sand at both ends. The first bell comes after a bead; action tiles (beads, bells, ums) are never adjacent, so actions are at least 1.1 s apart; some bells follow two beads (the last one counts), two bells per road share one bead (the belly keeps it), ums sit right before bells. A trailing bead after the last bell may be gulped or not. Bell targets: road 0: r e e l r l l r; road 1: l e e l e r e e; road 2: r r l e l l e r.",
+        "grains": {
+          "ruby": {
+            "kind": "bead",
+            "color": "#e61f33",
+            "cut": "round: an octagon with a star of facets",
+            "word": "RUBY"
+          },
+          "lapis": {
+            "kind": "bead",
+            "color": "#2659e6",
+            "cut": "square, with a bevelled frame",
+            "word": "LAPIS"
+          },
+          "emerald": {
+            "kind": "bead",
+            "color": "#1abf59",
+            "cut": "tall octagon (emerald cut)",
+            "word": "EMERALD"
+          },
+          "sand": {
+            "kind": "sand",
+            "color": "#d9b87a",
+            "look": "a low heap with darker dots"
+          },
+          "um": {
+            "kind": "noise",
+            "color": "#ffffff",
+            "look": "a little paper speech bubble with 'um' in grey: one of Umberto's fillers"
+          },
+          "bell": {
+            "kind": "bell",
+            "color": "#2b2233",
+            "look": "an ink bell on a thin post with a small red ribbon"
+          }
+        },
+        "grainsNote": "Colours match the c1 board (ruby [0.9, 0.12, 0.2], lapis [0.15, 0.35, 0.9], emerald [0.1, 0.75, 0.35], sand [0.85, 0.72, 0.48]). Each bead colour has its own cut so colour-blind players can tell them apart; the belly window shows the same cut.",
+        "race": {
+          "tilePx": 80,
+          "start": -3,
+          "finish": "road.length + 1 = tile 61, the post office's chalk line",
+          "noodle": {
+            "speed": 1.8,
+            "unit": "tiles per second, constant; he stops while stalled"
+          },
+          "kayvee": {
+            "v0": 3.4,
+            "alpha": 0.03,
+            "speed": "v0 / (1 + alpha * n) tiles per second, n = grains in his cart",
+            "cart": "He keeps EVERY grain he passes (sand, ums, beads, bells): n = number of tiles with index <= his position (0 before tile 0, at most road.length).",
+            "rummage": {
+              "base": 0.3,
+              "perGrain": 0.015,
+              "rule": "On reaching a bell tile b he stops for base + perGrain * (b + 1) s (about 0.4 s at the first bell, 1.15 s at the last): he digs through his whole cart for the last bead. Then he shouts it, always right."
+            }
+          },
+          "stall": {
+            "small": 0.6,
+            "bell": 1.4,
+            "rule": "A stall freezes Noodle and the road (Kayvee keeps going) and ignores input. Stalls add up."
+          },
+          "expected": "Kayvee alone finishes in 41.7-42.0 s on these roads; a clean Noodle run takes 64 / 1.8 = 35.6 s, so about 6.2 s of stalls still win. 2 bell mistakes + 3 small ones win by ~1.7 s; 4 bell mistakes alone by ~0.7 s; 3 bell + 4 small, or 4 bell + 2 small, lose; doing nothing loses by ~5 s; mashing either button loses. A clean run overtakes Kayvee at 70-76% of the course (he leads by up to 6 tiles early); a typical first try overtakes near the end. Checked by simulation: keep these numbers."
+        },
+        "input": [
+          "GULP: Space / Enter / E (input.pressed 'action') or ↓ ('down'), or a click / tap on the GULP button.",
+          "SHOUT: ↑ ('up'), or a click / tap on the SHOUT button.",
+          "One action per press (input.pressed, never held keys). Ignored during the countdown and while stalled."
+        ],
+        "rules": [
+          "The road is the current spec.roads entry, one grain per tile. Tile i is drawn at x = mouthX + (i - dN) * tilePx; dN starts at race.start and grows at noodle.speed unless stalled.",
+          "Reach: a grain can be gulped while |x - mouthX| <= 34 px; a bell can be shouted at while |x - mouthX| <= 44 px. Tiles are 80 px apart and action tiles at least 2 tiles apart, so at most one candidate is ever in reach.",
+          "Belly: one value: null (empty) at the start, else 'ruby' | 'lapis' | 'emerald' | 'mush'.",
+          "GULP, bead in reach: belly = that bead; the gem flies into the mouth, 'gulp!'. No penalty, no score.",
+          "GULP, sand or um in reach: belly = 'mush'; 'Blech!'; stall.small.",
+          "GULP, bell in reach: 'Clang!'; stall.small; the bell stays and can still be shouted at.",
+          "GULP, nothing in reach: an empty chomp, no penalty.",
+          "SHOUT, bell in reach: Noodle shouts his belly. Right (belly === the bell's target, the most recent bead before it on the road): the bead's word in its colour, right += 1, a ✓ flag on the post. Wrong (another bead, mush or empty): his belly in a red-edged bubble ('LAPIS?', 'Mush…', '…'), a ✕ flag, stall.bell. Either way that bell is done.",
+          "SHOUT, no bell in reach: 'Hm?'; stall.small.",
+          "Passing: when an unhandled tile leaves reach (x < mouthX - 44): sand and ums slide by silently; a bead gets a small grey ✕ puff and no stall (the belly just keeps what it had; the next bell tells); a bell is a missed bell ('…', ✕ flag, stall.bell).",
+          "Each grain is handled once: a gulped grain vanishes, a shouted or missed bell keeps its flag.",
+          "Kayvee moves by race.kayvee every frame; Noodle's stalls never slow him.",
+          "Result, checked every frame, Noodle first: dN >= finish -> 'win'; else Kayvee's position >= finish -> 'lose'."
+        ],
+        "bubbles": {
+          "gulp": "gulp!",
+          "blech": "Blech!",
+          "clang": "Clang!",
+          "chatty": "Hm?",
+          "missedBell": "…",
+          "mush": "Mush…",
+          "empty": "…",
+          "right": "{WORD}!",
+          "wrongBead": "{WORD}?",
+          "kayveeAnswer": "{Word}!",
+          "kayveeTaunt": "Ha!",
+          "pass": "PASS!",
+          "tumble": "Go!",
+          "note": "Short bubbles that fade after ~0.8 s. {WORD} = the grain's word (RUBY), {Word} = capitalised (Ruby). Kayvee taunts only when he is on screen; Tumble cheers once, when Noodle first passes Kayvee."
+        },
+        "layout": {
+          "canvas": "960 × 540 kit units. Paper craft: ink #2b2233 outlines 3-4 px, soft drop shadows (draw.paper), cream #fffdf6 panels.",
+          "sky": "y 0-210: desert sky, gradient #9fd2f2 at the top to #ffe2b0, far dunes #f2c47e and one mesa, scrolling slowly with dN (parallax).",
+          "raceStrip": "y 8-52: a cream paper ribbon from x 24 to 936, a dotted track from a ▶ flag at x 70 to a red post box 📮 at x 890. Noodle's marker (green snake head, 26 px) and Kayvee's (mouse head with a tiny cart whose heap grows with n) at x = 70 + 820 * (d - start) / (finish - start). '🛒{n}' in 13 px under Kayvee's marker. While he digs: a 🔍 over his marker with a filling ring.",
+          "kayveeLane": "y 100-200: a paler back path (#f0dfb8, y 150-190). Kayvee and his cart at x = mouthX + (dK - dN) * tilePx, with faint small bell posts at the bell tiles. Off screen (x < -40 or > 1000): an edge badge at y 165, '🐭 ▶ 6' on the right or '◀ 🐭 3' on the left (gap in whole tiles).",
+          "road": "y 330-420: the sandy road (#ead7ad, pebbles #c9ae7a); grains centred at y 375.",
+          "noodle": "mouthX = 300. His head (60 × 46) just left of the mouth, facing right, at y 345; a yellow #ffd35a scarf behind it; the body a thick #6cc24a tube trailing left off screen in a slow sine (amplitude 18, wavelength 160, phase moving with dN). Belly window: a cream circle (r 26, ink border) on the body at (190, 398) showing the belly: the bead's colour and cut, sand colour with dots for mush, plain cream when empty. The Speck rides on his head (40 px). Tumble's head and ears poke up at the tail end (x 36, y 350) and bounce.",
+          "reach": "a soft white circle (r 40, 35% alpha) on the road at (mouthX, 375). Grains in reach lift 6 px and get a white outline.",
+          "buttons": "y 468-528: GULP (x 40-280, green #7bcd5d) and SHOUT (x 680-920, yellow #ffd35a): paper buttons with the word in 26 px and the key in a small chip ('Space', '↑'). They flash when used, by key or by click.",
+          "finish": "From dN > road.length - 8 a red post box (#c8453c) on a post slides in at tile road.length + 1, with a chalk finish line.",
+          "start": "Both racers wait at a chalk start line during the kit's 3-2-1-GO."
+        },
+        "look": {
+          "kayvee": "A brown mouse (fur #c7a27a, purple shirt #a05a8c) pushing a wooden cart (#b8864e). The heap on the cart is drawn from n: paper letters and grains stacking up; past n = 30 letters slip off, past 50 the heap towers and wobbles. His legs move slower as he slows. While he digs, the cart shakes and letters fly up.",
+          "beads": "faceted gems, 34 px, in spec.grains colours and cuts, with a white glint."
+        },
+        "sfx": {
+          "gulpBead": "pop",
+          "right": "ding",
+          "mistake": "buzz",
+          "missedBead": "tick",
+          "kayveeDigs": "paper",
+          "overtake": "pin"
+        },
+        "speck": "The Speck: a tiny paper human (round head, hair, coloured top). If getSave().character (js/game/save.js) is there, use its skin, hairColor and topColor; else #e8b796, #3b2a20, #4f86d8.",
+        "testHooks": "Keep on the kit state (container.__mg.state): S.road, S.roadIndex, S.dN, S.dK, S.n (Kayvee's cart), S.belly, S.right, S.bells (8), S.mistakes, S.stall (seconds left) and S.tiles ([{ i, tok, done: null | 'gulped' | 'slid' | 'missed' | 'ok' | 'wrong' }]). A test bot can read S.dN and S.road and press Space / ArrowUp at the right moments; force('win') also works.",
+        "rule": "Section 3.1 and Figure 2, Selective Copying: the data tokens (beads) sit at random places among noise (sand, and Umberto's 'um', the filler of Section 3.5.2), so only a content-aware model keeps them; a recurrent model is efficient because its state is small, but only as good as what it puts in it. Noodle's belly is that fixed-size state: a gulp replaces it with the current bead (large Δ: reset and focus), letting a grain slide keeps it (small Δ: persist and ignore), a shout reads it out at a bell (C). The player is the selection mechanism, deciding grain by grain from what each grain is. Kayvee is attention with its KV cache: he keeps every grain, so he is never wrong, but each step and each lookup costs more as his cart grows (Section 3.1: slow linear-time inference; Section 4.5: no KV cache gives Mamba 4-5x the inference throughput). Playing well = compressing the road into one belly by choosing: fast and right."
+      },
+      "design": "A side-scrolling race. The Speck rides Noodle's head down the road toward Penny's post office while Kayvee races in the back lane with his cart. Grains roll up to Noodle's mouth one tile at a time: Space gulps, ↑ shouts. Gulp the beads (his belly window turns that colour), let sand and ums slide by, and shout at every bell: Noodle calls out whatever is in his belly. A right bell rings ✓; gulping junk, shouting at nothing, or a wrong or missed bell makes Noodle hiccup and stop for a moment. Kayvee keeps every grain: he starts fast, but his cart grows and he digs through all of it at every bell, so he slows down. A race strip on top shows both racers. First to the post office wins (about 40 s; three hand-made roads in turn). The rules card shows spec.goal and spec.controls.",
+      "paperLink": "§3.1 · Fig. 2 · §3.5.2 · §4.1.1 · §4.5",
+      "worldEffect": "Kayvee sits on his cart and starts sorting: KEEP, TOSS, TOSS, TOSS...",
+      "intro": [
+        "A race to Penny's post! My cart against that snake's one tiny belly.",
+        "I keep EVERY grain, so I never miss a bell. Ride his head. Tell him when!"
+      ],
+      "success": [
+        "He WON? With ONE belly? My cart has everything... and weighs a tonne.",
+        "Every bell, I dig through all of it. Maybe I don't need it ALL."
+      ],
+      "retry": [
+        "Ha! Slow and sure, that's my cart. Rematch whenever you like, Speck."
+      ]
+    },
+    {
+      "id": "q1",
+      "type": "quiz",
+      "title": "Where Does the Road End?",
+      "giver": "tumble",
+      "requires": [
+        "c1"
+      ],
+      "questions": [
+        {
+          "question": "Induction Heads: Noodle trained on 256 grains. How long a road did he still ace?",
+          "options": [
+            "About 500 grains",
+            "About 16,000 grains",
+            "About a million grains"
+          ],
+          "answer": 2,
+          "right": [
+            "A MILLION grains! Then the road can be as long as it likes!"
+          ],
+          "wrong": [
+            "Nope! The book tests it in Section 4.1.2. Look at Table 2!"
+          ],
+          "paperLink": "§4.1.2 · Table 2 / Table 11: trained at 2^8 = 256, perfect up to 2^20 = 1,048,576 ('4000× longer')"
+        },
+        {
+          "question": "And attention, Kayvee's cousins? How far past their practice road did they last?",
+          "options": [
+            "Twice as far, at most",
+            "100 times as far",
+            "As far as Noodle"
+          ],
+          "answer": 0,
+          "right": [
+            "Only twice?! Kayvee's cousins need bigger carts. Or smaller bellies."
+          ],
+          "wrong": [
+            "Nope! Section 4.1.2 says how far the others got."
+          ],
+          "paperLink": "§4.1.2 ('no other method goes beyond 2×'); Table 11: attention runs out of memory past 2^14"
+        },
+        {
+          "question": "The book fed Noodle longer and longer DNA roads, up to a million letters. He got…",
+          "options": [
+            "Better and better",
+            "Worse and worse",
+            "Exactly the same"
+          ],
+          "answer": 0,
+          "right": [
+            "Longer road, smarter snake. I KNEW the road should never end!"
+          ],
+          "wrong": [
+            "Nope! Section 4.3.2. Figure 5 draws it."
+          ],
+          "paperLink": "§4.3.2 · Fig. 5 right: Mamba's perplexity improves with context up to 1M; HyenaDNA gets worse"
+        }
+      ],
+      "paperLink": "§4.1.2 · Table 2 · §4.3.2 · Fig. 5",
+      "worldEffect": "Tumble draws the road in the sand. It runs right off the edge.",
+      "intro": [
+        "Where does the road END? Your Cursed Book knows. Do you?",
+        "Three questions. All right in one go!"
+      ],
+      "wrong": [
+        "Nope!"
+      ],
+      "success": [
+        "The road never ends... and Noodle doesn't care! You really read it!"
+      ],
+      "retry": [
+        "Read the Cursed Book, then come back. I'll be on Noodle's tail."
+      ]
+    },
+    {
+      "id": "e1",
+      "type": "environment",
+      "title": "Parcel Day",
+      "giver": "penny",
+      "requires": [
+        "c4"
+      ],
+      "environment": "parcel-day",
+      "spec": {
+        "goal": "Parcel Day: each 🔔 hears only its own parcel",
+        "progress": "Parcel Day: {ok}/5 🔔 · ◯ {marbles} left",
+        "progressNote": "api.onProgress replaces the whole HUD task line, so the progress text carries the name. Call it after every placement and after every run; {ok} is 0 before the first run.",
+        "reminder": [
+          "Parcels are by Noodle. Ring the dispatch bell to send him off.",
+          "Empty parcels get NOTHING. Not somebody else's bead!"
+        ],
+        "where": "Main path left of the stream (y 0), along the front of the path strip: from in front of Noodle (lane-left, x -21) to just before Tumble (lane-mid, x -6). Positions are [x, y, z] world units; the Speck is 1.9 tall. The camera looks from +z and low (about 13° down, about 22 units wide), so every prop stands up off the ground. The fences at z 3.0 (x -31..-26 and -4..3) would hide low props, so the row stays between them. The stage lanterns at (-26, 2.9) and (-18, 2.9) (there from the 2nd solved challenge on) stand just in front of the row: leave them. Nudge anything that clips.",
+        "row": {
+          "z": 2.25,
+          "x0": -24.6,
+          "step": 0.82,
+          "rule": "slot i stands at x = x0 + i * step, z = row.z (slot 0 at -24.6, slot 21 at -7.38)"
+        },
+        "slots": [
+          {
+            "i": 0,
+            "x": -24.6,
+            "tok": "sand",
+            "parcel": "kayvee"
+          },
+          {
+            "i": 1,
+            "x": -23.78,
+            "tok": "ruby",
+            "parcel": "kayvee"
+          },
+          {
+            "i": 2,
+            "x": -22.96,
+            "tok": "sand",
+            "parcel": "kayvee"
+          },
+          {
+            "i": 3,
+            "x": -22.14,
+            "tok": "sand",
+            "parcel": "kayvee"
+          },
+          {
+            "i": 4,
+            "x": -21.32,
+            "tok": "bell",
+            "parcel": "kayvee"
+          },
+          {
+            "i": 5,
+            "x": -20.5,
+            "tok": "ribbon",
+            "ribbon": "R1"
+          },
+          {
+            "i": 6,
+            "x": -19.68,
+            "tok": "sand",
+            "parcel": "tumble"
+          },
+          {
+            "i": 7,
+            "x": -18.86,
+            "tok": "sand",
+            "parcel": "tumble"
+          },
+          {
+            "i": 8,
+            "x": -18.04,
+            "tok": "bell",
+            "parcel": "tumble"
+          },
+          {
+            "i": 9,
+            "x": -17.22,
+            "tok": "ribbon",
+            "ribbon": "R2"
+          },
+          {
+            "i": 10,
+            "x": -16.4,
+            "tok": "sand",
+            "parcel": "marrow"
+          },
+          {
+            "i": 11,
+            "x": -15.58,
+            "tok": "lapis",
+            "parcel": "marrow"
+          },
+          {
+            "i": 12,
+            "x": -14.76,
+            "tok": "bell",
+            "parcel": "marrow"
+          },
+          {
+            "i": 13,
+            "x": -13.94,
+            "tok": "ribbon",
+            "ribbon": "R3"
+          },
+          {
+            "i": 14,
+            "x": -13.12,
+            "tok": "um",
+            "parcel": "umberto"
+          },
+          {
+            "i": 15,
+            "x": -12.3,
+            "tok": "sand",
+            "parcel": "umberto"
+          },
+          {
+            "i": 16,
+            "x": -11.48,
+            "tok": "um",
+            "parcel": "umberto"
+          },
+          {
+            "i": 17,
+            "x": -10.66,
+            "tok": "bell",
+            "parcel": "umberto"
+          },
+          {
+            "i": 18,
+            "x": -9.84,
+            "tok": "ribbon",
+            "ribbon": "R4"
+          },
+          {
+            "i": 19,
+            "x": -9.02,
+            "tok": "emerald",
+            "parcel": "penny"
+          },
+          {
+            "i": 20,
+            "x": -8.2,
+            "tok": "sand",
+            "parcel": "penny"
+          },
+          {
+            "i": 21,
+            "x": -7.38,
+            "tok": "bell",
+            "parcel": "penny"
+          }
+        ],
+        "parcels": [
+          {
+            "owner": "kayvee",
+            "name": "Kayvee",
+            "slots": [
+              0,
+              4
+            ],
+            "bell": 4,
+            "own": "ruby"
+          },
+          {
+            "owner": "tumble",
+            "name": "Tumble",
+            "slots": [
+              6,
+              8
+            ],
+            "bell": 8,
+            "own": null,
+            "note": "empty: his gran forgot the bead"
+          },
+          {
+            "owner": "marrow",
+            "name": "Doc Marrow",
+            "slots": [
+              10,
+              12
+            ],
+            "bell": 12,
+            "own": "lapis"
+          },
+          {
+            "owner": "umberto",
+            "name": "Umberto",
+            "slots": [
+              14,
+              17
+            ],
+            "bell": 17,
+            "own": null,
+            "note": "empty: a cousin's letter of nothing but ums"
+          },
+          {
+            "owner": "penny",
+            "name": "Penny",
+            "slots": [
+              19,
+              21
+            ],
+            "bell": 21,
+            "own": "emerald"
+          }
+        ],
+        "parcelsNote": "own = the last bead in the parcel before its bell (null = no bead). The parcels are deliveries: each owner waits at the bell at the end of their parcel.",
+        "ribbons": [
+          {
+            "id": "R1",
+            "slot": 5,
+            "between": [
+              "kayvee",
+              "tumble"
+            ]
+          },
+          {
+            "id": "R2",
+            "slot": 9,
+            "between": [
+              "tumble",
+              "marrow"
+            ]
+          },
+          {
+            "id": "R3",
+            "slot": 13,
+            "between": [
+              "marrow",
+              "umberto"
+            ]
+          },
+          {
+            "id": "R4",
+            "slot": 18,
+            "between": [
+              "umberto",
+              "penny"
+            ]
+          }
+        ],
+        "marbles": 2,
+        "marblesNote": "Penny's spare clear marbles: glass beads with no colour at all. The stock is 2; a marble taken off a spot goes back to it.",
+        "props": {
+          "wrapping": "Each parcel's slots sit on one strip of brown wrapping paper (#c9a26b, 0.04 thick, 0.5 deep, as long as its slots) with a white string along it.",
+          "sand": "a small heap: cone r 0.17, h 0.13, #d9b87a, a few darker dots",
+          "bead": "a faceted gem (octahedron r 0.15) on a tiny cream paper stand 0.25 tall, in the c1 colours (ruby #e61f33, lapis #2659e6, emerald #1abf59), each with its own cut as in m1",
+          "um": "an upright paper speech bubble (0.36 × 0.26, white, ink outline) on a stick 0.3 tall, 'um' in grey (canvas texture), facing +z",
+          "bell": "a thin wooden post (r 0.04, 0.95 tall, #6a4a2a) with a small black bell; on top a round paper portrait card (0.44 wide, facing +z) of the owner (species and colours from the region's inhabitants) with the name under the face in 16 px ink. Collider circle r 0.15.",
+          "ribbon": "a red ribbon bow (#e8566a) lying in the gap between two strips, and a faint dashed white circle (r 0.3) on the ground: the spot",
+          "marble": "a clear glass sphere on the spot: r 0.16, #e8f6ff, transparent (opacity 0.45), a white glint",
+          "sandPinch": "a sand heap on the spot, like the sand slots but a little wider"
+        },
+        "menu": {
+          "interactable": {
+            "label": "Ribbon",
+            "icon": "🎀",
+            "radius": 0.75,
+            "promptHeight": 1.4
+          },
+          "question": "Between {a}'s and {b}'s parcels:",
+          "options": [
+            "◯ Clear marble ({n} left)",
+            "∴ Pinch of sand",
+            "Nothing",
+            "Leave"
+          ],
+          "rules": [
+            "w.ask(question, options) with {a} and {b} the owners' names. Each spot holds one thing: nothing, a marble or a pinch of sand; a choice replaces what is there.",
+            "Clear marble with none left and none on this spot: w.toast('No clear marbles left.'), no change.",
+            "Leave: no change. After any change: w.sfx('paper'), update the prop, api.onProgress(progress)."
+          ],
+          "note": "Approach a ribbon from the front (z > 2.4): R1 is close to Noodle's own talk prompt, and the nearest prompt wins."
+        },
+        "dispatch": {
+          "id": "dispatch",
+          "label": "Dispatch bell",
+          "icon": "🔔",
+          "at": [
+            -16.0,
+            0,
+            0.55
+          ],
+          "radius": 1.1,
+          "promptHeight": 1.9,
+          "collider": 0.25,
+          "look": "a brass handbell (#e6b84a) hanging from a little wooden post with an arm (1.3 tall) and a red pennant",
+          "why": "It stands behind the middle of the row, so the camera (centred on the Speck) sees the whole road during the run.",
+          "onInteract": "Await the whole delivery run, then the result. walkscene keeps the scene busy meanwhile, so the Speck stands and watches and nothing changes mid-run."
+        },
+        "noodle": {
+          "mesh": "w.villager('noodle'). Remember his position; put him back at his anchor after the run and in destroy(). If null, use a green capsule stand-in.",
+          "belly": "Add a small sphere (r 0.17) as a child of Noodle's mesh at local (0, 0.62, 0.62), emissive in the belly's colour, hidden while the belly is empty. Remove it in destroy().",
+          "path": "Glide from his anchor (w.anchors['lane-left'] = [-21, 0, 1.4]) to [-25.3, 0, 1.45] (0.8 s, small bob), then slither right along z 1.45 at 1.6 units/s to x -7.2, wait 0.6 s, glide back to the anchor (1.8 s). About 20 s in all.",
+          "process": "When the mesh's x passes a slot's x - 0.12, handle that slot once, in order:",
+          "steps": [
+            "bead: belly = that bead; the gem hops into his mouth (0.25 s arc, then hides), w.sfx('pop'); the belly sphere takes the bead's colour.",
+            "ribbon holding a marble: belly = empty; the marble hops in the same way, w.sfx('pop'); the belly sphere fades out.",
+            "sand, um, a bare ribbon or a ribbon with sand: nothing changes (a puff of dust over sand).",
+            "bell: he stops 0.9 s and shouts his belly (see bells)."
+          ],
+          "reset": "After the run every hidden gem and marble fades back in where it was (Penny re-packs). The placements stay."
+        },
+        "bells": {
+          "shout": "A speech-bubble sprite 0.5 above the portrait card: '{WORD}!' in the bead colour (RUBY!, LAPIS!, EMERALD!), or 'Nothing for you!' in grey when the belly is empty.",
+          "judge": "Right when the shout matches the parcel's own bead (parcels[].own; null = nothing). w.sfx('ding') if right, w.sfx('buzz') if wrong.",
+          "flag": "A paper flag on a pin pops up on the post, green #7bcd5d ✓ or red #e8566a ✕, with the owner's reaction sprite above it. Both stay until the next run starts."
+        },
+        "reactions": {
+          "kayvee": {
+            "right": "Ruby! For my cart!"
+          },
+          "tumble": {
+            "right": "Nothing? Gran forgot again!",
+            "wrong": "That's Kayvee's ruby!"
+          },
+          "marrow": {
+            "right": "Lapis. Lovely."
+          },
+          "umberto": {
+            "right": "Um. Nothing? Um. Typical.",
+            "wrong": "Um. That's Doc's lapis."
+          },
+          "penny": {
+            "right": "Emerald! For the shelf."
+          },
+          "fallbackWrong": "That's not mine!"
+        },
+        "result": {
+          "ok": "ok = number of ✓ bells (of 5); then api.onProgress(progress).",
+          "win": "ok = 5: api.onSolved() (the region then plays the success lines, removes the puzzle and, if this was the last challenge, plays the resolution).",
+          "else": "w.speak('penny', [count, details])",
+          "count": {
+            "one": "One mix-up!",
+            "many": "{n} mix-ups!"
+          },
+          "detail": "{owner} got {source}'s {bead}.",
+          "detailNote": "One sentence per wrong bell, in road order, joined by a space; source = the owner of the parcel the shouted bead came from. With this road only Tumble and Umberto can be wrong, so the line stays under 90 characters ('Tumble got Kayvee's ruby. Umberto got Doc Marrow's lapis.'). Never say how to fix it."
+        },
+        "solution": {
+          "R1": "marble",
+          "R2": "nothing or sand",
+          "R3": "marble",
+          "R4": "nothing or sand",
+          "why": "Tumble's and Umberto's parcels hold no bead, so without help Noodle still has the previous parcel's bead (Kayvee's ruby, Doc Marrow's lapis) at their bells. Sand cannot help: Noodle lets sand slide and keeps his belly across any amount of it. A clear marble is gulped like any bead, and a gulp replaces the whole belly, here with nothing. The other ribbons need nothing: the next parcel's own bead replaces the belly anyway. With exactly 2 marbles only R1 + R3 wins (checked over all 81 placements)."
+        },
+        "destroy": "Remove every mesh, sprite, prop, collider and interactable, and Noodle's belly sphere; put Noodle's mesh back at his anchor (also mid-run); unsubscribe from w.onUpdate; delete window.__etl.parcelDay.",
+        "testHooks": "Set it.id on every interactable ('R1'..'R4', 'dispatch'), so tests can find them in window.__etl.ws.interactables (labels 'Ribbon', 'Dispatch bell'). While mounted, keep window.__etl.parcelDay = { placed: { R1..R4: 'none' | 'sand' | 'marble' }, marbles, running, last: [{ owner, heard, ok }] }.",
+        "rule": "Section 3.5.2, Boundary Resetting: when independent sequences are stitched together (for example documents packed end to end to use the hardware better), LTI models bleed information from one into the next, while a selective SSM can reset its state at the boundary (Δ_t → ∞, or g_t → 1 in Theorem 1). Penny packs parcels end to end to save trips; an empty parcel shows the bleed (Noodle shouts the previous parcel's bead). The player must find the reset: sand is a grain Noodle ignores with a tiny step, so his belly persists across it (selection remembers what matters across any amount of noise), while a clear marble is taken in with a big gulp that carries nothing and wipes the belly: a boundary token. Umberto's parcel adds Variable Spacing: ums are fillers to let slide, not beads. Playing well = a reset exactly at the boundaries where the old belly would leak into the next parcel."
+      },
+      "design": "The finale, on the road in front of Noodle. Penny has packed five parcels end to end (Kayvee, Tumble, Doc Marrow, Umberto, Penny): each a strip of wrapping paper with its grains and its owner's bell at the end, with a ribbon between parcels. Ring the dispatch bell and Noodle slithers the whole row, gulping beads and shouting at each bell whatever is in his belly. Tumble's and Umberto's parcels hold no bead, so they hear the previous parcel's bead: mix-ups. At each ribbon the Speck may leave a clear marble (2 in all) or a pinch of sand. Sand changes nothing; a marble is gulped like a bead and leaves his belly empty. With the 2 marbles before the two empty parcels every bell is right. Unlimited runs; the HUD keeps count.",
+      "paperLink": "§3.5.2 (Boundary Resetting, Variable Spacing, Δ) · §3.1 · Thm. 1",
+      "worldEffect": "Five bells ring at once. Tumble finds his bead. In his own pocket.",
+      "intro": [
+        "First real delivery day! I pack every parcel end to end. Saves trips.",
+        "At each parcel's bell, Noodle shouts its last bead. Some parcels are EMPTY.",
+        "Last time Tumble heard Kayvee's ruby! No mix-ups today. Parcels are by Noodle."
+      ],
+      "reminder": [
+        "Parcels are by Noodle. Ring the dispatch bell to send him off.",
+        "Empty parcels get NOTHING. Not somebody else's bead!"
+      ],
+      "success": [
+        "Five bells, five right answers. Not one mix-up!",
+        "Hmph. That snake can carry the post. Don't tell him I said so."
+      ]
+    }
+  ],
+  "book": {
+    "note": "For content/regions/mamba.json book.guard / book.offlineHints when this pack is merged: the server reads the book's guard only from the region file, and the game ignores this key.",
+    "guard": [
+      "Do not give, hint at or confirm the answers to Tumble's road questions: in the Induction Heads test Mamba, trained on 256 tokens, stays perfect up to about a million (2^20, '4000x longer'); no other model lasts beyond 2x its training length; on DNA, Mamba gets better and better with longer context up to 1M (HyenaDNA gets worse). Never say which option of his questions is right.",
+      "Do not say how Noodle can forget between Penny's packed parcels (a colourless bead such as a clear marble, gulped at a ribbon, wipes his belly; sand does not), or which ribbons need one (before Tumble's and before Umberto's parcel)."
+    ],
+    "offlineHints": [
+      {
+        "keywords": [
+          "induction",
+          "harry",
+          "potter",
+          "recall",
+          "extrapolat",
+          "a million",
+          "4000",
+          "road end",
+          "how far"
+        ],
+        "text": "How far does a trained memory reach? Section 4.1.2 tests it. Table 2 draws it."
+      },
+      {
+        "keywords": [
+          "dna",
+          "genome",
+          "context length",
+          "longer context",
+          "hyena",
+          "apes"
+        ],
+        "text": "Longer and longer strings of letters. Section 4.3.2 says who grows wiser. Figure 5 shows it."
+      },
+      {
+        "keywords": [
+          "parcel",
+          "ribbon",
+          "marble",
+          "packed",
+          "boundary",
+          "mix-up",
+          "mixup",
+          "empty parcel"
+        ],
+        "text": "Stitched roads bleed into each other. Section 3.5.2 names the cure: Boundary Resetting."
+      },
+      {
+        "keywords": [
+          "race",
+          "kv cache",
+          "cache",
+          "throughput",
+          "rummage",
+          "post office"
+        ],
+        "text": "Who keeps every grain never forgets, and never hurries. Section 3.1 weighs it; 4.5 times it."
+      }
+    ]
+  }
+}
