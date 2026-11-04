@@ -36,8 +36,13 @@ export function buildVillager(spec = {}) {
   if (species === 'snake') return buildSnake(o);
   const g = new THREE.Group();
   const fur = M(o.fur, { roughness: 0.9 });
-  for (const sx of [-0.18, 0.18]) add(new THREE.CapsuleGeometry(0.13, 0.15, 6, 10), M(o.pants), sx, 0.22, 0, g);
-  for (const sx of [-0.2, 0.2]) add(new THREE.SphereGeometry(0.16, 10, 8), M(o.shoe), sx, 0.08, 0.06, g).scale.set(1, 0.6, 1.3);
+  const legs = [];
+  for (const sx of [-1, 1]) { // each leg (pants + shoe) swings on a hip pivot
+    const leg = new THREE.Group(); leg.position.set(sx * 0.19, 0.36, 0); g.add(leg);
+    add(new THREE.CapsuleGeometry(0.13, 0.15, 6, 10), M(o.pants), -sx * 0.01, -0.14, 0, leg);
+    add(new THREE.SphereGeometry(0.16, 10, 8), M(o.shoe), sx * 0.01, -0.28, 0.06, leg).scale.set(1, 0.6, 1.3);
+    legs.push(leg);
+  }
   const body = new THREE.Group(); g.add(body);
   add(new THREE.CapsuleGeometry(0.36, 0.35, 8, 16), M(o.shirt), 0, 0.72, 0, body).scale.set(1, 1, 0.85);
   const arms = [];
@@ -65,7 +70,7 @@ export function buildVillager(spec = {}) {
   if (E === 'frog') add(new THREE.TorusGeometry(0.16, 0.025, 6, 16, Math.PI), M(0x2b2233), 0, -0.12, 0.54, head).rotation.z = Math.PI;
   else if (E !== 'pig' && E !== 'duck') add(new THREE.SphereGeometry(0.07, 10, 8), M(o.nose), 0, -0.08, 0.65, head).scale.set(1.3, 0.9, 0.8);
   if (spec.hat) add(new THREE.CylinderGeometry(0.35, 0.42, 0.25, 16), M(hex(spec.hat)), 0, 0.55, 0, head);
-  finish(g, { body, head, arms, eyes });
+  finish(g, { body, head, arms, eyes, legs });
   return g;
 }
 
@@ -98,15 +103,38 @@ function buildSnake(o) {
 
 function finish(g, parts) {
   g.traverse((m) => { if (m.isMesh) { m.castShadow = true; } });
-  let t = Math.random() * 10, blink = 2 + Math.random() * 3;
+  let t = Math.random() * 10, blink = 2 + Math.random() * 3, step = 0;
+  const armRest = parts.arms.map((a) => a.rotation.z);
+  const legs = parts.legs || [];
   g.userData.parts = parts;
-  g.userData.animate = (dt, { talking = false } = {}) => {
+  // walk: 0..1 (blended by the caller); act: null | 'hop' | 'wave' | 'look' | 'happy', actT: seconds into it
+  g.userData.animate = (dt, { talking = false, walk = 0, act = null, actT = 0 } = {}) => {
     t += dt;
-    const bob = talking ? Math.abs(Math.sin(t * 9)) * 0.05 : Math.sin(t * 2) * 0.015;
-    parts.body.position.y = bob;
+    if (walk > 0.01) step += dt * 9; else step = 0;
+    const sw = Math.sin(step);
+    let lift = 0, headYaw = 0;
+    if (act === 'hop' || act === 'happy') {
+      const T = act === 'hop' ? 0.5 : 0.36, k = (actT % T) / T;
+      if (act === 'hop' || actT < T * 2) lift = Math.sin(k * Math.PI) * (act === 'hop' ? 0.28 : 0.16);
+    }
+    if (act === 'look') headYaw = Math.sin(Math.min(1, actT / 1.8) * Math.PI * 2) * 0.55;
+    const bob = talking ? Math.abs(Math.sin(t * 9)) * 0.05 : walk > 0.01 ? Math.abs(sw) * 0.07 * walk : Math.sin(t * 2) * 0.015;
+    parts.body.position.y = bob + lift;
+    legs.forEach((l, i) => { l.rotation.x = (i ? -sw : sw) * 0.55 * walk; l.position.y = 0.36 + lift; });
+    // a little waddle while walking
+    parts.body.rotation.z = Math.sin(step) * 0.07 * walk;
     parts.head.rotation.z = Math.sin(t * (talking ? 6 : 1.3)) * (talking ? 0.08 : 0.03);
-    parts.arms.forEach((a, i) => { a.rotation.x = talking ? Math.sin(t * 8 + i * 3) * 0.4 : 0; });
-    if (parts.tongue) parts.tongue.visible = Math.sin(t * 3) > 0.6;
+    parts.head.rotation.y = headYaw;
+    parts.arms.forEach((a, i) => {
+      a.rotation.x = talking ? Math.sin(t * 8 + i * 3) * 0.4 : (i ? sw : -sw) * 0.5 * walk;
+      a.rotation.z = armRest[i];
+    });
+    if (act === 'wave' && parts.arms[1]) { // the right arm up, waving
+      const a = parts.arms[1], up = Math.min(1, actT / 0.25) * Math.min(1, Math.max(0, (1.5 - actT) / 0.25));
+      a.rotation.z = armRest[1] + up * 2.2; a.rotation.x = Math.sin(actT * 14) * 0.35 * up;
+    }
+    if (parts.tongue) parts.tongue.visible = act === 'wave' ? Math.sin(actT * 18) > 0 : Math.sin(t * 3) > 0.6;
+    if (!legs.length) parts.body.rotation.z = Math.sin(t * 6) * 0.12 * walk; // the snake sways along
     blink -= dt;
     const closed = blink < 0.12;
     parts.eyes.forEach((e) => { e.scale.y = closed ? 0.15 : 1.35; });

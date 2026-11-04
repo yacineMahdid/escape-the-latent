@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { buildDiorama, ANCHORS, DOOR_POS } from '../../engine/diorama.js';
 import { buildVillager } from '../../engine/villagers.js';
 import { sampleHeight } from '../../engine/walk.js';
+import { createVillagerLife } from '../villagerlife.js';
 import { createPlayer } from '../player.js';
 import { createWalkScene, dioramaCamera } from '../walkscene.js';
 import { buildStation } from '../stations.js';
@@ -115,16 +116,15 @@ export async function createRegionScene(ctx, regionId) {
     mesh.position.set(a[0], a[1], a[2]);
     faceCamera(mesh, a[0]);
     ws.scene.add(mesh);
-    const rec = { data: inh, mesh, talking: false, baseRot: mesh.rotation.y };
+    const rec = { data: inh, mesh, talking: false, held: 0 };
     people.set(inh.id, rec);
-    mesh.userData.update = (dt) => {
-      mesh.userData.animate?.(dt, { talking: rec.talking });
-      const target = rec.talking ? Math.atan2(player.pos.x - mesh.position.x, player.pos.z - mesh.position.z) * 0.6 : rec.baseRot;
-      mesh.rotation.y += (target - mesh.rotation.y) * Math.min(1, dt * 6);
-    };
+    // they potter about near their spot (engine-side: game/villagerlife.js); not on the narrow bridge
+    const collider = { type: 'circle', x: a[0], z: a[2], r: 0.55 };
+    world.colliders.push(collider);
+    rec.life = createVillagerLife({ mesh, home: a, world, player, collider, canWander: a !== ANCHORS.bridge && inh.wander !== false, baseYaw: mesh.rotation.y });
+    mesh.userData.update = (dt) => rec.life.update(dt, { talking: rec.talking, held: rec.held > 0 });
     ws.extras.push(mesh);
-    world.colliders.push({ type: 'circle', x: a[0], z: a[2], r: 0.55 });
-    ws.addInteractable({ label: inh.name, icon: '💬', pos: { x: a[0], y: a[1], z: a[2] }, onInteract: () => talkTo(inh.id) });
+    ws.addInteractable({ label: inh.name, icon: '💬', pos: () => rec.life.pos, onInteract: () => talkTo(inh.id) });
   }
   const stations = new Map();
   for (const s of region.stations || []) {
@@ -332,12 +332,20 @@ export async function createRegionScene(ctx, regionId) {
 
   // Environmental puzzle: public/js/envpuzzles/<c.environment>.js lives in the 3D world until solved.
   const activeEnv = new Map(); // challenge id -> handle
+  const envHolds = new Map(); // challenge id -> villagers the puzzle uses (they stay put meanwhile)
+  const releaseHolds = (id) => { for (const r of envHolds.get(id) || []) r.held = Math.max(0, r.held - 1); envHolds.delete(id); };
   function envApi(c) {
     const speakerOf = (id) => (people.get(id) ? { name: nameOf(id), color: colorOf(id) } : null);
     return {
       THREE, scene: ws.scene, world, anchors: ANCHORS, regionId, biome: world.biome,
       player: { get pos() { return player.pos; }, place: (x, y, z) => player.place(x, y, z) },
-      villager: (id) => people.get(id)?.mesh || null,
+      villager: (id) => {
+        const r = people.get(id);
+        if (!r) return null;
+        const held = envHolds.get(c.id) || new Set(); envHolds.set(c.id, held);
+        if (!held.has(r)) { held.add(r); r.held++; r.life.goHome(); }
+        return r.mesh;
+      },
       station: (id) => stations.get(id)?.mesh || null,
       addInteractable: (it) => ws.addInteractable(it),
       removeInteractable: (it) => ws.removeInteractable(it),
@@ -362,7 +370,7 @@ export async function createRegionScene(ctx, regionId) {
     const solve = () => {
       if (!activeEnv.has(c.id)) return;
       activeEnv.delete(c.id);
-      const go = () => { if (ws.busy) { setTimeout(go, 150); return; } ws.run(async () => { try { handle?.destroy?.(); } catch (e) { console.error(e); } await onSolved(c); refreshTask(); }); };
+      const go = () => { if (ws.busy) { setTimeout(go, 150); return; } ws.run(async () => { try { handle?.destroy?.(); } catch (e) { console.error(e); } releaseHolds(c.id); await onSolved(c); refreshTask(); }); };
       go();
     };
     try { handle = (mod.default || mod).mount(envApi(c), c.spec || {}, { onSolved: solve, onProgress: (text) => setHud({ task: text }) }); }

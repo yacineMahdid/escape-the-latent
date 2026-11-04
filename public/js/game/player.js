@@ -75,12 +75,17 @@ export async function createPlayer(character) {
   const model = h && h.buildHuman ? h.buildHuman(character || {}) : standIn(character || {});
   const pos = { x: 0, y: 0, z: 0 };
   let facing = 1;
+  // where the character looks, like Animal Crossing: 0 = toward the camera (+z), PI/2 = right, PI = away
+  let heading = 0;
   const SPEED = 4.6;
   return {
     model,
     pos,
     get facing() { return facing; },
+    get heading() { return heading; },
     place(x, y, z) { pos.x = x; pos.y = y; pos.z = z; model.position.set(x, y, z); },
+    // turn toward a point (someone you talk to, a thing you use)
+    faceTo(x, z) { if (Math.hypot(x - pos.x, z - pos.z) > 0.05) heading = Math.atan2(x - pos.x, z - pos.z); },
     // world: { zones, colliders }
     update(dt, world, frozen = false) {
       let moving = false;
@@ -93,13 +98,14 @@ export async function createPlayer(character) {
           pos.x = next.x; pos.z = next.z;
           pos.y += (next.y - pos.y) * Math.min(1, dt * 18);
           if (a.x) facing = a.x > 0 ? 1 : -1;
+          heading = Math.atan2(a.x, a.z); // turns even when a wall stops it
         }
       }
       model.position.set(pos.x, pos.y, pos.z);
-      if (model.userData.animate) model.userData.animate(dt, { moving, speed: moving ? 1 : 0, facing });
+      if (model.userData.animate) model.userData.animate(dt, { moving, speed: moving ? 1 : 0, facing, heading });
       if (!model.userData.handlesFacing) {
-        const target = moving ? facing * 0.9 : facing * 0.25;
-        model.rotation.y += (target - model.rotation.y) * Math.min(1, dt * 10);
+        const d = Math.atan2(Math.sin(heading - model.rotation.y), Math.cos(heading - model.rotation.y));
+        model.rotation.y += d * Math.min(1, dt * 14);
       }
       return moving;
     },

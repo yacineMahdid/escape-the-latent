@@ -531,7 +531,7 @@ export function buildHuman(params = {}) {
   root.userData.parts = { pivot, body, torso, head, legs, arms, eyes };
   root.userData.handlesFacing = true;
   root.userData.hop = () => { hopT = 0; };
-  root.userData.animate = (dt, { moving = false, speed = 1, facing = 0 } = {}) => {
+  root.userData.animate = (dt, { moving = false, speed = 1, facing = 0, heading } = {}) => {
     dt = clamp(Number(dt) || 0, 0, 0.1);
     t += dt;
     walk += ((moving ? 1 : 0) - walk) * Math.min(1, dt * 9);
@@ -565,10 +565,15 @@ export function buildHuman(params = {}) {
     head.position.y = HEAD_Y + breath * 0.012;
     head.rotation.z = Math.sin(t * 1.3) * 0.035 * idle + Math.sin(phase) * 0.06 * walk;
     head.rotation.x = Math.sin(t * 0.9) * 0.02 * idle - 0.04 * walk;
-    // facing: turn toward -x / +x but stay readable from a camera at +z
-    const f = facing > 0 ? 1 : facing < 0 ? -1 : 0;
-    const goal = f * (moving ? 0.9 : 0.25);
-    yaw += (goal - yaw) * Math.min(1, dt * 9);
+    // heading (in the game): face any direction, like Animal Crossing, turning the short way round.
+    // facing (title, creator): a gentle turn toward -x / +x that stays readable from a camera at +z.
+    if (typeof heading === 'number') {
+      yaw += Math.atan2(Math.sin(heading - yaw), Math.cos(heading - yaw)) * Math.min(1, dt * 14);
+    } else {
+      const f = facing > 0 ? 1 : facing < 0 ? -1 : 0;
+      const goal = f * (moving ? 0.9 : 0.25);
+      yaw += (goal - yaw) * Math.min(1, dt * 9);
+    }
     pivot.rotation.y = yaw;
     // blink
     blink -= dt;
