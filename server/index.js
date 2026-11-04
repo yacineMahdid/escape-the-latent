@@ -757,7 +757,7 @@ async function main() {
   console.log([
     `Escape the Latent is running at http://${shownHost}:${addr.port}/`,
     ai.enabled
-      ? `Claude: on (${MODEL}).`
+      ? `Claude: on (${MODEL}${ai.viaClaudeCode ? ', through your Claude Code login' : ''}).`
       : 'Claude: off (no ANTHROPIC_API_KEY): the book mutters pre-written hints and explanations are graded with keywords.',
   ].join('\n'));
 

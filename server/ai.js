@@ -10,6 +10,7 @@
 // or two plus a code (see ERROR_CODES in index.js). Diagnostics go to the server log only.
 import Anthropic from '@anthropic-ai/sdk';
 import { findSpeaker } from './regions.js';
+import { createClaudeCodeClient } from './claude-code.js';
 
 export const MODEL = 'claude-opus-5-5';
 export const BETAS = Object.freeze(['server-side-fallback-2026-07-01']);
@@ -456,6 +457,8 @@ export function createAI({ client, env = process.env, logger = console, timeouts
       ...(env.ANTHROPIC_API_KEY ? { apiKey: env.ANTHROPIC_API_KEY } : { authToken: env.ANTHROPIC_AUTH_TOKEN }),
     });
   }
+  // No key: optionally answer through the local Claude Code login (see claude-code.js).
+  if (!sdk && env.USE_CLAUDE_CODE === '1') sdk = createClaudeCodeClient({ bin: env.CLAUDE_BIN || 'claude', logger });
   const enabled = Boolean(sdk);
   const limits = { ...AI_LIMITS, ...timeouts };
   const attempts = { ...AI_RETRIES, ...retries };
@@ -551,5 +554,5 @@ export function createAI({ client, env = process.env, logger = console, timeouts
     return { pass, score, feedback, offline: false };
   }
 
-  return { enabled, model: MODEL, book, avatar, grade };
+  return { enabled, viaClaudeCode: Boolean(sdk?.viaClaudeCode), model: MODEL, book, avatar, grade };
 }
