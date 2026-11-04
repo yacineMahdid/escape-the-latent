@@ -8,7 +8,8 @@
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
     "test": "node server/test/run.mjs",
-    "test:puzzles": "node test/puzzles/solve.cjs"
+    "test:puzzles": "node test/puzzles/solve.cjs",
+    "test:play": "node test/play/puzzles-ingame.cjs"
   },
   "engines": {
     "node": ">=18.17"

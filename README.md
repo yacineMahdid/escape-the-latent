@@ -72,5 +72,8 @@ browser (needs Playwright):
 BASE=http://localhost:3000 npm run test:puzzles
 ```
 
+`npm run test:play` does the same inside the real regions: it walks to each
+puzzle's villager, talks, solves, and checks the save and the artefact.
+
 Dev pages: `/dev/puzzle.html?region=attention&challenge=c1` opens one puzzle on
 its own, `/dev/kit.html` shows the shared puzzle board kit.
