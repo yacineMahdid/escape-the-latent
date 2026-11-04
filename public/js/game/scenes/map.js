@@ -29,7 +29,7 @@ export async function openMapOverlay(_ctx, { travel = true } = {}) {
   wrap.className = 'map-overlay';
   wrap.innerHTML = `
     <div class="map-card etl-panel">
-      <div class="map-head"><div class="map-title">The Latent</div>
+      <div class="map-head"><div class="map-title">Behind the little door</div>
       <button class="etl-btn hud-icon map-close" title="Close (Esc)">✕</button></div>
       <div class="map-body"><svg class="map-svg" viewBox="0 0 1000 640"></svg>
       <div class="map-info"><div class="map-info-empty">…</div></div></div>

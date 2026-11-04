@@ -9,24 +9,29 @@ contract, change this file in the same commit.
 You are a **Speck**: a human about the height of a coffee mug. **Jean-Lafontaine
 de Becancourt** is a normal-sized, grumpy old scientist (long black hair, a black
 beard, big eyebrows; not an Einstein type); he only looks giant because you are
-tiny. The hub is his desk. He sends you on "impossible" errands into
-**the Latent**: small paper worlds folded from famous machine learning papers.
-Each paper is a **region** on a paper map, rendered as a layered paper diorama
-(Paper Mario world layout, Animal Crossing characters, everything at your
-scale). Each region has a small, child-like story whose problem *is* the
+tiny. The hub is his desk. He sends you on "impossible" errands: down the
+ruler off his desk, across the floor, and through a **little door** in the
+baseboard into **small, real worlds** (not imaginary ones). Each famous machine
+learning paper is one world, a **region** on his map, rendered as a layered
+diorama (Paper Mario world layout, Animal Crossing characters, everything at
+your scale). Each region has a small, child-like story whose problem *is* the
 paper's core idea. You solve it by actually reading the paper (inside the game,
 in **the Cursed Book of Dimensionality**), then passing hands-on world puzzles, a Python coding
 challenge and an "explain it" conversation graded by Claude. You win an
-**artefact**, bring it back, and Becancourt is (grudgingly) astonished. The game does not hold your hand.
+**artefact**, bring it back through the little door, and Becancourt is
+(grudgingly) astonished. The game does not hold your hand.
 
 ### Scale (keep it consistent)
 
 - Becancourt is **normal-sized**. Narration, UI and docs never call him a giant.
-  Latent villagers may call him "your giant": that is their point of view.
-- The Speck and everything in the Latent share one small scale (the player and
-  villagers are about 1.9 units tall).
-- Lab: the desk top is the walkable world at `y = 0`; the room floor is at
-  `y = -9.5`; Becancourt is `buildScientist()` from `public/js/engine/scientist.js`
+  Villagers may call him "your giant": that is their point of view.
+- The Speck and everything in the small worlds share one small scale (the player
+  and villagers are about 1.9 units tall).
+- Lab: the desk top is walkable at `y = 0`; a ruler leans off its right edge
+  (a ramp sloping along x) down to the room floor at `y = -9.5`, which is
+  walkable to the right of the desk; the little door sits in the back wall's
+  baseboard at x 22 (travel starts there; you come back out of it). Every world
+  has the same little door at its left end (`DOOR_POS` in diorama.js); Becancourt is `buildScientist()` from `public/js/engine/scientist.js`
   scaled by 2.42 (~23 units tall,
   about 12x the Speck), standing on the floor behind the desk.
 

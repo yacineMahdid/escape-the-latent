@@ -3,11 +3,12 @@
 A cozy paper-diorama game. You are a **Speck**: a human small enough to stand on
 the desk of **Jean-Lafontaine de Becancourt**, a normal-sized, permanently
 irritated old scientist with long black hair, a black beard and big eyebrows
-(he only looks giant because you are tiny). He sends you into the
-Latent, a set of small paper worlds folded from famous machine learning papers,
-to bring back knowledge. Each world (Paper Mario-style layered dioramas, Animal
-Crossing-style villagers) has a story that *is* the paper's idea. You get
-through it by actually reading the paper.
+(he only looks giant because you are tiny). He sends you off his desk (slide
+down the ruler) and through a little door in the wall into small, real worlds,
+to bring back knowledge. In each world (Paper Mario-style layered dioramas,
+Animal Crossing-style villagers) the villagers' trouble *is* the idea of a
+famous machine learning paper. You get through it by actually reading the
+paper, in the Cursed Book of Dimensionality.
 
 The first three papers were picked by their **alphaXiv votes**:
 
