@@ -92,7 +92,7 @@ export async function open({ challenge = {}, regionId = 'local', speaker = {} } 
       reply.hidden = false;
       reply.dataset.mood = mood;
       reply.querySelector('.ex-reply-mark').textContent = mood === 'pass' ? '✓' : mood === 'fail' ? '✗' : '';
-      const showMeter = typeof score === 'number' && Number.isFinite(score) && score > 0 && mood !== 'error';
+      const showMeter = mood === 'fail' && typeof score === 'number' && Number.isFinite(score) && score > 0;
       meter.hidden = !showMeter;
       if (showMeter) {
         meter.firstChild.style.width = `${Math.round(Math.max(0, Math.min(1, score)) * 100)}%`;

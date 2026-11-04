@@ -97,12 +97,17 @@ async function consoleRows(page) {
   })));
 }
 
+// a closed UI fades out for ~200 ms before its DOM goes; never mistake it for the next one
+const gone = (page) => page.waitForFunction(() => !document.querySelector('.term-overlay, .ex-overlay'));
+
 async function openTerminal(page) {
+  await gone(page);
   await page.evaluate(() => { window.__term.go('code', 'code1'); });
   await page.waitForSelector('.term-overlay .term');
 }
 
 async function openExplain(page) {
+  await gone(page);
   await page.evaluate(() => { window.__term.go('explain', 'explain1'); });
   await page.waitForSelector('.ex-bubble');
 }
@@ -370,6 +375,7 @@ async function openExplain(page) {
     });
 
     await step('fundamental-shaped challenge ({ id, type, title, question, rubric, offline }) works too', async () => {
+      await gone(page);
       const done = page.evaluate(async () => {
         const ex = await import('/js/ui/explain.js');
         return ex.open({
@@ -378,6 +384,7 @@ async function openExplain(page) {
           speaker: { name: 'Pip' },
         });
       });
+      done.catch(() => {});                 // if a check below fails, report that, not the closed page
       await page.waitForSelector('.ex-bubble');
       assert.equal(await page.$eval('.ex-tag', (e) => e.textContent), 'Pip');
       assert.equal(await page.$eval('.ex-q code', (e) => e.textContent), '/ sqrt(d_k)');

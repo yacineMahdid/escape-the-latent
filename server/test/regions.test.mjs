@@ -89,6 +89,22 @@ describe('fixture region', () => {
     }
   });
 
+  it('has an explain and a choice fundamental, posed by an inhabitant after the main chain', () => {
+    const kinds = FIXTURE.fundamentals.map((f) => f.check.kind);
+    assert.deepEqual(kinds.sort(), ['choice', 'explain']);
+    const ids = new Set([...FIXTURE.challenges, ...FIXTURE.fundamentals].map((c) => c.id));
+    assert.equal(ids.size, FIXTURE.challenges.length + FIXTURE.fundamentals.length, 'one id space');
+    for (const f of FIXTURE.fundamentals) {
+      assert.ok(FIXTURE.inhabitants.some((i) => i.id === f.giver), `${f.id} giver`);
+      assert.deepEqual(f.requires, ['explain1'], 'never in the way of the main chain');
+      for (const line of [...f.intro, ...f.wrong, ...f.success, ...f.known]) assert.ok(line.length <= 90, line);
+    }
+    const explainF = findChallenge(FIXTURE, 'f1');
+    assert.equal(explainF.type, 'explain');
+    assert.deepEqual(explainF.retry, FIXTURE.fundamentals[0].wrong);
+    assert.equal(findChallenge(FIXTURE, 'f2').type, 'fundamental');
+  });
+
   // The code challenge's tests must pass the reference solution and fail the starter and a naive softmax.
   it('code1 tests separate a correct softmax from wrong ones (python3 + numpy)', (t) => {
     const probe = spawnSync('python3', ['-c', 'import numpy'], { encoding: 'utf8' });

@@ -3,8 +3,27 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 
 import { startTestServer, request, tmpDir, ROOT, FIXTURE } from './helpers.mjs';
+import { inlineScriptHashes } from '../index.js';
+
+const sha256 = (text) => `'sha256-${crypto.createHash('sha256').update(text, 'utf8').digest('base64')}'`;
+const directive = (csp, name) => csp.split(/;\s*/).find((d) => d.startsWith(`${name} `)) || '';
+
+// The page contract: what the policy must say, whatever the page.
+function assertPolicy(csp) {
+  assert.equal(directive(csp, 'default-src'), "default-src 'self'");
+  assert.equal(directive(csp, 'object-src'), "object-src 'none'");
+  assert.equal(directive(csp, 'base-uri'), "base-uri 'none'");
+  assert.equal(directive(csp, 'frame-ancestors'), "frame-ancestors 'self'");
+  const script = directive(csp, 'script-src');
+  assert.match(script, /^script-src 'self'/);
+  assert.doesNotMatch(script, /'unsafe-inline'|'unsafe-eval'|'unsafe-hashes'|\*|https?:|data:|blob:/, 'no inline handlers, eval or other hosts');
+  assert.match(directive(csp, 'style-src'), /fonts\.googleapis\.com/);
+  assert.match(directive(csp, 'font-src'), /fonts\.gstatic\.com/);
+  assert.match(directive(csp, 'img-src'), /data: blob:/);
+}
 
 const FILES = {
   'index.html': ['<!doctype html><title>fixture home</title>', 'text/html; charset=utf-8'],
@@ -24,6 +43,17 @@ const FILES = {
   'fonts/paper.woff2': [Buffer.from('wOF2fake'), 'font/woff2'],
   'mystery.xyz': ['???', 'application/octet-stream'],
 };
+
+const IMPORT_MAP = '{ "imports": { "three": "/vendor/three/three.module.js" } }';
+const INLINE_MODULE = "\nimport * as THREE from 'three';\ndocument.title = 'ok';\n";
+const SCRIPTED_PAGE = [
+  '<!doctype html><html><head>',
+  `<script type="importmap">${IMPORT_MAP}</script>`,
+  '<script type="module" src="/app.js"></script>',
+  '</head><body>',
+  `<SCRIPT type="module">${INLINE_MODULE}</SCRIPT >`,
+  '</body></html>',
+].join('\n');
 
 describe('static files from public/', () => {
   let srv;
@@ -46,6 +76,37 @@ describe('static files from public/', () => {
     srv = await startTestServer({ publicDir: pub });
   });
   after(() => srv.close());
+
+  it('sends a Content-Security-Policy with every HTML page, hashing its own inline scripts', async () => {
+    fs.writeFileSync(path.join(pub, 'scripted.html'), SCRIPTED_PAGE);
+    const res = await request(srv.port, { path: '/scripted.html' });
+    assert.equal(res.status, 200);
+    const csp = res.headers['content-security-policy'];
+    assertPolicy(csp);
+    const script = directive(csp, 'script-src');
+    assert.ok(script.includes(sha256(IMPORT_MAP)), 'the import map runs');
+    assert.ok(script.includes(sha256(INLINE_MODULE)), 'the inline module runs');
+    assert.equal(script.match(/'sha256-/g).length, 2, 'scripts with src= are not hashed');
+    const plain = await request(srv.port, { path: '/' });
+    assertPolicy(plain.headers['content-security-policy']);
+    assert.doesNotMatch(plain.headers['content-security-policy'], /sha256/);
+  });
+
+  it('re-hashes a page when it changes, and hashes CRLF scripts the way browsers read them', async () => {
+    const file = path.join(pub, 'changing.html');
+    fs.writeFileSync(file, '<script>let a = 1;\r\nlet b = 2;</script>');
+    const first = await request(srv.port, { path: '/changing.html' });
+    assert.ok(first.headers['content-security-policy'].includes(sha256('let a = 1;\nlet b = 2;')));
+    fs.writeFileSync(file, '<script>window.changed = true;</script><!-- and longer now -->');
+    const second = await request(srv.port, { path: '/changing.html' });
+    assert.ok(second.headers['content-security-policy'].includes(sha256('window.changed = true;')));
+    assert.equal(inlineScriptHashes('<script src="/x.js"></script><p>no inline code</p>').length, 0);
+  });
+
+  it('sends no CSP with scripts (workers keep their own policy)', async () => {
+    const res = await request(srv.port, { path: '/app.js' });
+    assert.equal(res.headers['content-security-policy'], undefined);
+  });
 
   it('serves / as index.html', async () => {
     const res = await request(srv.port, { path: '/' });
@@ -175,6 +236,22 @@ describe('the real public/ folder', () => {
   before(async () => { srv = await startTestServer(); });
   after(() => srv.close());
 
+  it('lets the real pages run their own inline scripts (import map included)', async () => {
+    for (const page of ['index.html', ...fs.readdirSync(path.join(ROOT, 'public', 'dev')).filter((f) => f.endsWith('.html')).map((f) => `dev/${f}`)]) {
+      const res = await request(srv.port, { path: page === 'index.html' ? '/' : `/${page}` });
+      assert.equal(res.status, 200, page);
+      const csp = res.headers['content-security-policy'];
+      assertPolicy(csp);
+      for (const hash of inlineScriptHashes(fs.readFileSync(path.join(ROOT, 'public', page), 'utf8'))) {
+        assert.ok(directive(csp, 'script-src').includes(hash), `${page}: ${hash}`);
+      }
+    }
+    const index = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+    const map = /<script type="importmap">([\s\S]*?)<\/script>/.exec(index)[1];
+    const res = await request(srv.port, { path: '/' });
+    assert.ok(res.headers['content-security-policy'].includes(sha256(map)));
+  });
+
   it('serves the shared front-end modules', async () => {
     const css = await request(srv.port, { path: '/css/game.css' });
     assert.equal(css.status, 200);
@@ -205,6 +282,10 @@ describe('vendor routes', () => {
     ['/vendor/pdfjs/pdf.mjs.map', 'node_modules/pdfjs-dist/build/pdf.mjs.map', 'application/json; charset=utf-8'],
     ['/vendor/pdfjs-web/pdf_viewer.css', 'node_modules/pdfjs-dist/web/pdf_viewer.css', 'text/css; charset=utf-8'],
     ['/vendor/pdfjs-web/pdf_viewer.mjs', 'node_modules/pdfjs-dist/web/pdf_viewer.mjs', 'text/javascript; charset=utf-8'],
+    ['/vendor/pdfjs-cmaps/78-EUC-H.bcmap', 'node_modules/pdfjs-dist/cmaps/78-EUC-H.bcmap', 'application/octet-stream'],
+    ['/vendor/pdfjs-cmaps/UniJIS-UTF16-H.bcmap', 'node_modules/pdfjs-dist/cmaps/UniJIS-UTF16-H.bcmap', 'application/octet-stream'],
+    ['/vendor/pdfjs-fonts/FoxitSerif.pfb', 'node_modules/pdfjs-dist/standard_fonts/FoxitSerif.pfb', 'application/octet-stream'],
+    ['/vendor/pdfjs-fonts/LiberationSans-Regular.ttf', 'node_modules/pdfjs-dist/standard_fonts/LiberationSans-Regular.ttf', 'font/ttf'],
   ];
   for (const [url, file, type] of cases) {
     it(`${url} -> ${file}`, async () => {
@@ -230,7 +311,8 @@ describe('vendor routes', () => {
   });
 
   it('only exposes the build folders', async () => {
-    for (const p of ['/vendor/three/../package.json', '/vendor/three/..%2fpackage.json', '/vendor/pdfjs/..%2fpackage.json', '/vendor/pdfjs/..%2flegacy%2fbuild%2fpdf.mjs']) {
+    for (const p of ['/vendor/three/../package.json', '/vendor/three/..%2fpackage.json', '/vendor/pdfjs/..%2fpackage.json', '/vendor/pdfjs/..%2flegacy%2fbuild%2fpdf.mjs',
+      '/vendor/pdfjs-cmaps/..%2fpackage.json', '/vendor/pdfjs-fonts/..%2f..%2fthree%2fpackage.json', '/vendor/pdfjs-cmaps/', '/vendor/pdfjs-fonts/']) {
       const res = await request(srv.port, { path: p });
       assert.equal(res.status, 404, p);
     }

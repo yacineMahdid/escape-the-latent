@@ -983,7 +983,7 @@ export function buildScientist() {
     add(g, new THREE.CircleGeometry(0.34, 30), M.basic('#e6f6ff', 0.2), 0, 0, -0.01);
     const glint = add(g, new THREE.PlaneGeometry(0.06, 0.22), M.basic('#ffffff', 0.55), sx * -0.15 + 0.12, 0.12, 0.012);
     glint.rotation.z = -0.6;
-    add(head, surfaceArc(F, sx * 0.78, sx * 1.5, 0.47 * PI, 1.035, 0.035), frameM);
+    add(head, surfaceArc(F, sx * 0.78, sx * 1.36, 0.47 * PI, 1.03, 0.035), frameM);
   }
   F.put(add(head, new THREE.TorusGeometry(0.13, 0.045, 8, 14, PI), frameM), 0, 0.14, 0.2).scale.set(1, 0.55, 1);
   // huge bushy eyebrows

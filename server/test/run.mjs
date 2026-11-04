@@ -1,17 +1,32 @@
 #!/usr/bin/env node
 // Server test suite: `npm test` (or `node server/test/run.mjs [node --test flags]`).
 // Runs every server/test/*.test.mjs file with node:test. Unit and HTTP tests never touch the network
-// or the Anthropic API (stub clients). live.test.mjs fetches real papers from arXiv/alphaXiv and skips,
-// with a warning, when the network is unavailable. ETL_LIVE_AI=1 with a key also runs real Claude calls.
+// or the Anthropic API (stub clients). ETL_LIVE=1 also runs live.test.mjs, which fetches real papers
+// from arXiv/alphaXiv; ETL_LIVE_AI=1 with a key also makes real Claude calls.
+//
+// Temp folders all go under one root per run (ETL_TEST_TMP), removed when the run ends. Leftovers of
+// runs that were killed (older than an hour) are swept first.
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const files = fs.readdirSync(here).filter((f) => f.endsWith('.test.mjs')).sort().map((f) => path.join(here, f));
 
-const env = { ...process.env };
+const STALE_MS = 60 * 60 * 1000;
+for (const name of fs.readdirSync(os.tmpdir())) {
+  if (!/^etl-(test-|live-cache-)/.test(name)) continue; // ours: etl-test-run-* (and older etl-test-*, etl-live-cache-*)
+  const dir = path.join(os.tmpdir(), name);
+  try {
+    if (Date.now() - fs.statSync(dir).mtimeMs > STALE_MS) fs.rmSync(dir, { recursive: true, force: true });
+  } catch { /* gone already, or not ours to touch */ }
+}
+const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'etl-test-run-'));
+const cleanup = () => fs.rmSync(tmpRoot, { recursive: true, force: true });
+
+const env = { ...process.env, ETL_TEST_TMP: tmpRoot };
 if (!env.ETL_LIVE_AI) {
   // Offline paths must be exercised for real, and no test may spend tokens by accident.
   delete env.ANTHROPIC_API_KEY;
@@ -31,4 +46,9 @@ const child = spawn(process.execPath, ['--test', '--test-reporter=spec', ...proc
   env,
   cwd: path.resolve(here, '..', '..'),
 });
-child.on('exit', (code, signal) => process.exit(code ?? (signal ? 1 : 0)));
+// Ctrl-C reaches the test runner too; wait for it so the temp root can be removed.
+for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => child.kill(signal));
+child.on('exit', (code, signal) => {
+  cleanup();
+  process.exit(code ?? (signal ? 1 : 0));
+});

@@ -1,4 +1,5 @@
 // Shared helpers for the server tests.
+import assert from 'node:assert/strict';
 import http from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -34,14 +35,37 @@ export const PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQ
 export const PNG_DATA_URL = `data:image/png;base64,${PNG_BASE64}`;
 export const JPEG_BASE64 = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xff, 0xd9]).toString('base64');
 
+// Error bodies are { error, code, offline?, retryable? }: error is a symbol plus at most three words.
+export const ERROR_CODES = ['offline', 'busy', 'timeout', 'too_large', 'bad_input', 'not_found', 'refused', 'forbidden', 'error'];
+export function assertTerseError(json, code) {
+  assert.equal(typeof json?.error, 'string', JSON.stringify(json));
+  assert.ok(json.error.length > 0 && json.error.length <= 24, `too long: "${json.error}"`);
+  const words = json.error.replace(/^[^\p{L}\p{N}]+/u, '').split(/\s+/).filter(Boolean);
+  assert.ok(words.length <= 3, `more than three words: "${json.error}"`);
+  assert.ok(ERROR_CODES.includes(json.code), `unknown code: ${json.code}`);
+  if (code) assert.equal(json.code, code, `code for "${json.error}"`);
+}
+
 export function recordingLogger() {
   const lines = [];
   const rec = (level) => (...args) => lines.push({ level, text: args.map((a) => (a instanceof Error ? `${a.message}\n${a.stack}` : String(a))).join(' ') });
   return { lines, log: rec('log'), info: rec('info'), warn: rec('warn'), error: rec('error'), text: () => lines.map((l) => l.text).join('\n') };
 }
 
+// Every temp folder of a run lives under one root: ETL_TEST_TMP (made and removed by run.mjs), or a
+// root of our own that is removed when this process exits (node --test runs each file in a process).
+let ownRoot = null;
+function tmpRoot() {
+  if (process.env.ETL_TEST_TMP && fs.existsSync(process.env.ETL_TEST_TMP)) return process.env.ETL_TEST_TMP;
+  if (!ownRoot) {
+    ownRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'etl-test-run-'));
+    process.on('exit', () => fs.rmSync(ownRoot, { recursive: true, force: true }));
+  }
+  return ownRoot;
+}
+
 export function tmpDir(prefix = 'etl-test-') {
-  return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  return fs.mkdtempSync(path.join(tmpRoot(), prefix));
 }
 
 // Paper store stand-in: no network.
@@ -73,7 +97,7 @@ export function stubClient(responder) {
     beta: {
       messages: {
         async create(params, options = {}) {
-          calls.push({ params: structuredClone(params), timeout: options.timeout, hasSignal: Boolean(options.signal) });
+          calls.push({ params: structuredClone(params), timeout: options.timeout, maxRetries: options.maxRetries, hasSignal: Boolean(options.signal) });
           return responder(params, calls.length);
         },
       },
@@ -116,12 +140,17 @@ export function refusalMessage() {
   return msg;
 }
 
+// In-process server on 127.0.0.1. The host policy is fixed (no HOST / ALLOWED_HOSTS / TRUST_PROXY from
+// the shell) unless a test passes its own.
 export async function startTestServer({ logger = recordingLogger(), regions, ai, papers, ...rest } = {}) {
   const server = createApp({
     logger,
     regions: regions ?? createRegionStore({ dir: FIXTURE_REGIONS, logger }),
     ai: ai ?? createAI({ env: {}, logger }),
     papers: papers ?? fakePapers(),
+    host: '127.0.0.1',
+    allowedHosts: [],
+    trustProxy: false,
     ...rest,
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -182,7 +211,8 @@ export const postJSON = (port, p, data, headers = {}) =>
 export function cleanEnv(extra = {}) {
   const env = { ...process.env };
   for (const k of ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'HTTPS_PROXY', 'https_proxy', 'HTTP_PROXY', 'http_proxy',
-    'NODE_USE_ENV_PROXY', 'ETL_RELAUNCHED', 'ETL_NO_PROXY_RELAUNCH', 'PORT', 'HOST', 'REGIONS_DIR', 'PAPERS_CACHE_DIR']) {
+    'NODE_USE_ENV_PROXY', 'ETL_RELAUNCHED', 'ETL_NO_PROXY_RELAUNCH', 'PORT', 'HOST', 'ALLOWED_HOSTS', 'TRUST_PROXY',
+    'REGIONS_DIR', 'PAPERS_CACHE_DIR']) {
     delete env[k];
   }
   return { ...env, ...extra };
@@ -212,6 +242,17 @@ export function spawnServer(env, { timeoutMs = 15_000 } = {}) {
       reject(new Error(`server did not start in time:\n${out}`));
     }, timeoutMs);
   });
+}
+
+// Polls until fn() is truthy (or the time is up); resolves with the last value.
+export async function eventually(fn, timeoutMs = 3000) {
+  const deadline = Date.now() + timeoutMs;
+  let value = fn();
+  while (!value && Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 20));
+    value = fn();
+  }
+  return value;
 }
 
 // Polls a spawned server's output until it matches.

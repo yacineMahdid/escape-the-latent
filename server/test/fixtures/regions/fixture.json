@@ -86,6 +86,48 @@
       "retry": ["Ribbit... that is part of it, but why would big numbers trouble the softmax?"]
     }
   ],
+  "fundamentals": [
+    {
+      "id": "f1",
+      "concept": "softmax",
+      "title": "Softmax",
+      "giver": "pip",
+      "requires": ["explain1"],
+      "intro": ["Psst! What does a softmax do to my lamp scores?"],
+      "check": {
+        "kind": "explain",
+        "question": "What does a softmax do to a row of scores?",
+        "rubric": [
+          "Says the scores become positive weights that add up to one (a probability distribution)",
+          "Says bigger scores get bigger weights"
+        ],
+        "passBar": "Both criteria must be met.",
+        "offline": [["sum to one", "sums to one", "sum to 1", "sums to 1", "add up to one", "probabilit", "distribution"], ["bigger", "larger", "highest", "exponen"]]
+      },
+      "wrong": ["Hmm, but what do all the weights add up to?"],
+      "success": ["Yes! They always add up to one."],
+      "known": ["Your book already knows softmax. Lucky lamps!"],
+      "record": "Softmax: exponentiate each score, then divide by the sum. The weights add up to one."
+    },
+    {
+      "id": "f2",
+      "concept": "dot-product",
+      "title": "Dot product",
+      "giver": "pip",
+      "requires": ["explain1"],
+      "intro": ["One more! Two little arrows..."],
+      "check": {
+        "kind": "choice",
+        "question": "What is [1, 2] · [3, 4]?",
+        "options": ["7", "10", "11", "24"],
+        "answer": 2
+      },
+      "wrong": ["Not quite. Multiply the pairs first."],
+      "success": ["Eleven! Exactly."],
+      "known": ["Your book already knows dot products."],
+      "record": "Dot product: multiply matching entries, then add them up."
+    }
+  ],
   "artefact": {
     "id": "lantern-of-focus",
     "name": "Lantern of Focus",

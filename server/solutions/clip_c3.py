@@ -1,4 +1,4 @@
-"""Reference solution for clip / c3 ("The Twin Lens").
+"""Reference solution for clip / c3 ("The Two Gears").
 
 Paper: "Learning Transferable Visual Models From Natural Language Supervision"
 (Radford et al., 2021), arXiv 2103.00020.
@@ -13,7 +13,8 @@ Paper: "Learning Transferable Visual Models From Natural Language Supervision"
     between the image and each class's text embedding, scaled, softmax over
     classes. Prompt ensembles are built in embedding space (Section 3.1.4): one
     cached, averaged text embedding per class (each prompt embedding is
-    L2-normalised before averaging).
+    L2-normalised before averaging, and the class mean is L2-normalised again
+    so the score is a true cosine).
 
 Never served to the client.
 """

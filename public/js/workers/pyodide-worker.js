@@ -2,7 +2,7 @@
  *
  *   in  { type: 'init' }                        out { type: 'ready', ok: true } | { type: 'ready', ok: false, error }
  *   in  { type: 'run', id, code, tests? }       out { type: 'result', id, stdout, stderr, error, errorLine, trace,
- *                                                     results: [{ name, passed, message, line, where }], fatal? }
+ *                                                     results: [{ name, passed, message, line, where, trace }], fatal? }
  *
  * The player's code runs in a fresh dict namespace with stdout/stderr captured, then the tests run in
  * that same namespace: every test_* function they define is called in order (a tests file without

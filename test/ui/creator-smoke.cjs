@@ -370,7 +370,8 @@ async function cardVars(page) {
       const errors = watch(page);
       await page.goto(`${BASE}/`);
       await page.waitForSelector('.title-btns .etl-btn');
-      await page.click('.title-btns .etl-btn');
+      // the title screen belongs to core and may be animated: click through the DOM
+      await page.$eval('.title-btns .etl-btn', (b) => b.click());
       await page.waitForSelector('.cr-card:not(.checking)', { timeout: 20000 });
       await page.click('.cr-dice');
       await page.click('.cr-tab[data-tab="hair"]');

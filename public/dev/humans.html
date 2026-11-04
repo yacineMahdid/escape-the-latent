@@ -93,7 +93,8 @@ chars.forEach((c, i) => {
   const m = buildHuman(c);
   g.add(m, pedestal(1.0));
   scene.add(g);
-  cells.push({ kind: 'human', group: g, model: m, cam: humanCam(), label: `${c.hairStyle} · ${c.topStyle}${c.accessory && c.accessory !== 'none' ? ' · ' + c.accessory : ''}${c.glasses && c.glasses !== 'none' ? ' · ' + c.glasses : ''}${c.facialHair && c.facialHair !== 'none' ? ' · ' + c.facialHair : ''}`, seed: i * 0.7 });
+  const p = m.userData.params;
+  cells.push({ kind: 'human', group: g, model: m, cam: humanCam(), label: [p.hairStyle, p.topStyle, p.accessory, p.glasses, p.facialHair].filter((v) => v !== 'none').join(' · '), seed: i * 0.7 });
 });
 for (const expr of ['grumpy', 'neutral', 'surprised', 'talking']) {
   const g = new THREE.Group();

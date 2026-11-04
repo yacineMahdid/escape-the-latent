@@ -5,12 +5,12 @@ import http from 'node:http';
 import Anthropic from '@anthropic-ai/sdk';
 
 import {
-  startTestServer, postJSON, stubClient, textMessage, refusalMessage, recordingLogger, fakePapers,
+  startTestServer, postJSON, stubClient, textMessage, refusalMessage, recordingLogger, fakePapers, eventually, assertTerseError,
   FIXTURE, PAPER_TEXT, PNG_BASE64, PNG_DATA_URL, JPEG_BASE64,
 } from './helpers.mjs';
 import {
-  createAI, MODEL, BETAS, BOOK_SCHEMA, CHARACTER_SCHEMA, GRADE_SCHEMA, CHARACTER_ENUMS, DEFAULT_CHARACTER,
-  normalizeCharacter, parseImageDataUrl, offlineGrade, offlineBookAnswer, toAIError, AIError,
+  createAI, MODEL, BETAS, BOOK_SCHEMA, CHARACTER_SCHEMA, GRADE_SCHEMA, CHARACTER_ENUMS, DEFAULT_CHARACTER, AI_LIMITS, AI_RETRIES,
+  normalizeCharacter, parseImageDataUrl, offlineGrade, offlineBookAnswer, labBookAnswer, toAIError, AIError,
 } from '../ai.js';
 
 const CONTRACT_KEYS = ['skin', 'hairStyle', 'hairColor', 'eyeColor', 'glasses', 'facialHair', 'freckles', 'topStyle', 'topColor', 'bottomColor', 'shoeColor', 'accessory'];
@@ -60,9 +60,9 @@ describe('book: request shape', () => {
     assert.equal(res.status, 200);
     assert.deepEqual(res.json, { answer: 'Section 3.2.1 hums with a divisor. Look there.', refused: false, offline: false });
 
-    const { params, timeout, hasSignal } = ctx.client.calls.at(-1);
+    const { params, timeout, maxRetries, hasSignal } = ctx.client.calls.at(-1);
     assertCommon(params);
-    assert.equal(params.max_tokens, 1200);
+    assert.equal(params.max_tokens, 4000, 'room for thinking, which cannot be switched off');
     assert.deepEqual(params.output_config, { effort: 'low', format: { type: 'json_schema', schema: BOOK_SCHEMA } });
     assert.deepEqual(BOOK_SCHEMA.required, ['answer', 'refused']);
     assert.equal(BOOK_SCHEMA.properties.answer.type, 'string');
@@ -76,7 +76,9 @@ describe('book: request shape', () => {
     assert.equal(persona.cache_control, undefined);
     assert.match(persona.text, /Umbral Book/);
     assert.match(persona.text, /humming with dark energy/);
-    assert.match(persona.text, /1 to 3 terse sentences/);
+    assert.match(persona.text, /1 or 2 terse sentences/);
+    assert.match(persona.text, /under 90 characters/);
+    assert.match(BOOK_SCHEMA.properties.answer.description, /1 or 2 .*under 90 characters/);
     assert.match(persona.text, /Never invent/);
     assert.match(persona.text, /Some doors you must open yourself\./);
     for (const g of FIXTURE.book.guard) assert.ok(persona.text.includes(g), `guard entry missing: ${g}`);
@@ -92,7 +94,9 @@ describe('book: request shape', () => {
     const last = params.messages[12].content;
     assert.match(last, /What does the divisor tame\?/);
     assert.match(last, /divide each by sqrt\(d_k\)/);
-    assert.equal(typeof timeout, 'number');
+    assert.equal(timeout, AI_LIMITS.book);
+    assert.equal(maxRetries, 0, 'the book never waits for a retry');
+    assert.equal(AI_RETRIES.book, 0);
     assert.equal(hasSignal, true);
     assert.deepEqual(ctx.papers.calls.at(-1), ['text', '1706.03762']);
   });
@@ -156,19 +160,29 @@ describe('book: responses', () => {
       const res = await postJSON(srv.port, '/api/book', { regionId: 'fixture', question: 'Why?' });
       assert.equal(res.status, 200);
       assert.equal(res.json.refused, false);
-      assert.match(res.json.answer, /ink runs dry/);
+      assert.equal(res.json.answer, 'The ink runs dry.');
     } finally {
       await srv.close();
     }
   });
 
-  it('clips rambling answers', async () => {
+  it('clips rambling answers to two dialogue lines', async () => {
     const { srv } = await withStub(() => textMessage({ answer: 'dark '.repeat(400), refused: false }));
     try {
       const res = await postJSON(srv.port, '/api/book', { regionId: 'fixture', question: 'Why?' });
-      assert.ok(res.json.answer.length <= 701);
+      assert.ok(res.json.answer.length <= 181, `${res.json.answer.length} chars`);
+      assert.match(res.json.answer, /…$/);
     } finally {
       await srv.close();
+    }
+  });
+
+  it('keeps its own lines short', () => {
+    assert.ok(labBookAnswer('hello?').length <= 40);
+    assert.match(labBookAnswer('hello?'), /pages stay blank/);
+    for (const q of ['a', 'b', 'c', 'd', 'who won?', 'zzz', 'what is love']) {
+      const { answer } = offlineBookAnswer({}, q);
+      assert.ok(answer.length <= 40, answer);
     }
   });
 
@@ -211,7 +225,9 @@ describe('book: responses', () => {
       req.destroy();
       const result = await Promise.race([wasAborted, new Promise((r) => setTimeout(() => r(false), 3000))]);
       assert.equal(result, true, 'the SDK request was aborted');
+      assert.ok(await eventually(() => /POST \/api\/book 499 /.test(logger.text())), `access log: ${logger.text()}`);
       assert.doesNotMatch(logger.text(), /\[ai\] book failed/);
+      assert.doesNotMatch(logger.text(), /POST \/api\/book 200/, 'a request nobody answered is not logged as 200');
     } finally {
       await srv.close();
     }
@@ -311,7 +327,7 @@ describe('avatar: request shape and normalisation', () => {
       for (const image of [undefined, 42, '', 'hello', `data:text/plain;base64,${PNG_BASE64}`, 'data:image/png;base64,***', 'data:image/png;base64,AAAAAAAA', `https://example.com/me.png`]) {
         const res = await postJSON(srv.port, '/api/avatar', { image });
         assert.equal(res.status, 400, String(image));
-        assert.equal(typeof res.json.error, 'string');
+        assertTerseError(res.json, 'bad_input');
       }
       assert.equal(client.calls.length, 0);
     } finally {
@@ -324,7 +340,7 @@ describe('avatar: request shape and normalisation', () => {
     try {
       const res = await postJSON(refused.srv.port, '/api/avatar', { image: PNG_DATA_URL });
       assert.equal(res.status, 422);
-      assert.match(res.json.error, /another photo/);
+      assertTerseError(res.json, 'refused');
     } finally {
       await refused.srv.close();
     }
@@ -333,6 +349,7 @@ describe('avatar: request shape and normalisation', () => {
       const res = await postJSON(garbled.srv.port, '/api/avatar', { image: PNG_DATA_URL });
       assert.equal(res.status, 502);
       assert.equal(res.json.retryable, true);
+      assertTerseError(res.json, 'error');
     } finally {
       await garbled.srv.close();
     }
@@ -371,8 +388,10 @@ describe('grade: request shape and results', () => {
       assert.deepEqual(res.json, { pass: true, score: 0.67, feedback: verdict.feedback, offline: false });
       assert.equal(res.json.criteria, undefined, 'per-criterion verdicts stay on the server');
 
-      const { params } = client.calls[0];
+      const { params, timeout, maxRetries } = client.calls[0];
       assertCommon(params);
+      assert.equal(timeout, AI_LIMITS.grade);
+      assert.equal(maxRetries, AI_RETRIES.grade);
       assert.deepEqual(params.output_config, { effort: 'medium', format: { type: 'json_schema', schema: GRADE_SCHEMA } });
       const paper = params.system.find((b) => b.cache_control);
       assert.deepEqual(paper, { type: 'text', text: PAPER_TEXT, cache_control: PAPER_CACHE });
@@ -384,6 +403,8 @@ describe('grade: request shape and results', () => {
       assert.match(system, /Elder Moss/);
       assert.match(system, /frog/);
       assert.match(system, /never state the full answer/);
+      assert.match(system, /1 or 2 short sentences, each under 90 characters/);
+      assert.match(GRADE_SCHEMA.properties.feedback.description, /under 90 characters/);
       assert.doesNotMatch(JSON.stringify(params), /INJECTED/);
       assert.equal(params.messages.length, 1);
       assert.equal(params.messages[0].role, 'user');
@@ -436,42 +457,74 @@ describe('grade: request shape and results', () => {
     try {
       const res = await postJSON(srv.port, '/api/grade', { regionId: 'fixture', challengeId: 'explain1', answer: 'something' });
       assert.equal(res.status, 422);
-      assert.match(res.json.error, /Elder Moss/);
+      assertTerseError(res.json, 'refused');
     } finally {
       await srv.close();
     }
   });
 });
 
-describe('SDK errors become friendly JSON errors', () => {
+describe('SDK errors become short JSON errors', () => {
   const headers = () => new Headers({ 'request-id': 'req_stub' });
+  const routes = [
+    ['/api/book', { regionId: 'fixture', question: 'softmax?' }],
+    ['/api/grade', { regionId: 'fixture', challengeId: 'explain1', answer: 'scaling and softmax' }],
+    ['/api/avatar', { image: PNG_DATA_URL }],
+  ];
   const cases = [
-    ['RateLimitError', () => new Anthropic.RateLimitError(429, { error: { type: 'rate_limit_error', message: 'slow down' } }, 'slow down', headers()), 429, true],
-    ['AuthenticationError', () => new Anthropic.AuthenticationError(401, { error: { type: 'authentication_error', message: 'bad key' } }, 'bad key', headers()), 503, false],
-    ['PermissionDeniedError', () => new Anthropic.PermissionDeniedError(403, { error: { type: 'permission_error' } }, 'nope', headers()), 503, false],
-    ['BadRequestError', () => new Anthropic.BadRequestError(400, { error: { type: 'invalid_request_error' } }, 'bad', headers()), 502, false],
-    ['InternalServerError (overloaded)', () => new Anthropic.InternalServerError(529, { error: { type: 'overloaded_error' } }, 'overloaded', headers()), 503, true],
-    ['APIConnectionTimeoutError', () => new Anthropic.APIConnectionTimeoutError(), 504, true],
-    ['APIConnectionError', () => new Anthropic.APIConnectionError({ message: 'socket hang up' }), 502, true],
-    ['APIError (other)', () => Anthropic.APIError.generate(418, { error: { type: 'teapot' } }, 'teapot', headers()), 502, false],
-    ['plain Error', () => new Error('kaboom'), 500, false],
+    ['RateLimitError', () => new Anthropic.RateLimitError(429, { error: { type: 'rate_limit_error', message: 'slow down' } }, 'slow down', headers()), 429, 'busy', true],
+    ['BadRequestError', () => new Anthropic.BadRequestError(400, { error: { type: 'invalid_request_error' } }, 'bad', headers()), 502, 'error', false],
+    ['InternalServerError (overloaded)', () => new Anthropic.InternalServerError(529, { error: { type: 'overloaded_error' } }, 'overloaded', headers()), 503, 'busy', true],
+    ['APIConnectionTimeoutError', () => new Anthropic.APIConnectionTimeoutError(), 504, 'timeout', true],
+    ['APIError (other)', () => Anthropic.APIError.generate(418, { error: { type: 'teapot' } }, 'teapot', headers()), 502, 'error', false],
+    ['plain Error', () => new Error('kaboom'), 500, 'error', false],
   ];
 
-  for (const [name, make, status, retryable] of cases) {
-    it(`${name} -> ${status}`, async () => {
-      const { srv } = await withStub(() => { throw make(); });
+  for (const [name, make, status, code, retryable] of cases) {
+    it(`${name} -> ${status} ${code}`, async () => {
+      const { srv, logger } = await withStub(() => { throw make(); });
       try {
-        for (const [route, body] of [
-          ['/api/book', { regionId: 'fixture', question: 'softmax?' }],
-          ['/api/grade', { regionId: 'fixture', challengeId: 'explain1', answer: 'scaling and softmax' }],
-          ['/api/avatar', { image: PNG_DATA_URL }],
-        ]) {
+        for (const [route, body] of routes) {
           const res = await postJSON(srv.port, route, body);
           assert.equal(res.status, status, `${route}`);
-          assert.equal(typeof res.json.error, 'string');
+          assertTerseError(res.json, code);
           assert.equal(Boolean(res.json.retryable), retryable, `${route} retryable`);
+          assert.equal(res.json.offline, undefined);
           assert.doesNotMatch(res.json.error, /rate_limit_error|authentication_error|overloaded_error|kaboom|req_stub/);
         }
+        assert.match(logger.text(), /\[ai\] book failed/, 'the details go to the log');
+      } finally {
+        await srv.close();
+      }
+    });
+  }
+
+  // A key that is set but cannot be used (or no network): the book and the grader play on offline.
+  const unusable = [
+    ['AuthenticationError', () => new Anthropic.AuthenticationError(401, { error: { type: 'authentication_error', message: 'bad key' } }, 'bad key', headers())],
+    ['PermissionDeniedError', () => new Anthropic.PermissionDeniedError(403, { error: { type: 'permission_error' } }, 'nope', headers())],
+    ['NotFoundError (model)', () => new Anthropic.NotFoundError(404, { error: { type: 'not_found_error' } }, 'model: claude-opus-5-5', headers())],
+    ['billing (402)', () => Anthropic.APIError.generate(402, { error: { type: 'billing_error' } }, 'pay up', headers())],
+    ['APIConnectionError', () => new Anthropic.APIConnectionError({ message: 'socket hang up' })],
+  ];
+  for (const [name, make] of unusable) {
+    it(`${name} -> offline book and grading, avatar 503 { offline: true }`, async () => {
+      const { srv, client, logger } = await withStub(() => { throw make(); });
+      try {
+        const book = await postJSON(srv.port, '/api/book', { regionId: 'fixture', question: 'Why divide by sqrt(d_k)?' });
+        assert.equal(book.status, 200);
+        assert.deepEqual(book.json, { answer: FIXTURE.book.offlineHints[1].text, refused: false, offline: true });
+        const pass = await postJSON(srv.port, '/api/grade', { regionId: 'fixture', challengeId: 'explain1', answer: 'Scaling keeps the softmax away from tiny gradients.' });
+        assert.equal(pass.status, 200);
+        assert.deepEqual(pass.json, { pass: true, score: 1, feedback: pass.json.feedback, offline: true });
+        const fail = await postJSON(srv.port, '/api/grade', { regionId: 'fixture', challengeId: 'explain1', answer: 'It is nicer.' });
+        assert.deepEqual(fail.json, { pass: false, score: 0, feedback: explain.retry[0], offline: true });
+        const avatar = await postJSON(srv.port, '/api/avatar', { image: PNG_DATA_URL });
+        assert.equal(avatar.status, 503);
+        assert.equal(avatar.json.offline, true);
+        assertTerseError(avatar.json, 'offline');
+        assert.equal(client.calls.length, 4, 'Claude was tried each time');
+        assert.match(logger.text(), /\[ai\] book failed: .*answering offline/);
       } finally {
         await srv.close();
       }
@@ -479,11 +532,85 @@ describe('SDK errors become friendly JSON errors', () => {
   }
 
   it('maps errors with the typed SDK classes', () => {
-    const mapped = toAIError(new Anthropic.RateLimitError(429, {}, 'x', new Headers()), 'Pip');
+    const mapped = toAIError(new Anthropic.RateLimitError(429, {}, 'x', new Headers()));
     assert.ok(mapped instanceof AIError);
     assert.equal(mapped.status, 429);
-    assert.match(mapped.message, /^Pip /);
+    assert.equal(mapped.code, 'busy');
     assert.equal(toAIError(new Anthropic.APIUserAbortError()).status, 499);
+    assert.equal(toAIError(new Anthropic.AuthenticationError(401, {}, 'x', new Headers())).offline, true);
+    assert.equal(toAIError(new Anthropic.APIConnectionTimeoutError()).offline, false, 'a timeout is not "offline"');
+  });
+});
+
+describe('one deadline per Claude call', () => {
+  // Never answers; rejects like the SDK once its signal aborts.
+  const hanging = () => {
+    const calls = [];
+    return {
+      calls,
+      beta: {
+        messages: {
+          create: (params, options) => new Promise((_, reject) => {
+            calls.push(options);
+            options.signal.addEventListener('abort', () => reject(new Anthropic.APIUserAbortError()));
+          }),
+        },
+      },
+    };
+  };
+
+  it('answers 504 { code: "timeout" } when the deadline passes (not a silent 499)', async () => {
+    const client = hanging();
+    const logger = recordingLogger();
+    const srv = await startTestServer({ ai: createAI({ client, logger, timeouts: { book: 80, grade: 80, avatar: 80 } }), logger });
+    try {
+      for (const [route, body] of [
+        ['/api/book', { regionId: 'fixture', question: 'softmax?' }],
+        ['/api/grade', { regionId: 'fixture', challengeId: 'explain1', answer: 'scaling' }],
+        ['/api/avatar', { image: PNG_DATA_URL }],
+      ]) {
+        const started = Date.now();
+        const res = await postJSON(srv.port, route, body);
+        assert.equal(res.status, 504, route);
+        assertTerseError(res.json, 'timeout');
+        assert.equal(res.json.retryable, true);
+        assert.ok(Date.now() - started < 2000, `${route} took ${Date.now() - started}ms`);
+      }
+      assert.deepEqual(client.calls.map((o) => o.maxRetries), [0, 1, 1]);
+      assert.deepEqual(client.calls.map((o) => o.timeout), [80, 80, 80]);
+      assert.match(logger.text(), /\[ai\] book failed: no answer within 80ms/);
+    } finally {
+      await srv.close();
+    }
+  });
+
+  it('bounds the real SDK too: a 429 with a long retry-after fails fast on the book', async () => {
+    let hits = 0;
+    const api = http.createServer((req, res) => {
+      hits += 1;
+      req.resume();
+      res.writeHead(429, { 'content-type': 'application/json', 'retry-after': '20' });
+      res.end(JSON.stringify({ type: 'error', error: { type: 'rate_limit_error', message: 'slow down' } }));
+    });
+    await new Promise((r) => api.listen(0, '127.0.0.1', r));
+    const client = new Anthropic({ apiKey: 'sk-ant-test', baseURL: `http://127.0.0.1:${api.address().port}`, maxRetries: 1 });
+    const logger = recordingLogger();
+    const srv = await startTestServer({ ai: createAI({ client, logger, timeouts: { grade: 300 } }), logger });
+    try {
+      let started = Date.now();
+      const book = await postJSON(srv.port, '/api/book', { regionId: 'fixture', question: 'softmax?' });
+      assert.equal(book.status, 429);
+      assertTerseError(book.json, 'busy');
+      assert.equal(hits, 1, 'no retry for the book');
+      assert.ok(Date.now() - started < 2000, `book took ${Date.now() - started}ms`);
+      started = Date.now();
+      const grade = await postJSON(srv.port, '/api/grade', { regionId: 'fixture', challengeId: 'explain1', answer: 'scaling' });
+      assert.equal(grade.status, 504, 'the deadline cuts the 20 s retry-after wait');
+      assert.ok(Date.now() - started < 2000, `grade took ${Date.now() - started}ms`);
+    } finally {
+      await srv.close();
+      await new Promise((r) => { api.closeAllConnections?.(); api.close(r); });
+    }
   });
 });
 

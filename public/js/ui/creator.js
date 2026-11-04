@@ -202,7 +202,7 @@ async function fileToDataUrl(file) {
 
 function errorTip(e) {
   if (e?.code === 'type') return 'Not a photo';
-  if (e?.code === 'cam') return 'No camera';
+  if (e?.code === 'cam') return e.denied ? 'Camera blocked' : 'No camera';
   if (e?.status === 503 || e?.body?.offline) return TIP.offline;
   if (e?.status === 413) return 'Too big';
   if (typeof e?.body?.error === 'string' && e.body.error) return e.body.error;
@@ -393,15 +393,17 @@ function poof(layer, big = true) {
 // the creator
 
 let current = null;
+let teardown = null; // removes a half-built creator if something throws
 
 export function open({ initial } = {}) {
   if (current) return current;
   current = new Promise((resolve) => {
     run(initial, resolve).catch((e) => {
       console.error('creator failed', e);
+      try { teardown?.(); } catch { /* ignore */ }
       resolve(normalizeCharacter(initial || DEFAULT_CHARACTER));
     });
-  }).finally(() => { current = null; });
+  }).finally(() => { current = null; teardown = null; });
   return current;
 }
 
@@ -441,9 +443,11 @@ async function run(initial, resolve) {
   nameInput.value = initialName;
   host.appendChild(overlay);
   openModal(overlay, { onEscape: () => { if (stream) stopCam(); } });
+  let preview = null;
+  teardown = () => { closed = true; stopCam(); preview?.dispose(); closeModal(overlay); overlay.remove(); window.removeEventListener('paste', onPaste); };
 
   // ---- preview
-  const preview = createPreview(canvas);
+  preview = createPreview(canvas);
   if (!preview) stage.classList.add('no-gl');
   let rebuildQueued = false, rebuildPoof = false;
   const rebuild = (poofIt = false) => {
@@ -610,7 +614,7 @@ async function run(initial, resolve) {
       await video.play().catch(() => {});
     } catch (err) {
       stopCam();
-      setPhoto('error', errorTip(Object.assign(err || {}, { code: 'cam' })));
+      setPhoto('error', errorTip({ code: 'cam', denied: err?.name === 'NotAllowedError' || err?.name === 'SecurityError' }));
     }
   });
   camX.addEventListener('click', (e) => { e.stopPropagation(); stopCam(); });

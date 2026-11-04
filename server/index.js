@@ -1,12 +1,28 @@
 // Escape the Latent: plain node:http server (no framework).
 //   static:  /  -> public/,  /vendor/three -> three/build,  /vendor/pdfjs -> pdfjs-dist/build,
-//            /vendor/pdfjs-web -> pdfjs-dist/web,  /content -> content/
+//            /vendor/pdfjs-web -> pdfjs-dist/web,  /vendor/pdfjs-cmaps -> pdfjs-dist/cmaps,
+//            /vendor/pdfjs-fonts -> pdfjs-dist/standard_fonts,  /content -> content/
 //   api:     see "Server routes" in docs/ARCHITECTURE.md
-// Env: PORT (default 3000), HOST (default localhost), REGIONS_DIR, PAPERS_CACHE_DIR, ANTHROPIC_API_KEY.
+// Env: PORT (default 3000), HOST (default localhost), ALLOWED_HOSTS, TRUST_PROXY, REGIONS_DIR,
+//      PAPERS_CACHE_DIR, ANTHROPIC_API_KEY.
+//
+// Who may talk to the server:
+// - Host: only this machine's names answer (localhost, *.localhost, any IP literal, HOST, and the
+//   comma-separated ALLOWED_HOSTS list: "game.example", ".example.org" for a domain and its
+//   subdomains, "*" for anything). Any other Host gets 403, which stops DNS rebinding.
+// - /api/*: requests sent by pages on other sites (Sec-Fetch-Site cross-site/same-site, or an Origin
+//   that is not this server) get 403, so no web page can spend the Claude budget or make the server
+//   download papers.
+// - X-Forwarded-Host is only read with TRUST_PROXY=1 (a reverse proxy that sets it in front of us).
+//
+// Errors are { error, code } (+ offline / retryable): error is a symbol and a word or two for the
+// player, code is one of ERROR_CODES for the UI to pick an icon. Details go to the server log only.
 import http from 'node:http';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
+import net from 'node:net';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { pipeline } from 'node:stream/promises';
@@ -51,18 +67,60 @@ export const BODY_LIMITS = Object.freeze({ '/api/avatar': 8 * 1024 * 1024 });
 export const DEFAULT_BODY_LIMIT = 64 * 1024;
 const DRAIN_ALLOWANCE = 16 * 1024 * 1024; // past the limit we keep reading (and discarding) this much, then hang up
 
+// body.code for every error status (AIError / PaperError may set a more precise one, e.g. "offline").
+export const ERROR_CODES = Object.freeze({
+  400: 'bad_input',
+  403: 'forbidden',
+  404: 'not_found',
+  405: 'bad_input',
+  413: 'too_large',
+  415: 'bad_input',
+  422: 'refused',
+  429: 'busy',
+  500: 'error',
+  502: 'error',
+  503: 'busy',
+  504: 'timeout',
+});
+const codeFor = (status) => ERROR_CODES[status] || 'error';
+
+// What the player may see: a symbol and at most a few words.
+const SAY = Object.freeze({
+  tooBig: '✕ too big',
+  smudged: '✕ smudged',
+  notJson: '✕ not JSON',
+  otherSite: '✕ other site',
+  unknownHost: '✕ unknown host',
+  noQuestion: '✕ no question',
+  badRegion: '✕ bad region',
+  noPlace: '✕ no such place',
+  whichChallenge: '✕ which challenge?',
+  empty: '✕ empty',
+  tooLong: '✕ too long',
+  nobodyAsked: '✕ nobody asked',
+  wrongKind: '✕ wrong kind',
+  wrongMethod: '✕ wrong method',
+  noPath: '✕ no such path',
+  badId: '✕ bad arXiv id',
+  jammed: '✕ jammed',
+});
+
 class HttpError extends Error {
-  constructor(status, message, headers = {}) {
+  constructor(status, message, headers = {}, code = codeFor(status)) {
     super(message);
     this.status = status;
     this.headers = headers;
+    this.code = code;
   }
 }
 
+// Status 499: the client hung up before we answered; there is nobody to answer and nothing to log.
+const GONE = 499;
+
 const isInside = (dir, p) => p === dir || p.startsWith(dir.endsWith(path.sep) ? dir : dir + path.sep);
 const bodyLimitFor = (pathname) => BODY_LIMITS[pathname] ?? DEFAULT_BODY_LIMIT;
-const tooLargeMessage = (limit) => `That message is too heavy for the post (over ${limit >= 1024 * 1024 ? `${limit / 1024 / 1024} MB` : `${limit / 1024} KB`}).`;
 const nonEmpty = (v) => typeof v === 'string' && v.trim().length > 0;
+const firstValue = (v) => String(Array.isArray(v) ? v[0] : v ?? '').split(',')[0].trim();
 
 function sendJSON(res, status, data, headers = {}) {
   if (res.headersSent || res.destroyed) return;
@@ -77,6 +135,15 @@ function sendJSON(res, status, data, headers = {}) {
   res.end(body);
 }
 
+function sendError(res, err) {
+  sendJSON(res, err.status, {
+    error: err.message,
+    code: err.code || codeFor(err.status),
+    ...(err.offline ? { offline: true } : {}),
+    ...(err.retryable ? { retryable: true } : {}),
+  }, err.headers || {});
+}
+
 function sendText(res, status, text, headers = {}) {
   if (res.headersSent || res.destroyed) return;
   res.writeHead(status, {
@@ -87,6 +154,89 @@ function sendText(res, status, text, headers = {}) {
   });
   res.end(text);
 }
+
+// ---------------------------------------------------------------------------------------------
+// Host names (DNS rebinding) and same-origin checks
+
+// "Example.com:3000" -> { hostname: 'example.com', port: '3000' }; "[::1]:3000" keeps the brackets.
+// Returns null for anything a browser would never send as a Host.
+export function parseHost(value) {
+  const m = /^(\[[0-9a-f:.]+\]|[a-z0-9_-]+(?:\.[a-z0-9_-]+)*\.?)(?::(\d{1,5}))?$/.exec(String(value ?? '').trim().toLowerCase());
+  if (!m) return null;
+  let hostname = m[1];
+  if (hostname.startsWith('[')) {
+    if (!net.isIPv6(hostname.slice(1, -1))) return null;
+  } else {
+    hostname = hostname.replace(/\.$/, '');
+  }
+  return { hostname, port: m[2] ?? null };
+}
+
+// Exact names, ".domain" (the domain and its subdomains) or "*", from HOST and ALLOWED_HOSTS.
+function hostAllowList(host, allowedHosts) {
+  const list = [];
+  const add = (raw) => {
+    const s = String(raw ?? '').trim().toLowerCase();
+    if (!s) return;
+    if (s === '*') {
+      list.push('*');
+      return;
+    }
+    const dot = s.startsWith('.');
+    const bare = dot ? s.slice(1) : s;
+    const parsed = parseHost(bare) ?? (net.isIPv6(bare) ? { hostname: `[${bare}]` } : null);
+    if (parsed) list.push(dot ? `.${parsed.hostname}` : parsed.hostname);
+  };
+  if (host && !['0.0.0.0', '::', '[::]'].includes(String(host).trim())) add(host);
+  for (const entry of Array.isArray(allowedHosts) ? allowedHosts : String(allowedHosts ?? '').split(/[\s,]+/)) add(entry);
+  return list;
+}
+
+// IP literals are always fine: a page can only send Host: <ip> if it was itself loaded from that IP.
+function isAllowedHostname(hostname, list) {
+  if (hostname === 'localhost' || hostname.endsWith('.localhost')) return true;
+  if (hostname.startsWith('[') || net.isIPv4(hostname)) return true;
+  return list.some((e) => e === '*' || e === hostname || (e.startsWith('.') && (hostname === e.slice(1) || hostname.endsWith(e))));
+}
+
+// ---------------------------------------------------------------------------------------------
+// Content-Security-Policy for HTML pages. Model answers and alphaXiv markdown reach the DOM, so no
+// script may run unless it is a file from this server or one of the page's own inline <script>s
+// (hashed when the page is served, so pages can change freely). Styles, images and fonts stay relaxed.
+// JS files get no CSP header: workers keep their own policy (the Python worker loads Pyodide from a CDN).
+
+const CSP_DIRECTIVES = Object.freeze([
+  ['default-src', "'self'"],
+  ['script-src', "'self'", "'wasm-unsafe-eval'"],
+  ['style-src', "'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+  ['font-src', "'self'", 'data:', 'https://fonts.gstatic.com'],
+  ['img-src', "'self'", 'data:', 'blob:'],
+  ['media-src', "'self'", 'data:', 'blob:'],
+  ['connect-src', "'self'", 'data:', 'blob:'],
+  ['worker-src', "'self'", 'blob:'],
+  ['object-src', "'none'"],
+  ['base-uri', "'none'"],
+  ['form-action', "'self'"],
+  ['frame-ancestors', "'self'"],
+]);
+
+// 'sha256-...' sources for every inline <script> (import maps included), as the browser hashes them.
+export function inlineScriptHashes(html) {
+  const hashes = new Set();
+  for (const m of String(html).matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)) {
+    if (/\bsrc\s*=/i.test(m[1])) continue;
+    const text = m[2].replace(/\r\n?/g, '\n'); // the HTML parser normalises newlines before scripts see them
+    hashes.add(`'sha256-${crypto.createHash('sha256').update(text, 'utf8').digest('base64')}'`);
+  }
+  return [...hashes];
+}
+
+export function contentSecurityPolicy(html) {
+  const hashes = inlineScriptHashes(html);
+  return CSP_DIRECTIVES.map(([name, ...sources]) => [name, ...sources, ...(name === 'script-src' ? hashes : [])].join(' ')).join('; ');
+}
+
+// ---------------------------------------------------------------------------------------------
 
 // Single byte range ("bytes=a-b", "bytes=a-", "bytes=-n"). Returns null to ignore the header.
 function parseRange(header, size) {
@@ -155,12 +305,13 @@ async function sendFile(req, res, file, st, { type, cacheControl = 'no-cache', h
 }
 
 // Reads a JSON body. Past the limit we keep draining (so the client can read our 413), up to a cap.
+// A client that hangs up mid-upload (the player closed the creator) ends quietly with status 499.
 function readJSONBody(req, limit) {
   return new Promise((resolve, reject) => {
     const declared = Number(req.headers['content-length']);
     if (declared > limit + DRAIN_ALLOWANCE) {
       req.resume();
-      reject(new HttpError(413, tooLargeMessage(limit), { Connection: 'close' }));
+      reject(new HttpError(413, SAY.tooBig, { Connection: 'close' }));
       return;
     }
     const chunks = [];
@@ -173,10 +324,15 @@ function readJSONBody(req, limit) {
         reject(err);
       }
     };
+    const gone = () => fail(new HttpError(GONE, 'gone'));
+    if (req.destroyed && !req.complete) {
+      gone();
+      return;
+    }
     req.on('data', (chunk) => {
       size += chunk.length;
       if (size > limit + DRAIN_ALLOWANCE) {
-        fail(new HttpError(413, tooLargeMessage(limit), { Connection: 'close' }));
+        fail(new HttpError(413, SAY.tooBig, { Connection: 'close' }));
         req.pause();
         return;
       }
@@ -187,7 +343,7 @@ function readJSONBody(req, limit) {
       if (!overflow) chunks.push(chunk);
     });
     req.on('end', () => {
-      if (overflow) return fail(new HttpError(413, tooLargeMessage(limit)));
+      if (overflow) return fail(new HttpError(413, SAY.tooBig));
       if (settled) return undefined;
       settled = true;
       const text = Buffer.concat(chunks).toString('utf8');
@@ -196,14 +352,20 @@ function readJSONBody(req, limit) {
       try {
         data = JSON.parse(text);
       } catch {
-        return reject(new HttpError(400, 'That message was smudged: the body is not valid JSON.'));
+        return reject(new HttpError(400, SAY.smudged));
       }
       if (!data || typeof data !== 'object' || Array.isArray(data)) {
-        return reject(new HttpError(400, 'Expected a JSON object.'));
+        return reject(new HttpError(400, SAY.smudged));
       }
       return resolve(data);
     });
-    req.on('error', fail);
+    req.on('error', (err) => {
+      if (req.destroyed || err?.code === 'ECONNRESET' || err?.message === 'aborted') gone();
+      else fail(err);
+    });
+    req.on('close', () => {
+      if (!req.complete) gone();
+    });
   });
 }
 
@@ -216,20 +378,87 @@ export function createApp({
   papers = createPaperStore({ logger }),
   ai = createAI({ logger }),
   logRequests = true,
+  host = process.env.HOST,
+  allowedHosts = process.env.ALLOWED_HOSTS,
+  trustProxy = /^(1|true|yes)$/i.test(process.env.TRUST_PROXY ?? ''),
 } = {}) {
+  const pdfjs = path.join(rootDir, 'node_modules', 'pdfjs-dist');
   const mounts = [
     { prefix: '/vendor/three/', dir: path.join(rootDir, 'node_modules', 'three', 'build') },
-    { prefix: '/vendor/pdfjs/', dir: path.join(rootDir, 'node_modules', 'pdfjs-dist', 'build') },
-    { prefix: '/vendor/pdfjs-web/', dir: path.join(rootDir, 'node_modules', 'pdfjs-dist', 'web') },
+    { prefix: '/vendor/pdfjs/', dir: path.join(pdfjs, 'build') },
+    { prefix: '/vendor/pdfjs-web/', dir: path.join(pdfjs, 'web') },
+    { prefix: '/vendor/pdfjs-cmaps/', dir: path.join(pdfjs, 'cmaps') }, // getDocument({ cMapUrl, cMapPacked: true })
+    { prefix: '/vendor/pdfjs-fonts/', dir: path.join(pdfjs, 'standard_fonts') }, // getDocument({ standardFontDataUrl })
     { prefix: '/content/regions/', dir: regions.dir || path.join(contentDir, 'regions') }, // the files the server reads (REGIONS_DIR aware)
     { prefix: '/content/', dir: contentDir },
     { prefix: '/', dir: publicDir },
   ].map((m) => ({ ...m, dir: path.resolve(m.dir) }));
   const realDirs = new Map();
+  const cspCache = new Map(); // html file -> { mtimeMs, size, value }
+  const hostList = hostAllowList(host, allowedHosts);
+  const refusedHosts = new Set();
 
   async function realDir(dir) {
     if (!realDirs.has(dir)) realDirs.set(dir, await fsp.realpath(dir).catch(() => dir));
     return realDirs.get(dir);
+  }
+
+  async function cspFor(file, st) {
+    const hit = cspCache.get(file);
+    if (hit && hit.mtimeMs === st.mtimeMs && hit.size === st.size) return hit.value;
+    const value = contentSecurityPolicy(await fsp.readFile(file, 'utf8'));
+    cspCache.set(file, { mtimeMs: st.mtimeMs, size: st.size, value });
+    return value;
+  }
+
+  function noteRefusedHost(value) {
+    const shown = String(value).replace(/[^\x20-\x7e]/g, '?').slice(0, 100);
+    if (refusedHosts.has(shown) || refusedHosts.size >= 20) return;
+    refusedHosts.add(shown);
+    logger.warn?.(`[server] refused Host "${shown}" (to allow it: ALLOWED_HOSTS=<name>)`);
+  }
+
+  // The host values we would act on: Host, plus X-Forwarded-Host behind a trusted proxy.
+  function hostValues(req, absoluteHost) {
+    const values = [req.headers.host];
+    if (trustProxy && req.headers['x-forwarded-host']) values.push(...String(req.headers['x-forwarded-host']).split(','));
+    if (absoluteHost) values.push(absoluteHost);
+    return values;
+  }
+
+  function sameOrigin(origin, req) {
+    let o;
+    try {
+      o = new URL(origin);
+    } catch {
+      return false; // includes "null" (sandboxed frames, file: pages)
+    }
+    if (o.protocol !== 'http:' && o.protocol !== 'https:') return false;
+    const own = parseHost(trustProxy && req.headers['x-forwarded-host'] ? firstValue(req.headers['x-forwarded-host']) : req.headers.host);
+    const theirs = parseHost(o.host);
+    return Boolean(own && theirs && own.hostname === theirs.hostname && own.port === theirs.port);
+  }
+
+  // A page on another site (or another port of this one) is calling the API.
+  function fromOtherSite(req) {
+    const site = String(req.headers['sec-fetch-site'] || '').toLowerCase();
+    if (site === 'cross-site' || site === 'same-site') return true;
+    const { origin } = req.headers;
+    return origin !== undefined && origin !== '' && !sameOrigin(origin, req);
+  }
+
+  // -> an HttpError to answer with, or null to go ahead.
+  function refusal(req, isApi, absoluteHost) {
+    for (const value of hostValues(req, absoluteHost)) {
+      if (value === undefined) continue; // no Host at all (HTTP/1.0 tools): not a browser, nothing to rebind
+      const parsed = parseHost(value);
+      if (!parsed || !isAllowedHostname(parsed.hostname, hostList)) {
+        noteRefusedHost(value);
+        return new HttpError(403, SAY.unknownHost);
+      }
+    }
+    if (isApi && fromOtherSite(req)) return new HttpError(403, SAY.otherSite);
+    return null;
   }
 
   async function serveStatic(req, res, rawPath) {
@@ -262,28 +491,17 @@ export function createApp({
     if (!st.isFile()) return sendText(res, 404, 'Not found');
     const real = await fsp.realpath(file).catch(() => null);
     if (!real || !isInside(await realDir(mount.dir), real)) return sendText(res, 404, 'Not found');
-    const type = MIME[path.extname(file).toLowerCase()] || 'application/octet-stream';
-    return sendFile(req, res, file, st, { type });
+    const ext = path.extname(file).toLowerCase();
+    const type = MIME[ext] || 'application/octet-stream';
+    const headers = ext === '.html' ? { 'Content-Security-Policy': await cspFor(file, st) } : {};
+    return sendFile(req, res, file, st, { type, headers });
   }
 
   async function body(req, pathname) {
     const type = String(req.headers['content-type'] || '');
     if (!/^application\/(?:[\w.+-]+\+)?json\b/i.test(type)) {
       req.resume();
-      throw new HttpError(415, 'Send the request as JSON (Content-Type: application/json).');
-    }
-    // A page on another site must not spend this server's Claude budget.
-    const origin = req.headers.origin;
-    if (origin && origin !== 'null') {
-      let host = null;
-      try { host = new URL(origin).host; } catch { /* malformed */ }
-      if (host !== req.headers.host && host !== req.headers['x-forwarded-host']) {
-        req.resume();
-        throw new HttpError(403, 'Requests from other sites are not allowed.');
-      }
-    } else if (origin === 'null') {
-      req.resume();
-      throw new HttpError(403, 'Requests from other sites are not allowed.');
+      throw new HttpError(415, SAY.notJson);
     }
     return readJSONBody(req, bodyLimitFor(pathname));
   }
@@ -300,10 +518,10 @@ export function createApp({
 
   async function handleBook(req, res, signal) {
     const { regionId = null, question, selection, history } = await body(req, '/api/book');
-    if (!nonEmpty(question)) throw new HttpError(400, 'Ask the book something first.');
-    if (regionId !== null && typeof regionId !== 'string') throw new HttpError(400, 'regionId must be a string or null.');
+    if (!nonEmpty(question)) throw new HttpError(400, SAY.noQuestion);
+    if (regionId !== null && typeof regionId !== 'string') throw new HttpError(400, SAY.badRegion);
     const region = regionId ? regions.getRegion(regionId) : null;
-    if (regionId && !region) throw new HttpError(404, "The book has never heard of that place.");
+    if (regionId && !region) throw new HttpError(404, SAY.noPlace);
     if (!region) return sendJSON(res, 200, { answer: labBookAnswer(question), refused: false, offline: !ai.enabled });
     const result = await ai.book({
       region,
@@ -324,14 +542,14 @@ export function createApp({
 
   async function handleGrade(req, res, signal) {
     const { regionId, challengeId, answer } = await body(req, '/api/grade');
-    if (!nonEmpty(regionId) || !nonEmpty(challengeId)) throw new HttpError(400, 'Which challenge is this explanation for? (regionId and challengeId)');
-    if (!nonEmpty(answer)) throw new HttpError(400, 'Say something first: explain it in your own words.');
-    if (answer.length > 6000) throw new HttpError(400, "That's a whole book! Explain it in a few sentences.");
+    if (!nonEmpty(regionId) || !nonEmpty(challengeId)) throw new HttpError(400, SAY.whichChallenge);
+    if (!nonEmpty(answer)) throw new HttpError(400, SAY.empty);
+    if (answer.length > 6000) throw new HttpError(400, SAY.tooLong);
     const region = regions.getRegion(regionId);
-    if (!region) throw new HttpError(404, 'No such place on the map.');
+    if (!region) throw new HttpError(404, SAY.noPlace);
     const challenge = findChallenge(region, challengeId);
-    if (!challenge) throw new HttpError(404, 'Nobody here asked for that.');
-    if (challenge.type !== 'explain') throw new HttpError(400, "That challenge isn't solved by explaining.");
+    if (!challenge) throw new HttpError(404, SAY.nobodyAsked);
+    if (challenge.type !== 'explain') throw new HttpError(400, SAY.wrongKind);
     const result = await ai.grade({ region, challenge, paperText: await paperText(region), answer: answer.trim(), signal });
     return sendJSON(res, 200, result);
   }
@@ -341,7 +559,7 @@ export function createApp({
     try {
       id = decodeURIComponent(rawId);
     } catch {
-      throw new HttpError(400, "That doesn't look like an arXiv id.");
+      throw new HttpError(400, SAY.badId);
     }
     if (what === 'text') return sendJSON(res, 200, { text: await papers.getText(id) });
     if (what === 'meta') return sendJSON(res, 200, await papers.getMeta(id));
@@ -358,7 +576,7 @@ export function createApp({
     const only = (...methods) => {
       if (!methods.includes(req.method)) {
         req.resume();
-        throw new HttpError(405, `Use ${methods.filter((m) => m !== 'HEAD').join(' or ')} for ${pathname}.`, { Allow: methods.join(', ') });
+        throw new HttpError(405, SAY.wrongMethod, { Allow: methods.join(', ') });
       }
     };
     if (pathname === '/api/status') {
@@ -383,37 +601,47 @@ export function createApp({
       return handleGrade(req, res, signal);
     }
     req.resume();
-    throw new HttpError(404, 'No such path here.');
+    throw new HttpError(404, SAY.noPath);
   }
 
   async function handle(req, res) {
     const started = Date.now();
     let rawPath = String(req.url || '/').split(/[?#]/)[0];
+    let absoluteHost = null;
     if (!rawPath.startsWith('/')) {
-      try { rawPath = new URL(req.url).pathname; } catch { return sendText(res, 400, 'Bad request'); }
+      try {
+        const url = new URL(req.url);
+        rawPath = url.pathname;
+        absoluteHost = url.host;
+      } catch {
+        return sendText(res, 400, 'Bad request');
+      }
     }
-    if (!rawPath.startsWith('/api/') && rawPath !== '/api') return serveStatic(req, res, rawPath);
+    const isApi = rawPath === '/api' || rawPath.startsWith('/api/');
+    if (isApi && logRequests) {
+      res.on('close', () => logger.log?.(`${req.method} ${rawPath} ${res.headersSent ? res.statusCode : GONE} ${Date.now() - started}ms`));
+    }
+    const refused = refusal(req, isApi, absoluteHost);
+    if (refused) {
+      req.resume();
+      return isApi ? sendError(res, refused) : sendText(res, refused.status, refused.message);
+    }
+    if (!isApi) return serveStatic(req, res, rawPath);
 
     // Abort the Claude call if the player closes the book mid-question.
     const controller = new AbortController();
     res.on('close', () => {
       if (!res.writableFinished) controller.abort();
-      if (logRequests) logger.log?.(`${req.method} ${rawPath} ${res.statusCode} ${Date.now() - started}ms`);
     });
     try {
       await handleApi(req, res, rawPath, controller.signal);
     } catch (err) {
-      if (err instanceof HttpError) {
-        sendJSON(res, err.status, { error: err.message }, err.headers);
-      } else if (err instanceof AIError) {
-        if (err.status !== 499) {
-          sendJSON(res, err.status, { error: err.message, ...(err.offline ? { offline: true } : {}), ...(err.retryable ? { retryable: true } : {}) });
-        }
-      } else if (err instanceof PaperError) {
-        sendJSON(res, err.status, { error: err.message });
+      if (err?.status === GONE) return undefined;
+      if (err instanceof HttpError || err instanceof AIError || err instanceof PaperError) {
+        sendError(res, err);
       } else {
         logger.error?.(`[server] ${req.method} ${rawPath} failed:`, err);
-        sendJSON(res, 500, { error: 'Something went wrong on the server. Try again.' });
+        sendError(res, new HttpError(500, SAY.jammed));
       }
     }
     return undefined;
@@ -430,7 +658,7 @@ export function createApp({
   server.on('checkContinue', (req, res) => {
     const rawPath = String(req.url || '/').split(/[?#]/)[0];
     if (Number(req.headers['content-length']) > bodyLimitFor(rawPath)) {
-      sendJSON(res, 413, { error: tooLargeMessage(bodyLimitFor(rawPath)) }, { Connection: 'close' });
+      sendError(res, new HttpError(413, SAY.tooBig, { Connection: 'close' }));
       return;
     }
     res.writeContinue();
@@ -444,7 +672,7 @@ export function createApp({
 }
 
 export async function startServer({ port, host, ...options } = {}) {
-  const server = createApp(options);
+  const server = createApp({ host, ...options });
   await new Promise((resolve, reject) => {
     server.once('error', reject);
     server.listen(port, host, () => {

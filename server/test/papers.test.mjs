@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { createPaperStore, parseAlphaxivMeta, isValidArxivId, PaperError, upstreamUrls, META_TTL_MS } from '../papers.js';
+import { createPaperStore, parseAlphaxivMeta, describesPaper, isValidArxivId, PaperError, upstreamUrls, META_TTL_MS, TEXT_RETRY_MS, META_RETRY_MS } from '../papers.js';
 import { tmpDir, recordingLogger } from './helpers.mjs';
 
 const PDF_BYTES = Buffer.from('%PDF-1.5\n1 0 obj\n<<>>\nendobj\n%%EOF\n');
@@ -73,10 +73,12 @@ describe('PDFs', () => {
     assert.equal(fs.existsSync(path.join(s.cacheDir, '1706.03762.pdf')), false);
   });
 
-  it('maps upstream 404, network failures and timeouts', async () => {
-    await assert.rejects(store(fakeFetch({})).getPdf('2501.99999'), (e) => e.status === 404);
-    await assert.rejects(store(fakeFetch({ [upstreamUrls.pdf('1706.03762')]: new TypeError('fetch failed') })).getPdf('1706.03762'), (e) => e.status === 502);
-    await assert.rejects(store(fakeFetch({ [upstreamUrls.pdf('1706.03762')]: [503, 'busy'] })).getPdf('1706.03762'), (e) => e.status === 502 && /503/.test(e.message));
+  it('maps upstream 404, network failures and timeouts (short messages, details in the log)', async () => {
+    await assert.rejects(store(fakeFetch({})).getPdf('2501.99999'), (e) => e.status === 404 && e.code === 'not_found');
+    await assert.rejects(store(fakeFetch({ [upstreamUrls.pdf('1706.03762')]: new TypeError('fetch failed') })).getPdf('1706.03762'), (e) => e.status === 502 && e.code === 'offline');
+    const logger = recordingLogger();
+    await assert.rejects(store(fakeFetch({ [upstreamUrls.pdf('1706.03762')]: [503, 'busy'] }), { logger }).getPdf('1706.03762'), (e) => e.status === 502 && e.code === 'error' && e.message.length <= 20);
+    assert.match(logger.text(), /arxiv\.org\/pdf\/1706\.03762: HTTP 503/);
     // AbortSignal.timeout() does not keep the process alive on its own (a listening server does).
     const hang = async (url, init) => new Promise((_, reject) => {
       const keepAlive = setInterval(() => {}, 1000);
@@ -85,7 +87,7 @@ describe('PDFs', () => {
         reject(init.signal.reason);
       });
     });
-    await assert.rejects(store(hang, { timeoutMs: 50 }).getPdf('1706.03762'), (e) => e.status === 504);
+    await assert.rejects(store(hang, { timeoutMs: 50 }).getPdf('1706.03762'), (e) => e.status === 504 && e.code === 'timeout');
   });
 
   it('still serves the PDF from memory when the cache cannot be written', async () => {
@@ -120,11 +122,29 @@ describe('paper text', () => {
     assert.equal(await offline.getText('1706.03762'), 'cached text');
   });
 
-  it('retries after a failure instead of caching it', async () => {
+  it('does not retry a failed fetch for a minute, then tries again', async () => {
     let n = 0;
-    const s = store(fakeFetch({ [textUrl]: () => (++n === 1 ? [500, 'oops'] : [200, 'second time lucky']) }));
+    let clock = 0;
+    const fetch = fakeFetch({ [textUrl]: () => (++n === 1 ? [500, 'oops'] : [200, 'second time lucky']) });
+    const s = store(fetch, { now: () => clock });
     await assert.rejects(s.getText('1706.03762'), (e) => e.status === 502);
+    clock += TEXT_RETRY_MS - 1000;
+    await assert.rejects(s.getText('1706.03762'), (e) => e.status === 502, 'the failure is remembered');
+    assert.equal(fetch.calls.length, 1, 'no new fetch inside the window');
+    clock += 2000;
     assert.equal(await s.getText('1706.03762'), 'second time lucky');
+    assert.equal(fetch.calls.length, 2);
+  });
+
+  it('answers at once while the network is down (no wait per book question)', async () => {
+    let clock = 0;
+    const fetch = fakeFetch({ [textUrl]: new TypeError('fetch failed') }, { delayMs: 150 });
+    const s = store(fetch, { now: () => clock });
+    await assert.rejects(s.getText('1706.03762'), (e) => e.code === 'offline');
+    const started = Date.now();
+    await Promise.all(Array.from({ length: 5 }, () => assert.rejects(s.getText('1706.03762'), (e) => e.code === 'offline')));
+    assert.ok(Date.now() - started < 100, `took ${Date.now() - started}ms`);
+    assert.equal(fetch.calls.length, 1);
   });
 
   it('rejects HTML and empty pages', async () => {
@@ -185,5 +205,54 @@ describe('alphaXiv metadata', () => {
     online = false;
     clock += META_TTL_MS * 2;
     assert.deepEqual(await s.getMeta('1706.03762'), { title: 'Attention Is All You Need', votes: 1182, visits: 181172 });
+    const calls = fetch.calls.length;
+    clock += META_RETRY_MS - 1000;
+    assert.equal((await s.getMeta('1706.03762')).votes, 1182);
+    assert.equal(fetch.calls.length, calls, 'a failed refresh is not retried on every request');
+  });
+
+  it('never replaces good metadata with a page it cannot read (challenge page, new layout)', async () => {
+    let clock = 0;
+    let page = ABS_HTML;
+    const fetch = fakeFetch({ [absUrl]: () => [200, page, 'text/html'] });
+    const s = store(fetch, { now: () => clock });
+    assert.equal((await s.getMeta('1706.03762')).votes, 1182);
+    const file = path.join(s.cacheDir, '1706.03762.meta.json');
+    const saved = fs.readFileSync(file, 'utf8');
+
+    page = '<!DOCTYPE html><html><head><title>Just a moment...</title></head><body>Checking your browser</body></html>';
+    clock += META_TTL_MS + 1;
+    assert.deepEqual(await s.getMeta('1706.03762'), { title: 'Attention Is All You Need', votes: 1182, visits: 181172 });
+    assert.equal(fs.readFileSync(file, 'utf8'), saved, 'the cached copy is untouched');
+
+    page = ABS_HTML.replace(/metrics:\$R\[349\]=\{[^]*?\}\},/, ''); // the paper's page without its numbers
+    clock += META_RETRY_MS + 1;
+    assert.equal((await s.getMeta('1706.03762')).votes, 1182, 'numbers that vanish are not a refresh');
+    assert.equal(fs.readFileSync(file, 'utf8'), saved);
+
+    page = ABS_HTML.replace('publicTotalVotes:1182', 'publicTotalVotes:1300');
+    clock += META_RETRY_MS + 1;
+    assert.equal((await s.getMeta('1706.03762')).votes, 1300, 'alphaXiv is healthy again');
+    assert.equal(fetch.calls.length, 4);
+  });
+
+  it('serves nulls (and stores nothing) when the first page is unreadable', async () => {
+    let clock = 0;
+    const fetch = fakeFetch({ [absUrl]: [200, '<title>Just a moment...</title>', 'text/html'] });
+    const s = store(fetch, { now: () => clock });
+    assert.deepEqual(await s.getMeta('1706.03762'), { title: null, votes: null, visits: null });
+    assert.equal(fs.existsSync(path.join(s.cacheDir, '1706.03762.meta.json')), false);
+    assert.deepEqual(await s.getMeta('1706.03762'), { title: null, votes: null, visits: null });
+    assert.equal(fetch.calls.length, 1, 'retried later, not on every map render');
+    clock += META_RETRY_MS + 1;
+    await s.getMeta('1706.03762');
+    assert.equal(fetch.calls.length, 2);
+  });
+
+  it('recognises the paper\'s own page', () => {
+    assert.equal(describesPaper(ABS_HTML, '1706.03762'), true);
+    assert.equal(describesPaper(ABS_HTML, '1706.03762v7'), true);
+    assert.equal(describesPaper('<title>Just a moment...</title>', '1706.03762'), false);
+    assert.equal(describesPaper(ABS_HTML, '2401.00001'), false);
   });
 });

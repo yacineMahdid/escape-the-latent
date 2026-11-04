@@ -138,10 +138,11 @@ export function renderTex(src) {
     i++;
     return frag;
   }
-  function arg() {
+  function arg() {                 // one braced group, one command, or one character (as TeX does)
     skipSpace();
     if (s[i] === '{') { i++; return group(); }
-    return i < s.length ? atom() : text('');
+    if (s[i] === '\\') return atom();
+    return text(i < s.length ? s[i++] : '');
   }
   function rawArg() {
     skipSpace();
@@ -338,6 +339,7 @@ export function renderMarkdown(src) {
 // The Python runner: one worker shared by every terminal, so Python loads once per session.
 
 const LOAD_TIMEOUT_MS = 120000;
+const IDLE_MS = 4 * 60 * 1000;          // Python is let go a few minutes after the last terminal closes
 
 class Runner {
   constructor() {
@@ -348,6 +350,29 @@ class Runner {
     this.seq = 0;
     this.job = null;              // { id, resolve, timer, posted }
     this.subs = new Set();
+    this.users = 0;
+    this.idleTimer = 0;
+  }
+
+  // open terminals hold Python; with none open it is freed after IDLE_MS (it reloads from cache)
+  hold() {
+    this.users++;
+    clearTimeout(this.idleTimer);
+  }
+
+  release() {
+    this.users = Math.max(0, this.users - 1);
+    this.idleLater();
+  }
+
+  idleLater() {
+    clearTimeout(this.idleTimer);
+    if (this.users) return;
+    this.idleTimer = setTimeout(() => {
+      if (this.users || this.job) return;
+      this.dropWorker();
+      this.set('idle');
+    }, IDLE_MS);
   }
 
   set(state) {
@@ -465,6 +490,7 @@ const runner = new Runner();
 // Start loading Python early (e.g. when the player walks up to a terminal).
 export function preload() {
   runner.ensure();
+  runner.idleLater();
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -779,14 +805,16 @@ export async function open({ challenge = {}, regionId = 'local' } = {}) {
         h('b', { text: `${pass}/${results.length}` }));
       log.prepend(sum);
       let firstBad = null;
-      const said = new Set();          // the same reason twice is said once
+      const said = new Set();          // the same reason (and line) twice is said once
       for (const t of results) {
         const name = pretty(t.name);
+        const sig = `${t.message}@${t.line}`;
+        const fresh = !t.passed && !said.has(sig);
+        if (!t.passed) said.add(sig);
         const r = row(t.passed ? 'ok' : 'bad', h('span', { class: 'term-mark', text: t.passed ? '✓' : '✗' }),
           h('span', { class: 'term-name', text: name }),
-          !t.passed && t.line ? lineBtn(t.line) : null);
-        if (!t.passed && t.message && !said.has(t.message)) r.append(h('div', { class: 'term-why', text: t.message }));
-        if (!t.passed && t.message) said.add(t.message);
+          fresh && t.line ? lineBtn(t.line) : null);
+        if (fresh && t.message) r.append(h('div', { class: 'term-why', text: t.message }));
         if (t.trace) r.title = t.trace;
         log.append(r);
         if (!t.passed && !firstBad) firstBad = t;
@@ -856,6 +884,7 @@ export async function open({ challenge = {}, regionId = 'local' } = {}) {
       disarm();
       if (runner.busy) runner.cancel();      // never leave a stuck program behind
       unsubscribe();
+      runner.release();
       window.removeEventListener('keydown', onKey);
       closeModal(overlay);
       overlay.classList.add('is-closing');
@@ -878,6 +907,7 @@ export async function open({ challenge = {}, regionId = 'local' } = {}) {
 
     root.append(overlay);
     openModal(overlay, { onEscape: () => finish(solved) });
+    runner.hold();
     runner.ensure();
     requestAnimationFrame(() => { editor.refresh(); editor.focusStart(); });
   });

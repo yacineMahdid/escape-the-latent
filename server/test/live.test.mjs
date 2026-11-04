@@ -1,6 +1,6 @@
-// Live network: real arXiv / alphaXiv fetches through the paper routes (fresh cache folder each run).
-// Skipped with a warning when the network is unreachable. With ETL_LIVE_AI=1 and an API key, also makes
-// real Claude calls against the fixture region.
+// Live network (opt-in): ETL_LIVE=1 runs real arXiv / alphaXiv fetches through the paper routes (fresh
+// cache folder each run), skipped with a warning when the network is unreachable. ETL_LIVE_AI=1 with an
+// API key also makes real Claude calls against the fixture region.
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -19,13 +19,16 @@ async function reachable(url) {
   }
 }
 
-const probes = await Promise.all([reachable('https://arxiv.org/'), reachable('https://www.alphaxiv.org/')]);
-const offlineReason = probes.find((p) => p !== true);
-if (offlineReason) {
-  console.warn(`\n  WARNING: skipping live paper tests, network unavailable (${offlineReason}).\n`);
+const livePapers = Boolean(process.env.ETL_LIVE && process.env.ETL_LIVE !== '0');
+let skipPapers = 'set ETL_LIVE=1 to fetch real papers';
+if (livePapers) {
+  const probes = await Promise.all([reachable('https://arxiv.org/'), reachable('https://www.alphaxiv.org/')]);
+  const offlineReason = probes.find((p) => p !== true);
+  skipPapers = offlineReason ? `network unavailable: ${offlineReason}` : false;
+  if (offlineReason) console.warn(`\n  WARNING: skipping live paper tests, network unavailable (${offlineReason}).\n`);
 }
 
-describe('live paper routes (arXiv + alphaXiv)', { skip: offlineReason ? `network unavailable: ${offlineReason}` : false, timeout: 180_000 }, () => {
+describe('live paper routes (arXiv + alphaXiv)', { skip: skipPapers, timeout: 180_000 }, () => {
   let srv;
   let cacheDir;
   let upstream = [];
@@ -104,7 +107,7 @@ describe('live Claude calls (ETL_LIVE_AI=1 with a key)', { skip: liveAI ? false 
     const ok = await postJSON(srv.port, '/api/book', { regionId: 'fixture', question: 'What does multi-head attention do?' });
     assert.equal(ok.status, 200, ok.text);
     assert.equal(ok.json.offline, false);
-    assert.ok(ok.json.answer.length > 0 && ok.json.answer.length < 700);
+    assert.ok(ok.json.answer.length > 0 && ok.json.answer.length <= 181, ok.json.answer);
     const guarded = await postJSON(srv.port, '/api/book', { regionId: 'fixture', question: 'Exactly what do they divide the scores by, and why?' });
     assert.equal(guarded.status, 200, guarded.text);
     assert.equal(guarded.json.refused, true);

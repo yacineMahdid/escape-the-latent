@@ -4,8 +4,11 @@
 //   text  https://www.alphaxiv.org/abs/<id>.md  -> <cacheDir>/<id>.md         (kept forever)
 //   meta  https://www.alphaxiv.org/abs/<id>     -> <cacheDir>/<id>.meta.json  (refreshed after 24h)
 //
-// Concurrent requests for the same thing share one upstream fetch. Requests use Node's default
-// fetch user agent; we never pretend to be a browser.
+// Concurrent requests for the same thing share one upstream fetch. A failed text fetch is not retried
+// for TEXT_RETRY_MS (each book question would otherwise wait on a dead network), and a failed or
+// unreadable metadata refresh (a "Just a moment..." challenge page, a new page layout) never replaces a
+// good cached copy and is not retried for META_RETRY_MS. Requests use Node's default fetch user agent;
+// we never pretend to be a browser. Error messages are a word or two; details go to the log.
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -15,17 +18,33 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 export const ARXIV_ID_RE = /^\d{4}\.\d{4,5}(v\d+)?$/;
 export const META_TTL_MS = 24 * 60 * 60 * 1000;
+export const TEXT_RETRY_MS = 60 * 1000;
+export const META_RETRY_MS = 5 * 60 * 1000;
 
 const MAX_PDF_BYTES = 80 * 1024 * 1024;
 const MAX_TEXT_BYTES = 10 * 1024 * 1024;
 const MAX_HTML_BYTES = 12 * 1024 * 1024;
 const TEXT_MEMORY_SLOTS = 8;
+const NO_META = Object.freeze({ title: null, votes: null, visits: null });
 
 export const upstreamUrls = {
   pdf: (id) => `https://arxiv.org/pdf/${id}`,
   text: (id) => `https://www.alphaxiv.org/abs/${id}.md`,
   abs: (id) => `https://www.alphaxiv.org/abs/${id}`,
 };
+
+const SAY = Object.freeze({
+  badId: '✕ bad arXiv id',
+  slow: '✕ too slow',
+  unreachable: '✕ unreachable',
+  noPaper: '✕ no paper',
+  upstream: '✕ library error',
+  tooBig: '✕ too big',
+  notPdf: '✕ not a PDF',
+  notText: '✕ not text',
+  empty: '✕ empty page',
+  cutOff: '✕ cut off',
+});
 
 export function isValidArxivId(id) {
   return typeof id === 'string' && ARXIV_ID_RE.test(id);
@@ -35,12 +54,14 @@ export function defaultCacheDir(env = process.env) {
   return env.PAPERS_CACHE_DIR ? path.resolve(env.PAPERS_CACHE_DIR) : path.join(ROOT, '.cache', 'papers');
 }
 
-// status is the HTTP status the route should answer with; message is safe to show to the player.
+// status: the HTTP status the route answers with; message: a word or two for the player;
+// code: offline | timeout | not_found | bad_input | error (see ERROR_CODES in index.js).
 export class PaperError extends Error {
-  constructor(status, message, options) {
+  constructor(status, message, { code, ...options } = {}) {
     super(message, options);
     this.name = 'PaperError';
     this.status = status;
+    this.code = code ?? ({ 400: 'bad_input', 404: 'not_found', 504: 'timeout' }[status] || 'error');
   }
 }
 
@@ -49,11 +70,14 @@ export function createPaperStore({
   fetch: fetchImpl = (...args) => globalThis.fetch(...args),
   now = () => Date.now(),
   metaTtlMs = META_TTL_MS,
+  textRetryMs = TEXT_RETRY_MS,
+  metaRetryMs = META_RETRY_MS,
   timeoutMs = 45_000,
   logger = console,
 } = {}) {
   const inflight = new Map(); // "kind:id" -> Promise
   const texts = new Map(); // small in-memory LRU of paper texts (the book and grader read them a lot)
+  const failures = new Map(); // "kind:id" -> { until, error } (error null: the page was unreadable)
 
   function once(key, fn) {
     let p = inflight.get(key);
@@ -64,10 +88,20 @@ export function createPaperStore({
     return p;
   }
 
+  function recentFailure(key) {
+    const f = failures.get(key);
+    if (f && now() < f.until) return f;
+    failures.delete(key);
+    return null;
+  }
+
+  function rememberFailure(key, error, forMs) {
+    failures.set(key, { until: now() + forMs, error });
+    if (failures.size > 256) failures.delete(failures.keys().next().value);
+  }
+
   function checkId(id) {
-    if (!isValidArxivId(id)) {
-      throw new PaperError(400, "That doesn't look like an arXiv id (something like 1706.03762).");
-    }
+    if (!isValidArxivId(id)) throw new PaperError(400, SAY.badId);
   }
 
   const fileFor = (id, ext) => path.join(cacheDir, `${id}${ext}`);
@@ -95,43 +129,44 @@ export function createPaperStore({
     }
   }
 
-  async function download(url, { source, maxBytes }) {
+  async function download(url, { maxBytes }) {
+    const fail = (status, message, detail, { code, cause } = {}) => {
+      if (status !== 404) logger.warn?.(`[papers] ${url}: ${detail}`);
+      return new PaperError(status, message, { code, cause });
+    };
+    const aborted = (err) => err?.name === 'TimeoutError' || err?.name === 'AbortError';
     let res;
     try {
       res = await fetchImpl(url, { redirect: 'follow', signal: AbortSignal.timeout(timeoutMs) });
     } catch (err) {
-      if (err?.name === 'TimeoutError' || err?.name === 'AbortError') {
-        throw new PaperError(504, `${source} is taking too long to answer. Try again in a moment.`, { cause: err });
-      }
-      throw new PaperError(502, `${source} can't be reached right now. Is the network up?`, { cause: err });
+      if (aborted(err)) throw fail(504, SAY.slow, `no answer within ${timeoutMs}ms`, { cause: err });
+      throw fail(502, SAY.unreachable, `cannot connect (${err?.cause?.code || err?.message || err})`, { code: 'offline', cause: err });
     }
     if (res.status === 404 || res.status === 410) {
       await res.body?.cancel().catch(() => {});
-      throw new PaperError(404, `${source} has no paper with that id.`);
+      throw fail(404, SAY.noPaper, `HTTP ${res.status}`);
     }
     if (!res.ok) {
       await res.body?.cancel().catch(() => {});
-      throw new PaperError(502, `${source} answered with an error (HTTP ${res.status}). Try again later.`);
+      throw fail(502, SAY.upstream, `HTTP ${res.status}`);
     }
     const declared = Number(res.headers.get('content-length'));
     if (declared > maxBytes) {
       await res.body?.cancel().catch(() => {});
-      throw new PaperError(502, `${source} sent something far too large to be a paper.`);
+      throw fail(502, SAY.tooBig, `declared ${declared} bytes`);
     }
     const chunks = [];
     let size = 0;
     try {
       for await (const chunk of res.body ?? []) {
         size += chunk.byteLength;
-        if (size > maxBytes) throw new PaperError(502, `${source} sent something far too large to be a paper.`);
+        if (size > maxBytes) throw fail(502, SAY.tooBig, `more than ${maxBytes} bytes`);
         chunks.push(Buffer.from(chunk));
       }
     } catch (err) {
       if (err instanceof PaperError) throw err;
-      if (err?.name === 'TimeoutError' || err?.name === 'AbortError') {
-        throw new PaperError(504, `${source} is taking too long to answer. Try again in a moment.`, { cause: err });
-      }
-      throw new PaperError(502, `${source} stopped halfway through. Try again.`, { cause: err });
+      if (aborted(err)) throw fail(504, SAY.slow, `body not done within ${timeoutMs}ms`, { cause: err });
+      throw fail(502, SAY.cutOff, `body cut off (${err?.message || err})`, { cause: err });
     }
     return { body: Buffer.concat(chunks), contentType: res.headers.get('content-type') || '' };
   }
@@ -145,9 +180,10 @@ export function createPaperStore({
         const st = await fsp.stat(file);
         if (st.isFile() && st.size > 0) return { file };
       } catch { /* not cached yet */ }
-      const { body } = await download(upstreamUrls.pdf(id), { source: 'The arXiv library', maxBytes: MAX_PDF_BYTES });
+      const { body } = await download(upstreamUrls.pdf(id), { maxBytes: MAX_PDF_BYTES });
       if (!body.subarray(0, 1024).includes('%PDF-')) {
-        throw new PaperError(502, 'The arXiv library sent something that is not a PDF.');
+        logger.warn?.(`[papers] ${upstreamUrls.pdf(id)}: not a PDF`);
+        throw new PaperError(502, SAY.notPdf);
       }
       return (await writeCached(file, body)) ? { file } : { data: body };
     });
@@ -168,14 +204,22 @@ export function createPaperStore({
       const file = fileFor(id, '.md');
       const cached = await readCached(file, 'utf8');
       if (cached && cached.trim()) return remember(id, cached);
-      const { body, contentType } = await download(upstreamUrls.text(id), { source: 'The alphaXiv reading room', maxBytes: MAX_TEXT_BYTES });
-      const text = body.toString('utf8').replace(/^﻿/, '');
-      if (/html/i.test(contentType) || /^\s*<(!doctype|html)/i.test(text)) {
-        throw new PaperError(502, 'The alphaXiv reading room sent a web page instead of the paper text.');
+      const failed = recentFailure(`text:${id}`);
+      if (failed) throw failed.error;
+      try {
+        const { body, contentType } = await download(upstreamUrls.text(id), { maxBytes: MAX_TEXT_BYTES });
+        const text = body.toString('utf8').replace(/^﻿/, '');
+        if (/html/i.test(contentType) || /^\s*<(!doctype|html)/i.test(text)) {
+          logger.warn?.(`[papers] ${upstreamUrls.text(id)}: a web page, not the paper text`);
+          throw new PaperError(502, SAY.notText);
+        }
+        if (!text.trim()) throw new PaperError(502, SAY.empty);
+        await writeCached(file, text);
+        return remember(id, text);
+      } catch (err) {
+        if (err instanceof PaperError) rememberFailure(`text:${id}`, err, textRetryMs);
+        throw err;
       }
-      if (!text.trim()) throw new PaperError(502, 'The alphaXiv reading room sent an empty page.');
-      await writeCached(file, text);
-      return remember(id, text);
     });
   }
 
@@ -188,20 +232,36 @@ export function createPaperStore({
       try {
         cached = JSON.parse((await readCached(file, 'utf8')) ?? 'null');
       } catch { cached = null; }
+      if (!cached || typeof cached !== 'object' || Array.isArray(cached)) cached = null;
       const fresh = cached && typeof cached.fetchedAt === 'number' && now() - cached.fetchedAt < metaTtlMs;
       if (fresh) return publicMeta(cached);
+      const failed = recentFailure(`meta:${id}`);
+      if (failed) {
+        if (cached) return publicMeta(cached);
+        if (failed.error) throw failed.error;
+        return { ...NO_META };
+      }
+      let html;
       try {
-        const { body } = await download(upstreamUrls.abs(id), { source: 'alphaXiv', maxBytes: MAX_HTML_BYTES });
-        const meta = parseAlphaxivMeta(body.toString('utf8'), id);
-        await writeCached(file, JSON.stringify({ ...meta, fetchedAt: now() }));
-        return meta;
+        html = (await download(upstreamUrls.abs(id), { maxBytes: MAX_HTML_BYTES })).body.toString('utf8');
       } catch (err) {
+        rememberFailure(`meta:${id}`, err, metaRetryMs);
         if (cached) {
           logger.warn?.(`[papers] meta refresh for ${id} failed (${err.message}); serving the cached copy`);
           return publicMeta(cached);
         }
         throw err;
       }
+      const meta = parseAlphaxivMeta(html, id);
+      // Not this paper's page (a challenge page, an error page, a new layout), or numbers gone missing:
+      // not a refresh. Keep what we had and try again later.
+      if (!describesPaper(html, id) || (cached && hasNumbers(cached) && !hasNumbers(meta))) {
+        rememberFailure(`meta:${id}`, null, metaRetryMs);
+        logger.warn?.(`[papers] alphaXiv page for ${id} did not parse${cached ? '; serving the cached copy' : ''}`);
+        return cached ? publicMeta(cached) : { ...NO_META };
+      }
+      await writeCached(file, JSON.stringify({ ...meta, fetchedAt: now() }));
+      return meta;
     });
   }
 
@@ -216,6 +276,8 @@ function publicMeta(m) {
   };
 }
 
+const hasNumbers = (m) => Number.isFinite(m?.votes) || Number.isFinite(m?.visits);
+
 // ---------------------------------------------------------------------------------------------
 // alphaXiv abs page parsing. The page embeds its data as a serialized JS object, e.g.
 //   universalId:"1706.03762",...,metrics:$R[349]={commentsCount:892,totalVotes:368,
@@ -224,11 +286,18 @@ function publicMeta(m) {
 
 const Q = String.raw`\\?"?`; // optional, possibly escaped, quote around a key
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const paperIdRe = (baseId, flags) => new RegExp(`${Q}universalId${Q}\\s*:\\s*\\\\?"${escapeRe(baseId)}(v\\d+)?\\\\?"`, flags);
+const baseIdOf = (id) => String(id).replace(/v\d+$/, '');
 
 export function parseAlphaxivMeta(html, id) {
   const text = String(html ?? '');
-  const { votes, visits } = parseMetrics(text, String(id).replace(/v\d+$/, ''));
+  const { votes, visits } = parseMetrics(text, baseIdOf(id));
   return { title: parseTitle(text), votes, visits };
+}
+
+// True when the page carries this paper's own data (not a challenge page or a stranger's page).
+export function describesPaper(html, id) {
+  return paperIdRe(baseIdOf(id), '').test(String(html ?? ''));
 }
 
 function parseTitle(html) {
@@ -240,7 +309,7 @@ function parseTitle(html) {
 }
 
 function parseMetrics(html, baseId) {
-  const idRe = new RegExp(`${Q}universalId${Q}\\s*:\\s*\\\\?"${escapeRe(baseId)}(v\\d+)?\\\\?"`, 'g');
+  const idRe = paperIdRe(baseId, 'g');
   const anyIdRe = new RegExp(`${Q}universalId${Q}\\s*:`, 'g');
   const hits = [...html.matchAll(idRe)];
   // The paper itself is listed under its bare id; versioned ids mostly belong to comments.
