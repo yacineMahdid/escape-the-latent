@@ -2,10 +2,12 @@
 //
 //   open({ challenge, regionId, speaker: { name, color? } }) -> Promise<{ pass: boolean, feedback: string }>
 //
-// A speech bubble: the speaker's name tag and question, a roomy answer card, ➤ to send it to
-// api.grade. Pass -> ✓ continue. Not yet -> the villager's reply stays above the card while you
-// rewrite; ➤ sends again. Grading trouble shows the server's own word or two ("… busy"), else "…?".
-// feedback is '' when nothing was graded (the player backed out first). Drafts live in localStorage
+// A speech bubble: the speaker's name tag and question, a roomy answer card ("Explain it in your own
+// words…"), and worded keys: Later (close, the draft is kept) and ➤ Send (to api.grade). While it is
+// graded: "Thinking…". Pass -> "✓ Passed!" + the villager's reply, and ✓ Continue. Not yet -> "✗ Not
+// yet" + the reply, which stays above the card while you rewrite; Send sends again. Grading trouble:
+// "Couldn't check it (busy). Send again." (the server's own word, when it gave one). feedback is ''
+// when nothing was graded (the player backed out first). Drafts live in localStorage
 // `etl-explain-<regionId>-<challengeId>` until the answer passes. Explain-kind fundamentals call this
 // too, with challenge = { id, type: 'explain', title, question, rubric, offline }.
 import { openModal, closeModal, topModal } from './modal.js';
@@ -16,11 +18,13 @@ const MAX_CHARS = 6000;                 // the server's limit
 const draftKey = (regionId, id) => `etl-explain-${regionId}-${id}`;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// the server's error bodies are already short and in-world ("… busy", "✕ too long")
+// the server's error bodies are a word or two ("… busy", "✕ too slow"): keep the words, drop the mark
 const errorWord = (err) => {
   const said = err?.body?.error;
-  return typeof said === 'string' && said.trim() && said.trim().length <= 40 ? said.trim() : '…?';
+  const word = typeof said === 'string' ? said.replace(/^[^\p{L}\p{N}]+/u, '').trim() : '';
+  return word && word.length <= 40 ? word : '';
 };
+const VERDICT = { pass: '✓ Passed!', fail: '✗ Not yet' };
 
 export async function open({ challenge = {}, regionId = 'local', speaker = {} } = {}) {
   await ensureCss();
@@ -41,20 +45,23 @@ export async function open({ challenge = {}, regionId = 'local', speaker = {} } 
     const tag = h('div', { class: 'ex-tag', text: name });
     if (speaker?.color) tag.style.background = speaker.color;
     const question = renderInline(challenge.question || challenge.title || '…', h('div', { class: 'ex-q' }));
+    // the verdict ("✓ Passed!", "✗ Not yet"), then the villager's reply in their own words
+    const verdict = h('b', { class: 'ex-verdict' });
     const replyText = h('span', { class: 'ex-reply-text' });
     const meter = h('span', { class: 'ex-meter', 'aria-hidden': 'true' }, h('i'));
-    const reply = h('div', { class: 'ex-reply', 'aria-live': 'polite' }, h('span', { class: 'ex-reply-mark' }), replyText, meter);
+    const reply = h('div', { class: 'ex-reply', 'aria-live': 'polite' }, verdict, replyText, meter);
     reply.hidden = true;
-    const dots = h('div', { class: 'ex-dots', role: 'status', 'aria-label': 'Thinking' }, h('i'), h('i'), h('i'));
+    const dots = h('div', { class: 'ex-dots', role: 'status' }, h('i'), h('i'), h('i'), h('span', { class: 'ex-dots-txt', text: 'Thinking…' }));
     dots.hidden = true;
 
-    const ta = h('textarea', { class: 'ex-ta', rows: '6', maxlength: String(MAX_CHARS), spellcheck: 'true', placeholder: '✎', 'aria-label': 'Your explanation' });
+    const ta = h('textarea', { class: 'ex-ta', rows: '6', maxlength: String(MAX_CHARS), spellcheck: 'true', placeholder: 'Explain it in your own words…', 'aria-label': 'Your explanation' });
     ta.value = store.get(key) || '';
 
-    const btn = (act, ico, tip, cls = '') => h('button', { class: `ex-key ${cls}`.trim(), type: 'button', 'data-act': act, title: tip, 'aria-label': tip }, icon(ico));
-    const laterKey = btn('later', 'close', 'Later · Esc');
-    const sendKey = btn('send', 'send', 'Send · Ctrl+Enter', 'go');
-    const doneKey = btn('done', 'test', 'Continue', 'go');
+    const btn = (act, ico, words, tip, cls = '') => h('button', { class: `ex-key ${ico ? 'has-ico' : ''} ${cls}`.replace(/\s+/g, ' ').trim(), type: 'button', 'data-act': act, title: tip },
+      ico ? icon(ico) : null, h('span', { class: 'ex-key-txt', text: words }));
+    const laterKey = btn('later', null, 'Later', 'Esc · your answer is kept');
+    const sendKey = btn('send', 'send', 'Send', 'Ctrl+Enter', 'go');
+    const doneKey = btn('done', 'test', 'Continue', 'Ctrl+Enter', 'go');
 
     const bubble = h('div', { class: 'ex-bubble', role: 'dialog', 'aria-modal': 'true', 'aria-label': challenge.title || name },
       tag,
@@ -83,12 +90,12 @@ export async function open({ challenge = {}, regionId = 'local', speaker = {} } 
       typing?.cancel();
       reply.hidden = false;
       reply.dataset.mood = mood;
-      reply.querySelector('.ex-reply-mark').textContent = mood === 'pass' ? '✓' : mood === 'fail' ? '✗' : '';
+      verdict.textContent = VERDICT[mood] || '';
       const showMeter = mood === 'fail' && typeof score === 'number' && Number.isFinite(score) && score > 0;
       meter.hidden = !showMeter;
       if (showMeter) {
         meter.firstChild.style.width = `${Math.round(Math.max(0, Math.min(1, score)) * 100)}%`;
-        meter.title = `${Math.round(score * 100)}%`;
+        meter.title = `Score ${Math.round(score * 100)}%`;
       }
       let stop = false;
       typing = { cancel: () => { stop = true; } };
@@ -129,13 +136,13 @@ export async function open({ challenge = {}, regionId = 'local', speaker = {} } 
         console.warn('[explain] grading failed', error || res);
         setPhase('edit');
         const word = errorWord(error);
-        say(word, 'error');
-        reply.title = word === '…?' ? (error?.message || 'No answer') : '';
+        say(`Couldn't check it${word ? ` (${word})` : ''}. Send again.`, 'error');
+        reply.title = word ? '' : (error?.message || 'No answer');
         caretToEnd();
         return;
       }
       lastFeedback = String(res.feedback || '');
-      const shown = lastFeedback || (res.pass ? '✓' : '…');
+      const shown = lastFeedback || (res.pass ? '' : 'Try again.');
       if (res.pass) {
         passed = true;
         store.del(key);
@@ -144,7 +151,7 @@ export async function open({ challenge = {}, regionId = 'local', speaker = {} } 
         say(shown, 'pass');
         doneKey.focus();
       } else {
-        setPhase('edit');                  // the reply stays up as a hint; keep typing, ➤ sends again
+        setPhase('edit');                  // the reply stays up as a hint; keep typing, Send sends again
         say(shown, 'fail', res.score);
         caretToEnd();
       }

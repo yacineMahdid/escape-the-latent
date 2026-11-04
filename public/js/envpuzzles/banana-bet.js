@@ -161,7 +161,7 @@ export default {
       const geo = new THREE.ExtrudeGeometry(s, { depth: dep, bevelEnabled: true, bevelSize: bev, bevelThickness: bev, bevelSegments: 2, curveSegments: 10 });
       geo.translate(0, 0, -dep / 2); return geo;
     };
-    // A real banana along x (stem end at -x), belly down like a smile, resting on y = 0.
+    // A real banana along x (stem end at -x), belly down like a smile, resting on y = 0. Returns { g }.
     function banana(par, len = 0.7, thick = 0.09, o = {}) {
       const bend = o.bend ?? 1.15, R = len / bend;
       const g = group(par);
@@ -171,7 +171,7 @@ export default {
       const radius = (u) => thick * (0.3 + 0.7 * Math.pow(Math.sin(Math.PI * u), 0.55));
       const skin = M(o.color ?? 0xffd84a, { roughness: o.rough ?? 0.55, emissive: o.glow ?? 0x2a2000, flatShading: !!o.flat });
       const tipM = M(o.tip ?? 0x4a3420, { roughness: 0.7, flatShading: !!o.flat });
-      mesh(taperTubeGeo(curve, radius, o.flat ? 18 : 32, o.flat ? 7 : 10), skin, 0, 0, 0, g);
+      mesh(taperTubeGeo(curve, radius, o.flat ? 20 : 32, o.radial ?? (o.flat ? 5 : 10)), skin, 0, 0, 0, g);
       const p1 = curve.getPointAt(1);
       mesh(new THREE.SphereGeometry(thick * 0.31, 10, 8), tipM, p1.x, p1.y, p1.z, g);
       const p0 = curve.getPointAt(0), out = curve.getTangentAt(0).negate();
@@ -181,7 +181,7 @@ export default {
       st.position.copy(p0).addScaledVector(out, sl / 2); st.quaternion.setFromUnitVectors(UP, out);
       const e = p0.clone().addScaledVector(out, sl);
       mesh(new THREE.SphereGeometry(thick * 0.19, 8, 6), tipM, e.x, e.y, e.z, g);
-      return { g, curve, radius, center: new THREE.Vector3(0, thick + R, 0) };
+      return { g };
     }
 
     // ---------- the ten props: each builds into its group (base at y = 0, facing +z) ----------
@@ -249,18 +249,12 @@ export default {
       // ImageNet-R (sculpture): a banana sculpted from sand, a bucket and a spade beside it
       sandcastle(g) {
         const mound = mesh(new THREE.SphereGeometry(1, 24, 10, 0, Math.PI * 2, 0, Math.PI / 2), M(0xe3c27a, { roughness: 1 }), 0, -0.02, 0, g); mound.scale.set(0.74, 0.16, 0.36);
-        const b = banana(g, 1.3, 0.19, { color: 0xe9cf8f, tip: 0xc9a862, stem: 0xc9a862, rough: 1, bend: 1.6, stemLen: 0.75, glow: 0x000000, flat: true });
+        // a sculpted banana: five patted-flat sides (a banana's own ridges), darker sand at the tips
+        const b = banana(g, 1.35, 0.2, { color: 0xe9cf8f, tip: 0xb8955a, stem: 0xb8955a, rough: 1, bend: 1.45, stemLen: 0.8, glow: 0x000000, flat: true });
         b.g.position.set(0, 0.04, 0);
-        const lumpM = M(0xe0bf78, { roughness: 1, flatShading: true });
-        for (let i = 0; i < 7; i++) {
-          const u = 0.18 + (0.64 * i) / 6, P = b.curve.getPointAt(u), rr = b.radius(u);
-          mesh(new THREE.DodecahedronGeometry(0.03 + (i % 3) * 0.008, 0), lumpM, P.x, P.y - rr * 0.35, rr * 0.93, b.g);
-        }
-        // two ridges pressed in along its length, like a real banana's edges
-        for (const [up, fwd] of [[0.55, 0.8], [0.95, 0.25]]) {
-          const pts = []; for (let i = 0; i <= 12; i++) { const u = 0.08 + 0.84 * (i / 12), P = b.curve.getPointAt(u), nrm = b.center.clone().sub(P).normalize(), r = b.radius(u); pts.push(P.clone().addScaledVector(nrm, r * up).add(new THREE.Vector3(0, 0, r * fwd))); }
-          mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, 0.012, 5), M(0xc9a862, { roughness: 1 }), 0, 0, 0, b.g);
-        }
+        const crumbM = M(0xe0bf78, { roughness: 1, flatShading: true });
+        const moundY = (x, z) => Math.max(0, 0.16 * Math.sqrt(Math.max(0, 1 - (x / 0.74) ** 2 - (z / 0.36) ** 2)) - 0.02);
+        for (const [x, z, r] of [[-0.42, 0.26, 0.05], [0.12, 0.3, 0.035], [0.5, 0.24, 0.045], [-0.1, -0.3, 0.04], [0.66, -0.12, 0.03]]) mesh(new THREE.DodecahedronGeometry(r, 0), crumbM, x, moundY(x, z) + r * 0.5, z, g);
         // a red toy bucket and a blue spade
         const bucket = group(g, 0.82, 0, 0.18);
         const red = M(0xe8566a, { roughness: 0.6, side: THREE.DoubleSide });
@@ -287,7 +281,7 @@ export default {
         const plant = group(g, 0, 0, 0); plant.rotation.set(0.3, 0, 0.1); // leans out from under the well's roof
         const b = banana(plant, 0.66, 0.085, { bend: 1.0 });
         b.g.rotation.z = -Math.PI / 2; b.g.position.set(-0.11, 0.39, 0);
-        return { flag: [0.3, 0, 0], scale: 1.3 };
+        return { flag: [0.3, 0, 0], scale: 1.3, unshaded: [b.g] }; // the well's roof would turn it olive
       },
       // ImageNet-A (a real banana photo that trips the Snapper): a banana half hidden in leaves, a ladybird on it
       ladybird(g) {
@@ -445,6 +439,7 @@ export default {
       g.rotation.y = p.ry || 0;
       const built = (BUILD[p.id] || fallback)(g) || {};
       g.traverse((o) => { if (o.isMesh && !o.material?.isMeshBasicMaterial) { o.castShadow = true; o.receiveShadow = true; } });
+      for (const u of built.unshaded || []) u.traverse((o) => { o.receiveShadow = false; });
       let col = null;
       if (typeof p.collider === 'number' && p.collider > 0) col = w.addCollider({ type: 'circle', x: at[0], z: at[2], r: p.collider });
       else if (p.collider && typeof p.collider === 'object') {

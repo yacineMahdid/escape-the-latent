@@ -3,11 +3,12 @@
 //   open({ challenge, regionId }) -> Promise<{ solved: boolean, code: string }>
 //
 // A cozy typewriter terminal: the task on the left (a markdown subset), an editor and a console on
-// the right, four icon keys (run, test, reset, close). Player code runs in a Pyodide worker
-// (js/workers/pyodide-worker.js); a run longer than 20 s is killed and the worker respawned.
-// Drafts autosave to localStorage `etl-code-<regionId>-<challengeId>`. All tests passing ->
-// paper confetti -> the draft is deleted -> resolves { solved: true, code }. Esc closes with
-// solved: false. The console stays short: test pips + n/N and the first failure only.
+// the right, worded keys (▶ Run, ✓ Run tests, ↺ Reset code, ✕ Close). Player code runs in a
+// Pyodide worker (js/workers/pyodide-worker.js); a run longer than 20 s is killed and the worker
+// respawned. Drafts autosave to localStorage `etl-code-<regionId>-<challengeId>`. All tests passing ->
+// a "Solved!" stamp and paper confetti -> the draft is deleted -> resolves { solved: true, code }.
+// Esc closes with solved: false. The console: a status line while Python loads or runs, then
+// "n / N tests pass" (one pip per test) and each failing test's own message, identical ones once.
 import { openModal, closeModal, topModal } from './modal.js';
 
 const CSS_HREF = '/css/terminal.css';
@@ -74,6 +75,15 @@ export function icon(name, cls = 'etl-ico') {
   const span = h('span', { class: cls, 'aria-hidden': 'true' });
   span.innerHTML = `<svg viewBox="0 0 24 24" width="1em" height="1em" focusable="false">${ICON_PATHS[name] || ''}</svg>`;
   return span;
+}
+
+// A key's words. Several labels can share one spot (only the .on one shows), so a key that swaps
+// its label (Run / Stop) keeps its width.
+function keyText(...labels) {
+  return h('span', { class: 'term-key-txt' }, ...labels.map((text, i) => h('span', { class: i ? '' : 'on', text })));
+}
+function showLabel(key, text) {
+  for (const s of key.querySelector('.term-key-txt').children) s.classList.toggle('on', s.textContent === text);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -354,6 +364,7 @@ class Runner {
     this.subs = new Set();
     this.users = 0;
     this.idleTimer = 0;
+    this.loadedOnce = false;      // after that, a fresh worker is a restart (after Stop, a timeout...)
   }
 
   // open terminals hold Python; with none open it is freed after IDLE_MS (it reloads from cache)
@@ -379,6 +390,7 @@ class Runner {
 
   set(state) {
     this.state = state;
+    if (state === 'ready') this.loadedOnce = true;
     for (const fn of this.subs) { try { fn(state); } catch (e) { console.error(e); } }
   }
 
@@ -726,26 +738,26 @@ export async function open({ challenge = {}, regionId = 'local' } = {}) {
     const first = prompt.firstElementChild;
     if (first?.classList.contains('md-h') && norm(first.textContent) === norm(title)) first.remove();
 
-    // ---- keys
-    const key_ = (act, ico, tip, cls = '') => {
-      const b = h('button', { class: `term-key ${cls}`.trim(), type: 'button', title: tip, 'aria-label': tip, 'data-act': act }, icon(ico));
-      return b;
-    };
-    const runKey = key_('run', 'run', 'Run · Ctrl+Shift+Enter');
-    const testKey = key_('test', 'test', 'Test · Ctrl+Enter', 'go');
-    const resetKey = key_('reset', 'reset', 'Reset');
-    const closeKey = key_('close', 'close', 'Close · Esc');
+    // ---- keys: an icon and a word or two; shortcuts and details in the tooltips
+    const key_ = (act, ico, words, tip, cls = '') =>
+      h('button', { class: `term-key ${cls}`.trim(), type: 'button', title: tip, 'data-act': act }, icon(ico), words);
+    const RUN_TIP = 'Run your code · Ctrl+Shift+Enter';
+    const runKey = key_('run', 'run', keyText('Run', 'Stop'), RUN_TIP);
+    const testKey = key_('test', 'test', keyText('Run tests'), 'Check your code · Ctrl+Enter', 'go');
+    const resetKey = key_('reset', 'reset', keyText('Reset code'), 'Back to the starter code');
+    const closeKey = key_('close', 'close', keyText('Close'), 'Esc · your code is kept', 'term-close');
 
-    // ---- editor + console
+    // ---- editor + console (a status line while Python loads or runs, then the results)
     const editor = createEditor(draft ?? starter, {
       onChange: () => { clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 300); },
     });
-    const spin = h('span', { class: 'term-spin', role: 'status', title: 'Loading Python', 'aria-label': 'Loading Python' });
+    const statusText = h('span', { class: 'term-status-txt' });
+    const status = h('div', { class: 'term-status', role: 'status' }, h('span', { class: 'term-spin', 'aria-hidden': 'true' }), statusText);
+    status.hidden = true;
     const log = h('div', { class: 'term-log', 'aria-live': 'polite' });
-    const out = h('div', { class: 'term-out' }, spin, log);
+    const out = h('div', { class: 'term-out' }, log, status);
     const stage = h('div', { class: 'term-stage' }, editor.el);
 
-    closeKey.classList.add('term-close');
     const panel = h('div', { class: 'term etl-panel', role: 'dialog', 'aria-modal': 'true', 'aria-label': title },
       h('span', { class: 'term-tag', text: title, title: challenge.paperLink || title }),
       closeKey,
@@ -754,55 +766,95 @@ export async function open({ challenge = {}, regionId = 'local' } = {}) {
         h('div', { class: 'term-right' }, stage, h('div', { class: 'term-keys' }, runKey, testKey, resetKey), out)));
     const overlay = h('div', { class: 'term-overlay' }, panel);
 
-    // ---- python state -> spinner + keys
+    // ---- python state -> status line ("Running…" only once a run takes a moment, so quick runs don't flicker)
+    let statusTimer = 0;
+    const setStatus = (text) => {
+      clearTimeout(statusTimer);
+      status.hidden = !text;
+      out.classList.toggle('has-status', !!text);
+      statusText.textContent = text;
+    };
     const unsubscribe = runner.subscribe((state) => {
       panel.dataset.py = state;
-      const loading = state === 'loading';
-      spin.hidden = !(loading || state === 'running');
-      spin.title = loading ? 'Loading Python' : 'Running';
-      spin.setAttribute('aria-label', spin.title);
+      if (state === 'loading') setStatus(runner.loadedOnce ? 'Restarting Python…' : 'Loading Python…');
+      else if (state === 'running') {
+        setStatus('');
+        statusTimer = setTimeout(() => setStatus('Running…'), 300);
+      } else setStatus('');
     });
 
     function setBusy(on) {
       busy = on;
       panel.classList.toggle('is-busy', on);
-      runKey.replaceChildren(icon(on ? 'stop' : 'run'));
-      runKey.title = on ? 'Stop' : 'Run · Ctrl+Shift+Enter';
-      runKey.setAttribute('aria-label', on ? 'Stop' : 'Run');
+      runKey.querySelector('.etl-ico').replaceWith(icon(on ? 'stop' : 'run'));
+      showLabel(runKey, on ? 'Stop' : 'Run');
+      runKey.title = on ? 'Stop the program' : RUN_TIP;
       testKey.disabled = on;
     }
 
     // ---- console rendering
     const row = (cls, ...kids) => h('div', { class: `term-row ${cls}` }, ...kids);
-    const lineBtn = (line) => h('button', { class: 'term-lnk', type: 'button', title: `Line ${line}`, onclick: () => editor.goTo(line) }, String(line));
-    const muted = (mark, tip) => { const r = row('muted', h('span', { class: 'term-mark', text: mark })); r.title = tip; return r; };
+    const mark = (text) => h('span', { class: 'term-mark', text });
+    const msg = (text) => h('span', { class: 'term-msg', text });
+    const lineBtn = (line) => h('button', {
+      class: 'term-lnk', type: 'button', title: `Go to line ${line}`,
+      onclick: (e) => { e.stopPropagation(); editor.goTo(line); },
+    }, `line ${line}`);
 
-    // One failing test, as one row: ✗ reason [L7]. Its name and trace live in the tooltip.
-    function failRow(t) {
-      const r = row('bad term-fail', h('span', { class: 'term-mark', text: '✗' }),
-        h('span', { class: 'term-msg', text: t.message || pretty(t.name) || '✗' }), t.line ? lineBtn(t.line) : null);
-      r.title = [pretty(t.name), t.trace].filter(Boolean).join('\n');
-      editor.mark(t.line || null);
-      return r;
+    // Tests: "n / N tests pass", one pip per test (its name in the tooltip), then each failing test's
+    // own message: ✗ message [k tests] [line 7]. Tests that fail the same way share one row. The
+    // selected row's line is marked in the editor; click a row or a red pip to pick another.
+    function showTests(results, prints) {
+      const n = results.length;
+      const pass = results.filter((t) => t.passed).length;
+      const groups = [];
+      const groupOf = results.map((t) => {
+        if (t.passed) return null;
+        const text = t.message || pretty(t.name) || 'failed';
+        const line = t.line || null;
+        let g = groups.find((x) => x.text === text && x.line === line);
+        if (!g) groups.push((g = { text, line, tests: [] }));
+        g.tests.push(t);
+        return g;
+      });
+      const pips = h('span', { class: 'term-pips' });
+      const select = (g, scroll) => {
+        for (const x of groups) x.row.classList.toggle('sel', x === g);
+        [...pips.children].forEach((pip, i) => pip.classList.toggle('sel', groupOf[i] === g));
+        editor.mark(g.line);
+        if (scroll) g.row.scrollIntoView({ block: 'nearest' });
+      };
+      results.forEach((t, i) => {
+        const pip = h('i', { class: t.passed ? 'ok' : 'bad', title: [pretty(t.name), t.passed ? 'passes' : t.message].filter(Boolean).join('\n') });
+        if (!t.passed) pip.addEventListener('click', () => select(groupOf[i], true));
+        pips.append(pip);
+      });
+      const summary = n === 1 ? (pass ? 'The test passes' : 'The test fails') : `${pass} / ${n} tests pass`;
+      log.append(h('div', { class: `term-sum ${pass === n ? 'ok' : 'bad'}` }, h('b', { text: summary }), pips));
+      for (const g of groups) {
+        const k = g.tests.length;
+        g.row = row(`bad term-fail${groups.length > 1 ? ' pickable' : ''}`, mark('✗'), msg(g.text),
+          k > 1 ? h('span', { class: 'term-count', text: `${k} tests` }) : null, g.line ? lineBtn(g.line) : null);
+        g.row.title = [...g.tests.map((t) => pretty(t.name)), g.tests[0].trace].filter(Boolean).join('\n');
+        g.row.addEventListener('click', () => select(g));
+        log.append(g.row);
+      }
+      log.append(...prints);
+      if (groups.length) select(groups[0]);
     }
 
     function show(res, mode) {
       log.replaceChildren();
       editor.mark(null);
-      if (res.timeout) { log.append(row('warn', icon('timer', 'term-ic'), h('span', { text: 'too long' }))); return; }
-      if (res.cancelled) { log.append(row('muted', icon('stop', 'term-ic'))); log.lastChild.title = 'Stopped'; return; }
-      if (res.offline) {
-        const r = row('bad', icon('offline', 'term-ic'), h('span', { text: 'offline' }));
-        r.title = 'Python could not load';
-        log.append(r);
-        return;
-      }
+      if (res.timeout) { log.append(row('warn', icon('timer', 'term-ic'), msg(`Stopped after ${RUN_TIMEOUT_MS / 1000} s. Endless loop?`))); return; }
+      if (res.cancelled) { log.append(row('muted', icon('stop', 'term-ic'), msg('Stopped'))); return; }
+      if (res.offline) { log.append(row('bad', icon('offline', 'term-ic'), msg("Python didn't load (offline?). Try again."))); return; }
       const prints = [
         res.stdout ? h('pre', { class: 'term-stdout', text: res.stdout.replace(/\n$/, '') }) : null,
         res.stderr ? h('pre', { class: 'term-stderr', text: res.stderr.replace(/\n$/, '') }) : null,
       ].filter(Boolean);
       if (res.error) {
-        const r = row('bad', h('span', { class: 'term-mark', text: '✗' }), h('span', { class: 'term-msg', text: res.error }), res.errorLine ? lineBtn(res.errorLine) : null);
+        const r = row('bad', mark('✗'), msg(res.error), res.errorLine ? lineBtn(res.errorLine) : null);
         if (res.trace) r.title = res.trace;
         log.append(...prints, r);
         if (res.errorLine) editor.mark(res.errorLine);
@@ -810,32 +862,12 @@ export async function open({ challenge = {}, regionId = 'local' } = {}) {
       }
       if (mode === 'run') {
         log.append(...prints);
-        if (!prints.length) log.append(muted('∅', 'No output'));
+        if (!prints.length) log.append(row('ok', mark('✓'), msg('Ran fine. Nothing printed.')));
         return;
       }
-      // tests: one pip per test (its name, and why it failed, in the tooltip), n/N, then the first
-      // failure only. Clicking another red pip shows that one instead.
       const results = Array.isArray(res.results) ? res.results : [];
-      if (!results.length) { log.append(muted('∅', 'No tests'), ...prints); return; }
-      const pass = results.filter((t) => t.passed).length;
-      let failure = null;
-      const pick = (t, pip) => {
-        const r = failRow(t);
-        if (failure) failure.replaceWith(r); else sum.after(r);
-        failure = r;
-        pips.querySelector('.sel')?.classList.remove('sel');
-        pip.classList.add('sel');
-      };
-      const pips = h('span', { class: 'term-pips' });
-      for (const t of results) {
-        const pip = h('i', { class: t.passed ? 'ok' : 'bad', title: [pretty(t.name), t.passed ? '' : t.message].filter(Boolean).join('\n') });
-        if (!t.passed) pip.addEventListener('click', () => pick(t, pip));
-        pips.append(pip);
-      }
-      const sum = h('div', { class: `term-sum ${pass === results.length ? 'ok' : 'bad'}` }, pips, h('b', { text: `${pass}/${results.length}` }));
-      log.append(sum, ...prints);
-      const first = results.findIndex((t) => !t.passed);
-      if (first >= 0) pick(results[first], pips.children[first]);
+      if (!results.length) { log.append(row('muted', mark('∅'), msg('No tests found')), ...prints); return; }
+      showTests(results, prints);
     }
 
     async function exec(mode) {
@@ -847,7 +879,7 @@ export async function open({ challenge = {}, regionId = 'local' } = {}) {
       editor.mark(null);
       let res;
       try {
-        // no tests at all (a content slip) never counts as solved: the worker answers [] and we show ∅
+        // no tests at all (a content slip) never counts as solved: the worker answers [] ("No tests found")
         res = await runner.run(editor.value, mode === 'test' ? (typeof challenge.tests === 'string' ? challenge.tests : '') : undefined);
       } catch (err) {
         console.error(err);
@@ -867,19 +899,21 @@ export async function open({ challenge = {}, regionId = 'local' } = {}) {
       panel.classList.add('is-solved');
       editor.ta.readOnly = true;
       for (const b of [runKey, testKey, resetKey]) b.disabled = true;
-      stage.append(h('div', { class: 'term-stamp', 'aria-hidden': 'true' }, icon('test')));
+      stage.append(h('div', { class: 'term-stamp', 'aria-hidden': 'true' }, icon('test'), h('b', { text: 'Solved!' })));
       paperConfetti(overlay);
       await Promise.race([wait(2100), new Promise((r) => overlay.addEventListener('pointerdown', r, { once: true }))]);
       finish(true);
     }
 
+    // ↺ asks first: one click arms it ("Click again to reset"), a second click within a few seconds resets
     let resetArmed = 0;
+    const resetWords = (text) => resetKey.querySelector('.term-key-txt').replaceWith(keyText(text));
     function reset() {
       if (busy || solved) return;
       if (!resetArmed) {
         resetKey.classList.add('armed');
-        resetKey.title = 'Reset?';
-        resetArmed = setTimeout(disarm, 2600);
+        resetWords('Click again to reset');
+        resetArmed = setTimeout(disarm, 3200);
         return;
       }
       disarm();
@@ -890,9 +924,10 @@ export async function open({ challenge = {}, regionId = 'local' } = {}) {
     }
     function disarm() {
       clearTimeout(resetArmed);
+      if (!resetArmed) return;
       resetArmed = 0;
       resetKey.classList.remove('armed');
-      resetKey.title = 'Reset';
+      resetWords('Reset code');
     }
 
     function finish(isSolved) {
@@ -902,6 +937,7 @@ export async function open({ challenge = {}, regionId = 'local' } = {}) {
       disarm();
       if (runner.busy) runner.cancel();      // never leave a stuck program behind
       unsubscribe();
+      clearTimeout(statusTimer);
       runner.release();
       window.removeEventListener('keydown', onKey);
       closeModal(overlay);

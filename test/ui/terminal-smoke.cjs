@@ -8,6 +8,11 @@
 // No API key needed: explanations are graded offline (keywords). Pyodide comes from the jsDelivr CDN, so the
 // browser needs the network (HTTPS_PROXY is honoured). One step waits out the real 20 s run timeout.
 // Screenshots land in test-output/term-*.png and test-output/explain-*.png.
+//
+// Text rule (docs/ARCHITECTURE.md, "Concise text"): every key says what it does in a word or two (icon
+// optional, shortcuts in tooltips), results read as a summary ("4 / 6 tests pass") plus each failing
+// test's own message, and every state says what is going on in one short line (Loading Python…,
+// Thinking…, ✗ Not yet, ✓ Passed!); nothing else.
 const { chromium } = require('playwright');
 const { spawn } = require('node:child_process');
 const path = require('node:path');
@@ -98,11 +103,15 @@ async function consoleRows(page) {
     text: r.textContent,
     tip: r.title,
     line: r.querySelector('.term-lnk')?.textContent || '',
+    count: r.querySelector('.term-count')?.textContent || '',
   })));
 }
 
 const pips = (page) => page.$$eval('.term-pips i', (is) => is.map((i) => ({ ok: i.classList.contains('ok'), sel: i.classList.contains('sel'), tip: i.title })));
 const words = (s) => (String(s).match(/\S+/g) || []).length;
+// what a key says on screen (innerText skips the hidden twin label, e.g. "Stop" behind "Run")
+const keyWords = (page, act) => page.$eval(`.term-key[data-act="${act}"]`, (b) => b.innerText.trim().replace(/\s+/g, ' '));
+const statusLine = (page) => page.$eval('.term-status', (s) => (s.hidden ? '' : s.innerText.trim()));
 
 // a closed UI fades out for ~200 ms before its DOM goes; never mistake it for the next one
 const gone = (page) => page.waitForFunction(() => !document.querySelector('.term-overlay, .ex-overlay'));
@@ -120,12 +129,13 @@ async function openExplain(page) {
 }
 
 const exKeys = (page) => page.$$eval('.ex-key:not([hidden])', (bs) => bs.map((b) => b.dataset.act));
+const exKeyWords = (page) => page.$$eval('.ex-key:not([hidden])', (bs) => bs.map((b) => [b.dataset.act, b.innerText.trim()]));
 
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
   await ensureServer();
   const proxy = process.env.HTTPS_PROXY ? { server: process.env.HTTPS_PROXY, bypass: 'localhost,127.0.0.1' } : undefined;
-  const browser = await chromium.launch({ proxy });
+  const browser = await chromium.launch({ proxy, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
@@ -136,45 +146,52 @@ const exKeys = (page) => page.$$eval('.ex-key:not([hidden])', (bs) => bs.map((b)
     await page.goto(`${BASE}/dev/terminal.html?mode=none`);
     await page.evaluate(() => localStorage.clear());
 
-    await step('opens with the starter code, title tag, icon-only keys', async () => {
+    await step('opens with the starter code, title tag, and keys that say what they do', async () => {
       await openTerminal(page);
       assert.ok((await editorValue(page)).startsWith(STARTER_HEAD));
       assert.equal(await page.$eval('.term-tag', (e) => e.textContent), 'Even Out the Glow');
-      const keys = await page.$$eval('.term-key', (bs) => bs.map((b) => ({ act: b.dataset.act, text: b.textContent.trim(), tip: b.title })));
-      assert.deepEqual(keys.map((k) => k.act).sort(), ['close', 'reset', 'run', 'test']);
+      const keys = await page.$$eval('.term-key', (bs) => bs.map((b) => ({
+        act: b.dataset.act, text: b.innerText.trim().replace(/\s+/g, ' '), tip: b.title, icon: !!b.querySelector('.etl-ico svg'),
+      })));
+      assert.deepEqual(Object.fromEntries(keys.map((k) => [k.act, k.text])), { close: 'Close', run: 'Run', test: 'Run tests', reset: 'Reset code' });
       for (const k of keys) {
-        assert.equal(k.text, '', `key ${k.act} must be an icon, not words`);
-        assert.ok(k.tip, `key ${k.act} needs a tooltip`);
+        assert.ok(words(k.text) >= 1 && words(k.text) <= 3, `key ${k.act} says what it does in 1-3 words: ${JSON.stringify(k.text)}`);
+        assert.ok(k.icon, `key ${k.act} keeps its icon beside the word`);
+        assert.ok(k.tip, `key ${k.act} has a tooltip`);
       }
+      assert.match(keys.find((k) => k.act === 'test').tip, /Ctrl\+Enter/, 'shortcuts live in the tooltips');
       assert.ok(await page.$eval('.term-prompt', (e) => e.querySelector('ul.md-list li strong') && e.querySelector('.md-code')), 'the prompt markdown is rendered');
       assert.ok(await page.$eval('.term-prompt', (e) => e.querySelector('.md-code.md-nowrap')), 'short code chips do not wrap');
       assert.ok(await modalOpen(page), 'the terminal is in the modal stack');
       await shot(page, 'term-open');
     });
 
-    await step('python loads (small spinner while it does)', async () => {
+    await step('python loads, with a status line ("Loading Python…") until it is ready', async () => {
       const state = await pyState(page);
-      if (state !== 'ready') assert.equal(await page.$eval('.term-spin', (s) => s.hidden), false, 'spinner while loading');
+      if (state !== 'ready') assert.equal(await statusLine(page), 'Loading Python…');
       await waitPyReady(page);
-      assert.equal(await page.$eval('.term-spin', (s) => s.hidden), true);
+      assert.equal(await statusLine(page), '', 'the status line goes once Python is ready');
     });
 
-    await step('starter code: 0/6 pips and only the first failure, with its line', async () => {
+    await step('starter code: "0 / 6 tests pass"; six tests failing the same way are said once, with their line', async () => {
       await runAndWait(page, 'test');
-      assert.equal(await page.$eval('.term-sum b', (b) => b.textContent), '0/6');
+      assert.equal(await page.$eval('.term-sum b', (b) => b.textContent), '0 / 6 tests pass');
       const ps = await pips(page);
       assert.equal(ps.length, 6);
       assert.ok(ps.every((p) => !p.ok));
       assert.match(ps[0].tip, /^keeps shape and rows sum to one\nNotImplementedError/, 'a pip tooltip has the test name and why it failed');
       const rows = await consoleRows(page);
-      assert.equal(rows.length, 1, 'one failure row, not one row per test');
+      assert.equal(rows.length, 1, 'the same failure is not repeated six times');
       assert.equal(rows[0].mark, '✗');
       assert.match(rows[0].msg, /NotImplementedError/);
-      assert.equal(rows[0].line, '7');
-      assert.match(rows[0].tip, /^keeps shape and rows sum to one\nline 7: raise NotImplementedError/, 'the name and trace are in the tooltip');
+      assert.equal(rows[0].count, '6 tests');
+      assert.equal(rows[0].line, 'line 7');
+      const tip = rows[0].tip.split('\n');
+      assert.deepEqual(tip.slice(0, 2), ['keeps shape and rows sum to one', 'known values'], 'the test names are in the tooltip');
+      assert.equal(tip.at(-1), 'line 7: raise NotImplementedError', 'and the trace');
       assert.equal(await page.$eval('.term-ln.bad', (e) => e.textContent), '7', 'the gutter marks the failing line');
       const text = await page.$eval('.term-log', (e) => e.innerText);
-      assert.ok(words(text) <= 6, `the console stays short: ${JSON.stringify(text)}`);
+      assert.ok(words(text) <= 12, `the console stays short: ${JSON.stringify(text)}`);
       await shot(page, 'term-starter');
     });
 
@@ -209,27 +226,32 @@ const exKeys = (page) => page.$$eval('.ex-key:not([hidden])', (bs) => bs.map((b)
     await step('a wrong solution fails with the test message (overflow)', async () => {
       await setCode(page, WRONG_OVERFLOW);
       await runAndWait(page, 'test');
-      assert.equal(await page.$eval('.term-sum b', (b) => b.textContent), '5/6');
+      assert.equal(await page.$eval('.term-sum b', (b) => b.textContent), '5 / 6 tests pass');
       assert.deepEqual((await pips(page)).map((p) => p.ok), [true, true, true, true, false, true]);
       const rows = await consoleRows(page);
       assert.equal(rows.length, 1, 'passing tests get no rows');
       assert.equal(rows[0].msg, 'huge scores must not overflow into nan or inf');
+      assert.equal(rows[0].count, '', 'one test: no count');
       assert.equal(rows[0].tip, 'large values are stable');
       await shot(page, 'term-wrong');
     });
 
-    await step('another wrong solution: Ctrl+Enter tests, a red pip shows its own failure', async () => {
+    await step('another wrong solution: Ctrl+Enter tests; each failing test says its own message; a red pip picks one', async () => {
       await setCode(page, WRONG_GLOBAL);
       await page.focus('.term-ta');
       await page.keyboard.press('Control+Enter');
       await page.waitForSelector('.term-sum', { timeout: 30000 });
-      assert.equal(await page.$eval('.term-sum b', (b) => b.textContent), '4/6');
-      assert.equal((await consoleRows(page))[0].msg, 'every row must sum to 1');
+      assert.equal(await page.$eval('.term-sum b', (b) => b.textContent), '4 / 6 tests pass');
+      let rows = await consoleRows(page);
+      assert.deepEqual(rows.map((r) => r.msg), ['every row must sum to 1', 'row 0 must be the softmax of row 0 alone'], 'every failure, in test order');
+      assert.deepEqual(rows.map((r) => /\bsel\b/.test(r.cls)), [true, false], 'the first one is picked');
       await page.click('.term-pips i.bad:not(.sel)');
-      const rows = await consoleRows(page);
-      assert.equal(rows.length, 1);
-      assert.equal(rows[0].msg, 'row 0 must be the softmax of row 0 alone');
+      rows = await consoleRows(page);
+      assert.deepEqual(rows.map((r) => /\bsel\b/.test(r.cls)), [false, true], 'the red pip picks its row');
       assert.deepEqual((await pips(page)).map((p) => p.sel), [false, false, true, false, false, false]);
+      await page.click('.term-log .term-fail >> nth=0');
+      assert.deepEqual((await pips(page)).map((p) => p.sel), [true, false, false, false, false, false], 'so does clicking a row');
+      await shot(page, 'term-wrong-two');
     });
 
     await step('a syntax error points at its line', async () => {
@@ -237,7 +259,7 @@ const exKeys = (page) => page.$$eval('.ex-key:not([hidden])', (bs) => bs.map((b)
       await runAndWait(page, 'run');
       const rows = await consoleRows(page);
       assert.match(rows[0].text, /SyntaxError/);
-      assert.equal(rows[0].line, '3');
+      assert.equal(rows[0].line, 'line 3');
       await page.click('.term-lnk');
       const sel = await page.$eval('.term-ta', (t) => t.value.slice(0, t.selectionStart).split('\n').length);
       assert.equal(sel, 3, 'clicking the line badge jumps there');
@@ -252,12 +274,15 @@ const exKeys = (page) => page.$$eval('.ex-key:not([hidden])', (bs) => bs.map((b)
       assert.match(rows[0].tip, /^line 4: f\(0\)\nline 2: return f\(n \+ 1\)  ×\d+$/);
     });
 
-    await step('▶ runs code and shows stdout + stderr', async () => {
+    await step('▶ Run runs code and shows stdout + stderr; a quiet run says so', async () => {
       await setCode(page, 'import sys\nprint("glow", 6 * 7)\nprint("hot", file=sys.stderr)\n');
       await runAndWait(page, 'run');
       assert.equal(await page.$eval('.term-stdout', (e) => e.textContent), 'glow 42');
       assert.equal(await page.$eval('.term-stderr', (e) => e.textContent), 'hot');
       assert.equal(await page.$$eval('.term-sum', (s) => s.length), 0, 'run does not run the tests');
+      await setCode(page, 'x = 6 * 7\n');
+      await runAndWait(page, 'run');
+      assert.deepEqual((await consoleRows(page)).map((r) => r.msg), ['Ran fine. Nothing printed.']);
     });
 
     await step('drafts autosave and come back after a reload', async () => {
@@ -270,17 +295,24 @@ const exKeys = (page) => page.$$eval('.ex-key:not([hidden])', (bs) => bs.map((b)
       await waitPyReady(page);
     });
 
-    await step('■ stops a running program at once and Python comes back', async () => {
+    await step('■ Stop stops a running program at once and Python comes back', async () => {
       await setCode(page, LOOP);
+      const width = await page.$eval('.term-key[data-act="run"]', (b) => b.offsetWidth);
       await page.click('.term-key[data-act="run"]');
       await page.waitForFunction(() => document.querySelector('.term')?.dataset.py === 'running', null, { timeout: 30000 });
       await sleep(600);
+      assert.equal(await keyWords(page, 'run'), 'Stop', 'the run key becomes Stop');
+      assert.equal(await page.$eval('.term-key[data-act="run"]', (b) => b.offsetWidth), width, 'without changing size');
+      assert.equal(await statusLine(page), 'Running…');
       assert.equal(await page.$eval('.term-key[data-act="test"]', (b) => b.disabled), true, 'no testing while running');
       const t0 = Date.now();
       await page.click('.term-key[data-act="run"]');           // now the stop key
-      await page.waitForSelector('.term-row.muted[title="Stopped"]', { timeout: 5000 });
+      await page.waitForFunction(() => document.querySelector('.term-log .term-row.muted')?.innerText.trim() === 'Stopped', null, { timeout: 5000 });
       assert.ok(Date.now() - t0 < 3000);
+      assert.equal(await keyWords(page, 'run'), 'Run');
+      if (await pyState(page) === 'loading') assert.equal(await statusLine(page), 'Restarting Python…', 'a fresh Python is a restart, not a first load');
       await waitPyReady(page);
+      assert.equal(await statusLine(page), '');
     });
 
     await step('an infinite loop hits the 20 s timeout, then the terminal recovers', async () => {
@@ -292,7 +324,7 @@ const exKeys = (page) => page.$$eval('.ex-key:not([hidden])', (bs) => bs.map((b)
       await page.waitForSelector('.term-row.warn', { timeout: 40000 });
       const took = Date.now() - t0;
       assert.ok(took >= 19000 && took < 32000, `timeout after ${took}ms`);
-      assert.match(await page.$eval('.term-row.warn', (r) => r.textContent), /too long/);
+      assert.equal(await page.$eval('.term-row.warn', (r) => r.textContent), 'Stopped after 20 s. Endless loop?');
       await shot(page, 'term-timeout');
       await waitPyReady(page);
       await setCode(page, 'print(sum(range(10)))\n');
@@ -300,13 +332,15 @@ const exKeys = (page) => page.$$eval('.ex-key:not([hidden])', (bs) => bs.map((b)
       assert.equal(await page.$eval('.term-stdout', (e) => e.textContent), '45', 'a fresh worker runs code again');
     });
 
-    await step('↺ needs a second click, then restores the starter', async () => {
+    await step('↺ Reset code asks "Click again to reset", then restores the starter', async () => {
       await page.click('.term-key[data-act="reset"]');
       assert.ok(!(await editorValue(page)).startsWith(STARTER_HEAD), 'one click does not reset');
       assert.ok(await page.$eval('.term-key[data-act="reset"]', (b) => b.classList.contains('armed')));
+      assert.equal(await keyWords(page, 'reset'), 'Click again to reset');
       await page.click('.term-key[data-act="reset"]');
       assert.ok((await editorValue(page)).startsWith(STARTER_HEAD));
       assert.match(await editorValue(page), /NotImplementedError/);
+      assert.equal(await keyWords(page, 'reset'), 'Reset code');
     });
 
     await step('Esc closes with solved: false and removes the terminal', async () => {
@@ -337,8 +371,9 @@ const exKeys = (page) => page.$$eval('.ex-key:not([hidden])', (bs) => bs.map((b)
       const before = await closes(page);
       await page.click('.term-key[data-act="test"]');
       await page.waitForSelector('.term-stamp', { timeout: 30000 });
-      assert.equal(await page.$eval('.term-sum b', (b) => b.textContent), '6/6');
-      assert.equal((await consoleRows(page)).length, 0, 'a full pass is just the pips');
+      assert.equal(await page.$eval('.term-sum b', (b) => b.textContent), '6 / 6 tests pass');
+      assert.equal((await consoleRows(page)).length, 0, 'a full pass is just the summary and pips');
+      assert.equal(await page.$eval('.term-stamp', (e) => e.textContent), 'Solved!');
       assert.ok(await page.$$eval('.term-confetti .cf', (c) => c.length) > 20, 'paper confetti');
       await shot(page, 'term-solved');
       await page.waitForFunction((n) => window.__term.closes === n + 1, before, { timeout: 8000 });
@@ -359,7 +394,7 @@ const exKeys = (page) => page.$$eval('.ex-key:not([hidden])', (bs) => bs.map((b)
       await page.evaluate((k) => localStorage.removeItem(k), DRAFT_KEY);
     });
 
-    await step('a challenge without tests never counts as solved (∅)', async () => {
+    await step('a challenge without tests never counts as solved ("No tests found")', async () => {
       for (const tests of ['', undefined, 'import numpy as np\n']) {
         const done = page.evaluate(async (tests) => {
           const t = await import('/js/ui/terminal.js');
@@ -369,7 +404,7 @@ const exKeys = (page) => page.$$eval('.ex-key:not([hidden])', (bs) => bs.map((b)
         await page.waitForSelector('.term');
         await waitPyReady(page);
         await runAndWait(page, 'test');
-        assert.equal(await page.$$eval('.term-row.muted[title="No tests"]', (r) => r.length), 1, `tests=${JSON.stringify(tests)}`);
+        assert.deepEqual((await consoleRows(page)).map((r) => r.msg), ['No tests found'], `tests=${JSON.stringify(tests)}`);
         assert.equal(await page.$('.term-stamp'), null);
         await page.keyboard.press('Escape');
         assert.equal((await done).solved, false);
@@ -380,27 +415,31 @@ const exKeys = (page) => page.$$eval('.ex-key:not([hidden])', (bs) => bs.map((b)
 
     console.log('explain');
 
-    await step('opens as a speech bubble: name tag in the speaker colour, question, two icon keys', async () => {
+    await step('opens as a speech bubble: name tag in the speaker colour, question, a placeholder that says what to do, Later / Send', async () => {
       await page.evaluate((k) => localStorage.removeItem(k), EXPLAIN_KEY);
       await openExplain(page);
       assert.equal(await page.$eval('.ex-tag', (e) => e.textContent), 'Elder Moss');
       assert.equal(await page.$eval('.ex-tag', (e) => getComputedStyle(e).backgroundColor), 'rgb(138, 90, 158)', 'the elder\'s shirt colour');
-      assert.match(await page.$eval('.ex-q', (e) => e.textContent), /Why do they scale the scores/);
-      const keys = await page.$$eval('.ex-key:not([hidden])', (bs) => bs.map((b) => ({ act: b.dataset.act, text: b.textContent.trim(), tip: b.title, disabled: b.disabled })));
-      assert.deepEqual(keys.map((k) => k.act), ['later', 'send']);
-      assert.ok(keys.every((k) => !k.text && k.tip));
+      const question = await page.$eval('.ex-q', (e) => e.innerText.trim());
+      assert.match(question, /Why do they scale the scores/);
+      assert.equal(await page.$eval('.ex-ta', (t) => t.placeholder), 'Explain it in your own words…');
+      const keys = await page.$$eval('.ex-key:not([hidden])', (bs) => bs.map((b) => ({ act: b.dataset.act, text: b.innerText.trim(), tip: b.title, disabled: b.disabled })));
+      assert.deepEqual(keys.map((k) => [k.act, k.text]), [['later', 'Later'], ['send', 'Send']]);
+      assert.ok(keys.every((k) => k.tip), 'tooltips hold the shortcuts');
       assert.equal(keys[1].disabled, true, 'nothing to send yet');
       assert.equal(await page.$('.ex-count, .ex-pen, .ex-off, .ex-meta'), null, 'no word count, pen or offline mark');
-      assert.equal(await page.$eval('.ex-bubble', (b) => b.innerText.trim().split('\n').filter(Boolean).length), 2, 'name tag + question are the only words');
+      const text = await page.$eval('.ex-bubble', (b) => b.innerText.replace(/\s+/g, ' ').trim());
+      assert.equal(text, `Elder Moss ${question.replace(/\s+/g, ' ')} Later Send`, 'name tag, question and the two keys are the only words');
       await shot(page, 'explain-open');
     });
 
-    await step('a vague answer fails: the reply stays up, focus stays in the answer, ➤ sends again', async () => {
+    await step('a vague answer fails ("✗ Not yet" + the feedback): the reply stays up, focus stays in the answer, Send sends again', async () => {
       await page.keyboard.type(VAGUE);
       await page.click('.ex-key[data-act="send"]');
       await page.waitForSelector('.ex-reply[data-mood="fail"]', { timeout: 15000 });
       await sleep(900);
-      assert.match(await page.$eval('.ex-reply-text', (e) => e.textContent), /big numbers trouble the softmax/);
+      assert.equal(await page.$eval('.ex-verdict', (e) => e.textContent), '✗ Not yet', 'a clear verdict first');
+      assert.match(await page.$eval('.ex-reply-text', (e) => e.textContent), /big numbers trouble the softmax/, 'then the villager\'s own feedback');
       assert.deepEqual(await exKeys(page), ['later', 'send']);
       assert.equal(await page.$eval('.ex-key[data-act="send"]', (b) => b.disabled), false);
       assert.equal(await page.evaluate(() => document.activeElement?.className), 'ex-ta', 'keep typing right away');
@@ -409,7 +448,7 @@ const exKeys = (page) => page.$$eval('.ex-key:not([hidden])', (bs) => bs.map((b)
       await shot(page, 'explain-fail');
     });
 
-    await step('✕ later resolves { pass: false } with the feedback; the draft is kept', async () => {
+    await step('Later resolves { pass: false } with the feedback; the draft is kept', async () => {
       const before = await closes(page);
       await page.click('.ex-key[data-act="later"]');
       await page.waitForFunction((n) => window.__term.closes === n + 1, before);
@@ -421,26 +460,38 @@ const exKeys = (page) => page.$$eval('.ex-key:not([hidden])', (bs) => bs.map((b)
       assert.equal(await page.$eval('.ex-ta', (t) => t.value), `${VAGUE} More words.`, 'the answer is still there');
     });
 
-    await step('grading trouble: the server\'s own word ("… busy"), else "…?"; you can send again', async () => {
-      await page.route('**/api/grade', (route) => route.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ error: '… busy' }) }));
+    await step('"Thinking…" while it is graded; grading trouble says so in one line (with the server\'s word); you can send again', async () => {
+      let release;
+      const held = new Promise((r) => { release = r; });
+      await page.route('**/api/grade', async (route) => {
+        await held;
+        await route.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ error: '… busy' }) });
+      });
       await page.click('.ex-key[data-act="send"]');
+      await page.waitForSelector('.ex-dots:not([hidden])', { timeout: 5000 });
+      assert.equal(await page.$eval('.ex-dots', (e) => e.innerText.trim()), 'Thinking…');
+      assert.equal(await page.$eval('.ex-key[data-act="send"]', (b) => b.disabled), true, 'no second send while thinking');
+      await shot(page, 'explain-thinking');
+      release();
       await page.waitForSelector('.ex-reply[data-mood="error"]', { timeout: 15000 });
-      await sleep(300);
-      assert.equal(await page.$eval('.ex-reply-text', (e) => e.textContent), '… busy');
+      await sleep(900);
+      assert.equal(await page.$eval('.ex-reply-text', (e) => e.textContent), "Couldn't check it (busy). Send again.");
+      assert.equal(await page.$eval('.ex-dots', (e) => e.hidden), true);
       await page.unroute('**/api/grade');
       await page.route('**/api/grade', (route) => route.abort());
       await page.click('.ex-key[data-act="send"]');
-      await page.waitForFunction(() => document.querySelector('.ex-reply-text')?.textContent === '…?', null, { timeout: 15000 });
+      await page.waitForFunction(() => document.querySelector('.ex-reply-text')?.textContent === "Couldn't check it. Send again.", null, { timeout: 15000 });
       assert.equal(await page.$eval('.ex-key[data-act="send"]', (b) => b.hidden || b.disabled), false);
       await page.unroute('**/api/grade');
     });
 
-    await step('a good answer passes; ✓ continue resolves { pass: true }', async () => {
+    await step('a good answer passes ("✓ Passed!"); ✓ Continue resolves { pass: true }', async () => {
       await page.fill('.ex-ta', GOOD);
       await page.keyboard.press('Control+Enter');
       await page.waitForSelector('.ex-reply[data-mood="pass"]', { timeout: 15000 });
       await sleep(900);
-      assert.deepEqual(await exKeys(page), ['done']);
+      assert.equal(await page.$eval('.ex-verdict', (e) => e.textContent), '✓ Passed!');
+      assert.deepEqual(await exKeyWords(page), [['done', 'Continue']]);
       await shot(page, 'explain-pass');
       const before = await closes(page);
       await page.click('.ex-key[data-act="done"]');
@@ -483,17 +534,26 @@ const exKeys = (page) => page.$$eval('.ex-key:not([hidden])', (bs) => bs.map((b)
       assert.equal(res.pass, true, 'Esc after passing still counts as a pass');
     });
 
-    await step('phone-sized screens still fit (portrait and landscape)', async () => {
-      for (const [w, h] of [[390, 780], [844, 390]]) {
+    await step('phone-sized screens still fit (portrait and landscape), the keys\' words on one row', async () => {
+      for (const [w, h] of [[390, 780], [360, 740], [844, 390]]) {
         await page.setViewportSize({ width: w, height: h });
         await openTerminal(page);
         await sleep(300);
         const m = await page.$eval('.term', (e) => {
           const r = e.getBoundingClientRect();
-          return { fits: r.right <= innerWidth + 1 && r.bottom <= innerHeight + 1, editor: document.querySelector('.term-editor').getBoundingClientRect().height };
+          const row = document.querySelector('.term-keys');
+          const keys = [...row.querySelectorAll('.term-key')].map((k) => k.getBoundingClientRect());
+          return {
+            fits: r.left >= -1 && r.right <= innerWidth + 1 && r.bottom <= innerHeight + 1,
+            editor: document.querySelector('.term-editor').getBoundingClientRect().height,
+            oneRow: new Set(keys.map((k) => Math.round(k.top))).size === 1 && keys.every((k) => k.right <= r.right),
+            words: [...row.querySelectorAll('.term-key')].map((k) => k.innerText.trim()),
+          };
         });
         assert.ok(m.fits, `${w}x${h}: the terminal fits`);
         assert.ok(m.editor >= 150, `${w}x${h}: the editor is ${m.editor}px tall`);
+        assert.ok(m.oneRow, `${w}x${h}: the keys sit on one row inside the panel`);
+        assert.deepEqual(m.words, ['Run', 'Run tests', 'Reset code'], `${w}x${h}: the keys keep their words`);
         await shot(page, `term-phone-${w}x${h}`);
         await page.keyboard.press('Escape');
         await gone(page);
@@ -529,7 +589,7 @@ const exKeys = (page) => page.$$eval('.ex-key:not([hidden])', (bs) => bs.map((b)
         await p2.waitForFunction(() => document.querySelector('.term')?.dataset.py === 'failed', null, { timeout: 30000 });
         await setCode(p2, 'print(6 * 7)\n');
         await runAndWait(p2, 'run');
-        assert.match(await p2.$eval('.term-row.bad', (r) => r.textContent), /offline/);
+        assert.equal(await p2.$eval('.term-row.bad', (r) => r.textContent), "Python didn't load (offline?). Try again.");
         await shot(p2, 'term-offline');
         await context.unroute(cdn);
         await runAndWait(p2, 'run', 150000);          // Python loads from scratch in this context

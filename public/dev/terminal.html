@@ -18,15 +18,16 @@
       linear-gradient(#bfe6ff, #e6f6ff 60%, #8fd47a 60%);
   }
   .harness { position: fixed; top: 14px; right: 14px; z-index: 5; display: flex; gap: 10px; }
-  .harness .etl-btn { font-size: 22px; padding: 6px 14px; }
+  .harness .etl-btn { font-size: 16px; padding: 6px 14px; }
+  #ui-root:not(:empty) ~ .harness { visibility: hidden; }   /* out of the way while a panel is open */
 </style>
 </head>
 <body>
 <div id="game"></div>
 <div id="ui-root"></div>
 <div class="harness">
-  <button class="etl-btn" id="open-terminal" title="Terminal">⌨️</button>
-  <button class="etl-btn" id="open-explain" title="Explain">💬</button>
+  <button class="etl-btn" id="open-terminal">⌨️ Terminal</button>
+  <button class="etl-btn" id="open-explain">💬 Explain</button>
 </div>
 <script type="module">
 // Harness for the Python terminal and the explain-it bubble (public/js/ui/terminal.js, explain.js).
@@ -34,23 +35,30 @@
 //   /dev/terminal.html?mode=terminal|explain|none&challenge=code1|explain1
 //   /dev/terminal.html?region=attention&challenge=c3      real content (explain grading needs that region on the server)
 //
-// The default region is "fixture", so run the fixture server:
-//   REGIONS_DIR=server/test/fixtures/regions PORT=3103 node server/index.js
-// window.__term = { opens, closes, open, results: [], last } for automated tests.
+// The default region is "fixture" (the smoke test's server serves it:
+//   REGIONS_DIR=server/test/fixtures/regions PORT=3103 node server/index.js);
+// a server without it (the plain dev server) gets the "attention" region instead.
+// window.__term = { opens, closes, open, results: [], last, regionId } for automated tests.
 import * as terminal from '/js/ui/terminal.js';
 import * as explain from '/js/ui/explain.js';
 
 const SPEAKERS = {};   // id -> { name, color }
 
 const q = new URLSearchParams(location.search);
-const regionId = q.get('region') || 'fixture';
-const state = (window.__term = { opens: 0, closes: 0, open: false, results: [], last: null });
+let regionId = q.get('region') || 'fixture';
+const state = (window.__term = { opens: 0, closes: 0, open: false, results: [], last: null, regionId });
+
+const fetchRegion = (id) => fetch(`/content/regions/${encodeURIComponent(id)}.json`).then((r) => {
+  if (!r.ok) throw new Error(`no region ${id} (HTTP ${r.status})`);
+  return r.json();
+});
 
 // the region's code + explain challenges (explain-kind fundamentals too), loaded as the game loads them
 let regionP = null;
-const loadRegion = () => (regionP ??= fetch(`/content/regions/${encodeURIComponent(regionId)}.json`).then((r) => {
-  if (!r.ok) throw new Error(`no region ${regionId} (HTTP ${r.status})`);
-  return r.json();
+const loadRegion = () => (regionP ??= fetchRegion(regionId).catch((err) => {
+  if (q.get('region')) throw err;
+  regionId = state.regionId = 'attention';     // no fixture on this server: use real content
+  return fetchRegion(regionId);
 }).then((region) => {
   for (const p of region.inhabitants || []) SPEAKERS[p.id] = { name: p.name, color: p.colors?.shirt };
   for (const s of region.stations || []) SPEAKERS[s.id] = { name: s.label };

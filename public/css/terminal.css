@@ -33,7 +33,7 @@
 /* the title hangs off the top edge, like a dialogue name tag */
 .term-tag {
   position: absolute; top: -21px; left: 26px; z-index: 2;
-  max-width: calc(100% - 140px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  max-width: calc(100% - 190px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   padding: 3px 16px 4px; border: 4px solid var(--ink); border-radius: 12px;
   background: var(--pink); color: #fff; font-weight: 700; font-size: 19px; letter-spacing: .2px;
   box-shadow: 3px 3px 0 rgba(43, 34, 51, .3); transform: rotate(-1.4deg); cursor: default;
@@ -99,7 +99,7 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
 
 /* ---------------- editor (right, top) ---------------- */
 
-.term-right { min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto minmax(104px, 22%); }
+.term-right { min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto minmax(110px, 25%); }
 .term-stage { position: relative; min-height: 0; display: flex; }
 .term-editor {
   --lh: 22px; --pad-y: 12px;
@@ -146,52 +146,58 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
 .tk-n, .tk-d { color: #c0560f; }
 .tk-c { color: #9c907a; font-style: italic; }
 
-/* ---------------- typewriter keys ---------------- */
+/* ---------------- typewriter keys: an icon and a word or two ---------------- */
 
-.term-keys { display: flex; align-items: center; gap: 16px; padding: 14px 4px 14px; }
+.term-keys { display: flex; align-items: center; gap: 14px; padding: 14px 4px 14px; }
 .term-key {
   --key: var(--paper);
   position: relative; flex: none;
-  width: 52px; height: 52px; padding: 0; border-radius: 50%;
-  display: grid; place-items: center;
-  border: 4px solid var(--ink); color: var(--ink); font-size: 23px;
-  background: radial-gradient(circle at 50% 36%, rgba(255, 255, 255, .95) 0 26%, var(--key) 72%);
+  height: 48px; padding: 0 20px 0 16px; border-radius: 999px;
+  display: inline-flex; align-items: center; gap: 9px;
+  border: 4px solid var(--ink); color: var(--ink);
+  font: 600 17px/1 var(--font-ui); white-space: nowrap;
+  background: radial-gradient(ellipse 80% 100% at 50% 18%, rgba(255, 255, 255, .95) 0 28%, var(--key) 82%);
   box-shadow: 0 5px 0 var(--ink), 2px 9px 0 rgba(43, 34, 51, .2);
   transform: translateY(-3px); cursor: pointer;
   transition: transform .07s ease-out, box-shadow .07s ease-out, background-color .15s;
 }
+.term-key .etl-ico { font-size: 19px; }
+/* labels that share one spot (Run / Stop): the key is as wide as the longest, only .on shows */
+.term-key-txt { display: inline-grid; }
+.term-key-txt > span { grid-area: 1 / 1; }
+.term-key-txt > span:not(.on) { visibility: hidden; }
+.term-key[data-act="reset"] { margin-left: auto; }
 .term-key:hover { --key: #fff1bd; }
 .term-key:active { transform: translateY(2px); box-shadow: 0 0 0 var(--ink), 1px 3px 0 rgba(43, 34, 51, .2); }
 .term-key:focus-visible { outline: 3px dashed var(--pink); outline-offset: 5px; }
 .term-key.go, .ex-key.go {
-  --key: var(--pink); color: #fff;
-  background: radial-gradient(circle at 50% 30%, #ffa6cf 0 22%, var(--key) 66%);
+  --key: var(--pink); color: #fff; text-shadow: 0 2px 0 rgba(43, 34, 51, .4);
+  background: radial-gradient(ellipse 80% 100% at 50% 14%, #ffa6cf 0 22%, var(--key) 70%);
 }
 .term-key.go .etl-ico, .ex-key.go .etl-ico { filter: drop-shadow(0 2px 0 rgba(43, 34, 51, .45)); }
 .term-key.go:hover, .ex-key.go:hover { --key: #ff8fc2; }
 .term-key:disabled { opacity: .42; cursor: default; transform: translateY(0); box-shadow: 0 2px 0 var(--ink); }
 .term-key.armed { --key: #ffc4dd; color: #b2306f; animation: term-wiggle .4s ease-in-out 2; }
-.term-key.armed::after {
-  content: '?'; position: absolute; top: -9px; right: -9px; width: 21px; height: 21px;
-  display: grid; place-items: center; border-radius: 50%;
-  background: var(--pink); color: #fff; border: 3px solid var(--ink); font: 700 12px/1 var(--font-ui);
-}
-@keyframes term-wiggle { 25% { rotate: -10deg; } 75% { rotate: 10deg; } }
+@keyframes term-wiggle { 25% { rotate: -3deg; } 75% { rotate: 3deg; } }
 .is-busy .term-key[data-act="run"] { --key: #ffd35a; }
 
+/* Close hangs off the top edge, across from the title tag */
 .term-close {
-  position: absolute; top: -18px; right: -18px; z-index: 3;
-  width: 46px; height: 46px; font-size: 19px;
+  position: absolute; top: -21px; right: 26px; z-index: 3;
+  height: 42px; padding: 0 16px 0 12px; gap: 7px; font-size: 16px;
   box-shadow: 0 4px 0 var(--ink), 2px 7px 0 rgba(43, 34, 51, .2);
 }
+.term-close .etl-ico { font-size: 14px; }
 
 /* ---------------- console (right, bottom) ---------------- */
 
 .term-out {
   position: relative; min-height: 0; overflow: auto; overscroll-behavior: contain;
-  padding: 12px 44px 14px 16px;
+  padding: 12px 18px 14px 16px;
   border: 4px solid var(--ink); border-radius: 16px;
-  background:
+  background:   /* a pink glow at the bottom while more results are below (the 'local' layer covers it at the end) */
+    linear-gradient(rgba(43, 34, 51, 0), #2b2233 70%) center bottom / 100% 30px no-repeat local,
+    linear-gradient(rgba(255, 122, 184, 0), rgba(255, 122, 184, .32)) center bottom / 100% 22px no-repeat scroll,
     radial-gradient(ellipse 70% 90% at 20% 0%, rgba(255, 255, 255, .05), transparent 70%),
     #2b2233;
   color: #f3ecdc; font: 14px/1.55 var(--font-code);
@@ -199,25 +205,41 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
   scrollbar-width: thin; scrollbar-color: rgba(255, 253, 246, .3) transparent;
 }
 .term-log:empty::before { content: '▸'; color: rgba(243, 236, 220, .28); }
+/* the status line ("Loading Python…", "Running…", "Restarting Python…") follows the last result */
+.term-status { display: flex; align-items: center; gap: 10px; padding: 1px 0 4px; color: rgba(243, 236, 220, .78); }
+.term-status[hidden] { display: none; }
+.term-log:not(:empty) + .term-status { margin-top: 4px; }
+.term-out.has-status .term-log:empty::before { content: none; }
 .term-row { display: flex; align-items: baseline; gap: 4px 9px; padding: 2px 0; }
 .term-mark { flex: none; width: 1.1em; text-align: center; font-weight: 700; }
 .term-ic { flex: none; align-self: center; font-size: 17px; }
 .term-row.bad { color: #ffd2e2; }
 .term-row.bad .term-mark, .term-row.bad .term-ic { color: #ff86b2; }
+.term-row.ok { color: #c9f3ea; }
+.term-row.ok .term-mark { color: #6fe3c9; }
 .term-row.warn { color: #ffd35a; font-weight: 700; }
-.term-row.muted { color: rgba(243, 236, 220, .45); }
+.term-row.muted { color: rgba(243, 236, 220, .55); }
 .term-row[title]:not([title=""]) { cursor: help; }
 .term-msg { flex: 0 1 auto; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.term-fail { margin-bottom: 8px; }
+/* failing tests: one row each (identical ones share a row); with several, a click picks the one
+   whose line is marked in the editor */
+.term-fail { margin: 0 -8px 3px; padding: 3px 8px; border-radius: 8px; }
+.term-row.term-fail.pickable { cursor: pointer; }
+.term-fail.pickable:hover { background: rgba(255, 253, 246, .06); }
+.term-fail.pickable.sel { background: rgba(255, 122, 184, .16); box-shadow: inset 3px 0 0 var(--pink); }
+.term-count {
+  flex: none; align-self: center; white-space: nowrap;
+  font: 700 11.5px/1 var(--font-code); color: #2b2233; background: #ffd2e2;
+  border-radius: 999px; padding: 3px 7px 2px;
+}
 .term-lnk {
-  flex: none; align-self: center;
+  flex: none; align-self: center; white-space: nowrap;
   font: 700 11.5px/1 var(--font-code); color: #fff; background: #e2557f;
   border: 2px solid #fffdf6; border-radius: 999px; padding: 3px 7px 2px; cursor: pointer;
 }
-.term-lnk::before { content: 'L'; opacity: .75; margin-right: 1px; }
 .term-lnk:hover { background: var(--pink); }
 .term-sum {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap;
   margin-bottom: 8px; padding-bottom: 8px; border-bottom: 2px dashed rgba(255, 253, 246, .16);
 }
 .term-sum:last-child { border-bottom: 0; }
@@ -237,24 +259,23 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
 .term-stderr { color: #ffcf8a; }
 
 .term-spin {
-  position: absolute; top: 12px; right: 13px;
-  width: 20px; height: 20px; border-radius: 50%;
+  flex: none; width: 16px; height: 16px; border-radius: 50%;
   border: 3px solid rgba(255, 253, 246, .2); border-top-color: var(--pink); border-right-color: var(--gold);
   animation: term-spin .75s linear infinite;
 }
-.term-spin[hidden] { display: none; }
 @keyframes term-spin { to { transform: rotate(360deg); } }
 
 /* ---------------- solved ---------------- */
 
 .term-stamp {
   position: absolute; left: 50%; top: 46%; z-index: 4;
-  width: 168px; height: 168px; margin: -84px 0 0 -84px;
-  display: grid; place-items: center; pointer-events: none;
+  width: 178px; height: 178px; margin: -89px 0 0 -89px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; pointer-events: none;
   border-radius: 50%; border: 7px solid var(--teal); outline: 3px solid var(--teal); outline-offset: 5px;
-  background: rgba(255, 253, 246, .9); color: var(--teal); font-size: 104px;
+  background: rgba(255, 253, 246, .92); color: var(--teal); font-size: 80px;
   rotate: -14deg; animation: term-stamp .45s cubic-bezier(.2, 1.7, .4, 1);
 }
+.term-stamp b { font: 700 25px/1 var(--font-ui); letter-spacing: 1.5px; text-transform: uppercase; color: #179b86; }
 @keyframes term-stamp { from { transform: scale(2.4); opacity: 0; } 55% { opacity: 1; } }
 .is-solved .term-editor { border-color: var(--teal); }
 
@@ -277,10 +298,19 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
   .term-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(110px, 32%) minmax(0, 1fr); gap: 10px; }
   .term-prompt { border-right: 0; border-bottom: 3px dashed rgba(43, 34, 51, .2); padding: 0 6px 10px 2px; }
   .term-right { grid-template-rows: minmax(0, 1fr) auto minmax(90px, 24%); }
-  .term-keys { padding: 10px 2px; gap: 12px; }
-  .term-key { width: 46px; height: 46px; font-size: 20px; }
-  .term-close { top: -16px; right: -6px; width: 42px; height: 42px; }
-  .term-tag { font-size: 16px; left: 14px; max-width: calc(100% - 80px); }
+  .term-keys { padding: 10px 2px; gap: 10px; }
+  .term-key { height: 42px; padding: 0 15px 0 12px; gap: 7px; font-size: 15px; }
+  .term-key .etl-ico { font-size: 16px; }
+  .term-close { top: -19px; right: 12px; height: 38px; padding: 0 13px 0 10px; font-size: 14px; }
+  .term-close .etl-ico { font-size: 12px; }
+  .term-tag { font-size: 16px; left: 14px; max-width: calc(100% - 136px); }
+}
+
+/* narrow phones: the words stay, the key icons go, so all three keys fit on one row */
+@media (max-width: 400px) {
+  .term-keys { gap: 8px; }
+  .term-key { padding: 0 13px; font-size: 14px; border-width: 3px; }
+  .term-keys .term-key .etl-ico { display: none; }
 }
 
 /* phone landscape: too short to stack, so keep the task beside the editor */
@@ -293,14 +323,16 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
   .term-editor { --lh: 19px; --pad-y: 7px; border-width: 3px; border-radius: 12px; }
   .term-hl, .term-ta { font-size: 13px; padding-left: 10px; }
   .term-gutter { width: 38px; }
-  .term-keys { padding: 7px 2px 8px; gap: 10px; }
-  .term-key { width: 36px; height: 36px; font-size: 16px; border-width: 3px; box-shadow: 0 3px 0 var(--ink), 1px 6px 0 rgba(43, 34, 51, .2); }
-  .term-out { padding: 7px 34px 8px 12px; border-width: 3px; border-radius: 12px; font-size: 12.5px; }
+  .term-keys { padding: 7px 2px 8px; gap: 9px; }
+  .term-key { height: 34px; padding: 0 12px 0 10px; gap: 6px; font-size: 14px; border-width: 3px; box-shadow: 0 3px 0 var(--ink), 1px 6px 0 rgba(43, 34, 51, .2); }
+  .term-key .etl-ico { font-size: 14px; }
+  .term-out { padding: 7px 12px 8px 12px; border-width: 3px; border-radius: 12px; font-size: 12.5px; }
   .term-sum { margin-bottom: 4px; padding-bottom: 4px; }
-  .term-spin { top: 7px; right: 9px; width: 16px; height: 16px; }
-  .term-close { top: -14px; right: -4px; width: 36px; height: 36px; font-size: 15px; }
+  .term-spin { width: 13px; height: 13px; border-width: 2.5px; }
+  .term-close { top: -17px; right: 10px; height: 32px; padding: 0 11px 0 9px; font-size: 13px; }
   .term-tag { top: -18px; font-size: 14px; padding: 1px 12px 2px; border-width: 3px; }
-  .term-stamp { width: 112px; height: 112px; margin: -56px 0 0 -56px; font-size: 68px; border-width: 5px; }
+  .term-stamp { width: 124px; height: 124px; margin: -62px 0 0 -62px; font-size: 54px; border-width: 5px; gap: 2px; }
+  .term-stamp b { font-size: 17px; letter-spacing: 1px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -363,10 +395,11 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
 .ex-reply[data-mood="fail"] { background: #ffe2ee; }
 .ex-reply[data-mood="error"] { background: var(--paper-2); color: var(--ink-soft); font-weight: 700; }
 .ex-reply[data-mood="error"][title]:not([title=""]) { cursor: help; }
-.ex-reply-mark { flex: none; font-weight: 700; font-size: 20px; line-height: 1.3; }
-.ex-reply-mark:empty { display: none; }
-.ex-reply[data-mood="pass"] .ex-reply-mark { color: #179b86; }
-.ex-reply[data-mood="fail"] .ex-reply-mark { color: #d43d74; }
+/* the verdict ("✓ Passed!", "✗ Not yet") leads; the villager's reply follows in their own words */
+.ex-verdict { flex: none; white-space: nowrap; font-weight: 700; }
+.ex-verdict:empty { display: none; }
+.ex-reply[data-mood="pass"] .ex-verdict { color: #127f6d; }
+.ex-reply[data-mood="fail"] .ex-verdict { color: #c22f66; }
 .ex-reply-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .ex-meter {
   flex: none; align-self: center; width: 58px; height: 12px; overflow: hidden;
@@ -376,8 +409,9 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
 .ex-meter i { display: block; height: 100%; background: var(--pink); transition: width .5s ease-out; }
 .ex-reply[data-mood="pass"] .ex-meter i { background: var(--teal); }
 
-.ex-dots { display: flex; gap: 7px; padding: 4px 2px; }
+.ex-dots { display: flex; align-items: center; gap: 7px; padding: 4px 2px; }
 .ex-dots[hidden] { display: none; }
+.ex-dots-txt { margin-left: 5px; font-size: 17px; font-weight: 600; color: var(--ink-soft); }
 .ex-dots i { width: 11px; height: 11px; border-radius: 50%; background: var(--pink); border: 2px solid var(--ink); animation: ex-dot 1s ease-in-out infinite; }
 .ex-dots i:nth-child(2) { animation-delay: .15s; background: var(--gold); }
 .ex-dots i:nth-child(3) { animation-delay: .3s; background: var(--teal); }
@@ -395,7 +429,7 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
   background: repeating-linear-gradient(transparent 0 29px, rgba(143, 211, 255, .6) 29px 30px) 0 6px / 100% 30px local, transparent;
   scrollbar-width: thin; scrollbar-color: rgba(43, 34, 51, .35) transparent;
 }
-.ex-ta::placeholder { color: rgba(43, 34, 51, .3); }
+.ex-ta::placeholder { color: rgba(43, 34, 51, .42); }
 .ex-ta[readonly] { color: var(--ink-soft); }
 .is-pass .ex-card { border-color: #179b86; }
 
@@ -406,14 +440,17 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
 /* the explain keys are the terminal's typewriter keys, a touch smaller */
 .ex-key {
   --key: var(--paper);
-  position: relative; flex: none; width: 48px; height: 48px; padding: 0; border-radius: 50%;
-  display: grid; place-items: center;
-  border: 4px solid var(--ink); color: var(--ink); font-size: 21px;
-  background: radial-gradient(circle at 50% 36%, rgba(255, 255, 255, .95) 0 26%, var(--key) 72%);
+  position: relative; flex: none; height: 46px; padding: 0 20px; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border: 4px solid var(--ink); color: var(--ink);
+  font: 600 17px/1 var(--font-ui); white-space: nowrap;
+  background: radial-gradient(ellipse 80% 100% at 50% 18%, rgba(255, 255, 255, .95) 0 28%, var(--key) 82%);
   box-shadow: 0 5px 0 var(--ink), 2px 9px 0 rgba(43, 34, 51, .2);
   transform: translateY(-3px); cursor: pointer;
   transition: transform .07s ease-out, box-shadow .07s ease-out;
 }
+.ex-key .etl-ico { font-size: 18px; }
+.ex-key.has-ico { padding-left: 16px; }
 .ex-key[hidden] { display: none; }
 .ex-key:hover { --key: #fff1bd; }
 .ex-key:active { transform: translateY(2px); box-shadow: 0 0 0 var(--ink), 1px 3px 0 rgba(43, 34, 51, .2); }
@@ -421,11 +458,11 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
 .ex-key:disabled { opacity: .42; cursor: default; transform: translateY(0); box-shadow: 0 2px 0 var(--ink); }
 .ex-key.is-waiting { opacity: 1; }
 .ex-key.is-waiting .etl-ico { visibility: hidden; }
-.ex-key.is-waiting::after {
-  content: ''; position: absolute; inset: 10px; border-radius: 50%;
+.ex-key.is-waiting::after {   /* a spinner where the icon was */
+  content: ''; position: absolute; left: 14px; top: 50%; width: 15px; height: 15px; margin-top: -10px; border-radius: 50%;
   border: 3px solid rgba(255, 255, 255, .45); border-top-color: #fff; animation: term-spin .75s linear infinite;
 }
-.ex-key[data-act="done"] { --key: var(--teal); background: radial-gradient(circle at 50% 30%, #8fe6da 0 22%, var(--key) 66%); animation: ex-glow 1.4s ease-in-out infinite .6s; }
+.ex-key[data-act="done"] { --key: var(--teal); background: radial-gradient(ellipse 80% 100% at 50% 14%, #8fe6da 0 22%, var(--key) 70%); animation: ex-glow 1.4s ease-in-out infinite .6s; }
 .ex-key[data-act="done"]:hover { --key: #5ed8c8; }
 @keyframes ex-glow {
   0%, 100% { box-shadow: 0 5px 0 var(--ink), 2px 9px 0 rgba(43, 34, 51, .2), 0 0 0 0 rgba(62, 199, 181, .55); }
@@ -438,7 +475,9 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
   .ex-q { font-size: 18px; }
   .ex-reply { font-size: 16px; }
   .ex-ta { font-size: 16px; min-height: min(130px, 30vh); }
-  .ex-key { width: 44px; height: 44px; font-size: 19px; }
+  .ex-key { height: 42px; padding: 0 16px; font-size: 16px; }
+  .ex-key.has-ico { padding-left: 13px; }
+  .ex-key.is-waiting::after { left: 12px; }
 }
 
 /* short screens (phone landscape): tighter, and the keys sit beside the answer card */
@@ -452,8 +491,10 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
   .ex-card { flex: 1; min-width: 0; }
   .ex-ta { font: 16px/26px var(--font-ui); min-height: min(132px, 32vh); padding-top: 4px; background-position: 0 4px; background-size: 100% 26px;
     background-image: repeating-linear-gradient(transparent 0 25px, rgba(143, 211, 255, .6) 25px 26px); }
-  .ex-keys { flex-direction: column; gap: 12px; padding: 0 2px 4px; }
-  .ex-key { width: 42px; height: 42px; font-size: 18px; }
+  .ex-keys { flex-direction: column; align-items: stretch; gap: 12px; padding: 0 2px 4px; }
+  .ex-key { height: 38px; padding: 0 14px; font-size: 15px; border-width: 3px; box-shadow: 0 4px 0 var(--ink), 1px 7px 0 rgba(43, 34, 51, .2); }
+  .ex-key.has-ico { padding-left: 12px; }
+  .ex-key.is-waiting::after { left: 11px; }
   .ex-tag { top: -19px; font-size: 15px; padding: 1px 12px 2px; border-width: 3px; }
 }
 
