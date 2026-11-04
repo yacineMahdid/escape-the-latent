@@ -31,7 +31,7 @@ const DECK = { y: 400, w: 112, h: 24 };                  // y = deck top, where 
 const POL = { w: 104, h: 120, pic: 92, cy: 296 };        // polaroid on its mast (y 236-356)
 const ROW = { x0: 110, w: 740 };
 const PAIR = { x: 806, y: 110, s: 0.6, rot: 0.07 };      // where the true photo sticks to the card
-const RIDER_DX = 18;                                     // the Speck left of the mast, Brine right of it
+const RIDER_DX = 18;                                     // the player left of the mast, Brine right of it
 const POST = { speck: 32, brine: 68 };                   // waiting spots on the Stilt Post landing
 
 // ---- timings (s)
@@ -556,7 +556,7 @@ function makeGame(ctx) {
     S.introDur = S.round === 0 ? T.introFirst : T.intro;
     S.stage = 'intro'; S.stageT = 0;
     S.ok = null; S.brineOk = null; S.snapped = false; S.pinned = false; S.lift = null; S.lastTick = Infinity; S.hold = null;
-    // the Speck lands on the raft nearest its last x (round 1: the middle one)
+    // the player lands on the raft nearest its last x (round 1: the middle one)
     let at = Math.floor((n - 1) / 2);
     if (S.round > 0) {
       let best = Infinity;

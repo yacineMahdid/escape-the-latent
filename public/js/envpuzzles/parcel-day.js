@@ -5,7 +5,7 @@
 // mesh) down the row: he gulps beads (his belly glows in their colour), lets sand and ums slide, and at every
 // bell shouts what is in his belly. A ✓ / ✕ flag and the owner's reaction follow, then Penny names the
 // mix-ups. Tumble's and Umberto's parcels hold no bead, so they hear the previous parcel's bead. At each
-// ribbon the Speck may leave one of 2 clear marbles or a pinch of sand: sand changes nothing (Noodle keeps
+// ribbon the player may leave one of 2 clear marbles or a pinch of sand: sand changes nothing (Noodle keeps
 // his belly across any amount of it), a marble is gulped like a bead and leaves the belly empty. The only
 // win is marbles on R1 and R3 (every placement checked). Unlimited runs.
 // The paper (Mamba, Section 3.5.2, Boundary Resetting): sequences packed end to end (documents packed to use
@@ -268,7 +268,7 @@ export default {
     const giver = spec.speaker || 'penny';
     const xOf = (i) => slots.find((s) => s.i === i)?.x ?? row.x0 + i * row.step;
     const nameOf = (id) => parcelOf[id]?.name || w.speakerOf?.(id)?.name || id;
-    // the Speck watches each run from just behind the dispatch bell: the follow camera then frames the row
+    // the player watches each run from just behind the dispatch bell: the follow camera then frames the row
     const WATCH = { x: at[0], z: at[2] - (disp.collider ?? 0.25) - 0.42 };
 
     const placed = Object.fromEntries(ribbons.map((r) => [r.id, 'none']));

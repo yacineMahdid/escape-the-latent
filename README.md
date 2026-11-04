@@ -1,6 +1,6 @@
 # Escape the Latent
 
-A cozy paper-diorama game. You are a **Speck**: a human small enough to stand on
+A cozy paper-diorama game. You are tiny: small enough to stand on
 the desk of **Jean-Lafontaine de Becancourt**, a normal-sized, permanently
 irritated old scientist with long black hair, a black beard and big eyebrows
 (he only looks giant because you are tiny). He sends you off his desk (slide

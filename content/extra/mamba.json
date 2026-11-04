@@ -149,7 +149,7 @@
           "raceStrip": "y 8-52: a cream paper ribbon from x 24 to 936, a dotted track from a ▶ flag at x 70 to a red post box 📮 at x 890. Noodle's marker (green snake head, 26 px) and Kayvee's (mouse head with a tiny cart whose heap grows with n) at x = 70 + 820 * (d - start) / (finish - start). '🛒{n}' in 13 px under Kayvee's marker. While he digs: a 🔍 over his marker with a filling ring.",
           "kayveeLane": "y 100-200: a paler back path (#f0dfb8, y 150-190). Kayvee and his cart at x = mouthX + (dK - dN) * tilePx, with faint small bell posts at the bell tiles. Off screen (x < -40 or > 1000): an edge badge at y 165, '🐭 ▶ 6' on the right or '◀ 🐭 3' on the left (gap in whole tiles).",
           "road": "y 330-420: the sandy road (#ead7ad, pebbles #c9ae7a); grains centred at y 375.",
-          "noodle": "mouthX = 300. His head (60 × 46) just left of the mouth, facing right, at y 345; a yellow #ffd35a scarf behind it; the body a thick #6cc24a tube trailing left off screen in a slow sine (amplitude 18, wavelength 160, phase moving with dN). Belly window: a cream circle (r 26, ink border) on the body at (190, 398) showing the belly: the bead's colour and cut, sand colour with dots for mush, plain cream when empty. The Speck rides on his head (40 px). Tumble's head and ears poke up at the tail end (x 36, y 350) and bounce.",
+          "noodle": "mouthX = 300. His head (60 × 46) just left of the mouth, facing right, at y 345; a yellow #ffd35a scarf behind it; the body a thick #6cc24a tube trailing left off screen in a slow sine (amplitude 18, wavelength 160, phase moving with dN). Belly window: a cream circle (r 26, ink border) on the body at (190, 398) showing the belly: the bead's colour and cut, sand colour with dots for mush, plain cream when empty. The player rides on his head (40 px). Tumble's head and ears poke up at the tail end (x 36, y 350) and bounce.",
           "reach": "a soft white circle (r 40, 35% alpha) on the road at (mouthX, 375). Grains in reach lift 6 px and get a white outline.",
           "buttons": "y 468-528: GULP (x 40-280, green #7bcd5d) and SHOUT (x 680-920, yellow #ffd35a): paper buttons with the word in 26 px and the key in a small chip ('Space', '↑'). They flash when used, by key or by click.",
           "finish": "From dN > road.length - 8 a red post box (#c8453c) on a post slides in at tile road.length + 1, with a chalk finish line.",
@@ -167,11 +167,11 @@
           "kayveeDigs": "paper",
           "overtake": "pin"
         },
-        "speck": "The Speck: a tiny paper human (round head, hair, coloured top). If getSave().character (js/game/save.js) is there, use its skin, hairColor and topColor; else #e8b796, #3b2a20, #4f86d8.",
+        "player": "The player: a tiny paper human (round head, hair, coloured top). If getSave().character (js/game/save.js) is there, use its skin, hairColor and topColor; else #e8b796, #3b2a20, #4f86d8.",
         "testHooks": "Keep on the kit state (container.__mg.state): S.road, S.roadIndex, S.dN, S.dK, S.n (Kayvee's cart), S.belly, S.right, S.bells (8), S.mistakes, S.stall (seconds left) and S.tiles ([{ i, tok, done: null | 'gulped' | 'slid' | 'missed' | 'ok' | 'wrong' }]). A test bot can read S.dN and S.road and press Space / ArrowUp at the right moments; force('win') also works.",
         "rule": "Section 3.1 and Figure 2, Selective Copying: the data tokens (beads) sit at random places among noise (sand, and Umberto's 'um', the filler of Section 3.5.2), so only a content-aware model keeps them; a recurrent model is efficient because its state is small, but only as good as what it puts in it. Noodle's belly is that fixed-size state: a gulp replaces it with the current bead (large Δ: reset and focus), letting a grain slide keeps it (small Δ: persist and ignore), a shout reads it out at a bell (C). The player is the selection mechanism, deciding grain by grain from what each grain is. Kayvee is attention with its KV cache: he keeps every grain, so he is never wrong, but each step and each lookup costs more as his cart grows (Section 3.1: slow linear-time inference; Section 4.5: no KV cache gives Mamba 4-5x the inference throughput). Playing well = compressing the road into one belly by choosing: fast and right."
       },
-      "design": "A side-scrolling race. The Speck rides Noodle's head down the road toward Penny's post office while Kayvee races in the back lane with his cart. Grains roll up to Noodle's mouth one tile at a time: Space gulps, ↑ shouts. Gulp the beads (his belly window turns that colour), let sand and ums slide by, and shout at every bell: Noodle calls out whatever is in his belly. A right bell rings ✓; gulping junk, shouting at nothing, or a wrong or missed bell makes Noodle hiccup and stop for a moment. Kayvee keeps every grain: he starts fast, but his cart grows and he digs through all of it at every bell, so he slows down. A race strip on top shows both racers. First to the post office wins (about 40 s; three hand-made roads in turn). The rules card shows spec.goal and spec.controls.",
+      "design": "A side-scrolling race. The player rides Noodle's head down the road toward Penny's post office while Kayvee races in the back lane with his cart. Grains roll up to Noodle's mouth one tile at a time: Space gulps, ↑ shouts. Gulp the beads (his belly window turns that colour), let sand and ums slide by, and shout at every bell: Noodle calls out whatever is in his belly. A right bell rings ✓; gulping junk, shouting at nothing, or a wrong or missed bell makes Noodle hiccup and stop for a moment. Kayvee keeps every grain: he starts fast, but his cart grows and he digs through all of it at every bell, so he slows down. A race strip on top shows both racers. First to the post office wins (about 40 s; three hand-made roads in turn). The rules card shows spec.goal and spec.controls.",
       "paperLink": "§3.1 · Fig. 2 · §3.5.2 · §4.1.1 · §4.5",
       "worldEffect": "Kayvee sits on his cart and starts sorting: KEEP, TOSS, TOSS, TOSS...",
       "intro": [
@@ -183,7 +183,7 @@
         "Every bell, I dig through all of it. Maybe I don't need it ALL."
       ],
       "retry": [
-        "Ha! Slow and sure, that's my cart. Rematch whenever you like, Speck."
+        "Ha! Slow and sure, that's my cart. Rematch whenever you like."
       ]
     },
     {
@@ -277,7 +277,7 @@
           "Parcels are by Noodle. Ring the dispatch bell to send him off.",
           "Empty parcels get NOTHING. Not somebody else's bead!"
         ],
-        "where": "Main path left of the stream (y 0), along the front of the path strip: from in front of Noodle (lane-left, x -21) to just before Tumble (lane-mid, x -6). Positions are [x, y, z] world units; the Speck is 1.9 tall. The camera looks from +z and low (about 13° down, about 22 units wide), so every prop stands up off the ground. The fences at z 3.0 (x -31..-26 and -4..3) would hide low props, so the row stays between them. The stage lanterns at (-26, 2.9) and (-18, 2.9) (there from the 2nd solved challenge on) stand just in front of the row: leave them. Nudge anything that clips.",
+        "where": "Main path left of the stream (y 0), along the front of the path strip: from in front of Noodle (lane-left, x -21) to just before Tumble (lane-mid, x -6). Positions are [x, y, z] world units; the player is 1.9 tall. The camera looks from +z and low (about 13° down, about 22 units wide), so every prop stands up off the ground. The fences at z 3.0 (x -31..-26 and -4..3) would hide low props, so the row stays between them. The stage lanterns at (-26, 2.9) and (-18, 2.9) (there from the 2nd solved challenge on) stand just in front of the row: leave them. Nudge anything that clips.",
         "row": {
           "z": 2.25,
           "x0": -24.6,
@@ -553,9 +553,9 @@
           "promptHeight": 1.9,
           "collider": 0.25,
           "look": "a brass handbell (#e6b84a) hanging from a little wooden post with an arm (1.3 tall) and a red pennant",
-          "why": "It stands behind the middle of the row, so the camera (centred on the Speck) sees the whole road during the run.",
-          "onInteract": "Await the whole delivery run, then the result. walkscene keeps the scene busy meanwhile, so the Speck stands and watches and nothing changes mid-run.",
-          "watch": "During a run the Speck steps (0.4 s, round the bell post, not through it) to just behind the dispatch bell, x -16, z -0.12: the follow camera then frames the whole row, and the Speck is out of Noodle's way."
+          "why": "It stands behind the middle of the row, so the camera (centred on the player) sees the whole road during the run.",
+          "onInteract": "Await the whole delivery run, then the result. walkscene keeps the scene busy meanwhile, so the player stands and watches and nothing changes mid-run.",
+          "watch": "During a run the player steps (0.4 s, round the bell post, not through it) to just behind the dispatch bell, x -16, z -0.12: the follow camera then frames the whole row, and the player is out of Noodle's way."
         },
         "noodle": {
           "mesh": "w.villager('noodle'). Remember his position; put him back at his anchor after the run and in destroy(). If null, use a green capsule stand-in.",
@@ -618,7 +618,7 @@
         "testHooks": "Set it.id on every interactable ('R1'..'R4', 'dispatch'), so tests can find them in window.__etl.ws.interactables (labels 'Ribbon', 'Dispatch bell'). While mounted, keep window.__etl.parcelDay = { placed: { R1..R4: 'none' | 'sand' | 'marble' }, marbles, running, last: [{ owner, heard, ok }] }. window.__etl.parcelDay.speed (default 1) is a test-only time scale for the run.",
         "rule": "Section 3.5.2, Boundary Resetting: when independent sequences are stitched together (for example documents packed end to end to use the hardware better), LTI models bleed information from one into the next, while a selective SSM can reset its state at the boundary (Δ_t → ∞, or g_t → 1 in Theorem 1). Penny packs parcels end to end to save trips; an empty parcel shows the bleed (Noodle shouts the previous parcel's bead). The player must find the reset: sand is a grain Noodle ignores with a tiny step, so his belly persists across it (selection remembers what matters across any amount of noise), while a clear marble is taken in with a big gulp that carries nothing and wipes the belly: a boundary token. Umberto's parcel adds Variable Spacing: ums are fillers to let slide, not beads. Playing well = a reset exactly at the boundaries where the old belly would leak into the next parcel."
       },
-      "design": "The finale, on the road in front of Noodle. Penny has packed five parcels end to end (Kayvee, Tumble, Doc Marrow, Umberto, Penny): each a strip of wrapping paper with its grains and its owner's bell at the end, with a ribbon between parcels. Ring the dispatch bell and Noodle slithers the whole row, gulping beads and shouting at each bell whatever is in his belly. Tumble's and Umberto's parcels hold no bead, so they hear the previous parcel's bead: mix-ups. At each ribbon the Speck may leave a clear marble (2 in all) or a pinch of sand. Sand changes nothing; a marble is gulped like a bead and leaves his belly empty. With the 2 marbles before the two empty parcels every bell is right. Unlimited runs; the HUD keeps count.",
+      "design": "The finale, on the road in front of Noodle. Penny has packed five parcels end to end (Kayvee, Tumble, Doc Marrow, Umberto, Penny): each a strip of wrapping paper with its grains and its owner's bell at the end, with a ribbon between parcels. Ring the dispatch bell and Noodle slithers the whole row, gulping beads and shouting at each bell whatever is in his belly. Tumble's and Umberto's parcels hold no bead, so they hear the previous parcel's bead: mix-ups. At each ribbon the player may leave a clear marble (2 in all) or a pinch of sand. Sand changes nothing; a marble is gulped like a bead and leaves his belly empty. With the 2 marbles before the two empty parcels every bell is right. Unlimited runs; the HUD keeps count.",
       "paperLink": "§3.5.2 (Boundary Resetting, Variable Spacing, Δ) · §3.1 · Thm. 1",
       "worldEffect": "Five bells ring at once. Tumble finds his bead. In his own pocket.",
       "intro": [

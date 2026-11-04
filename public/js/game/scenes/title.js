@@ -48,7 +48,7 @@ export async function createTitleScene() {
     });
   });
 
-  // the player in the middle: your own Speck once you have made one
+  // the player in the middle: your own character once you have made one
   const humans = await loadHumans();
   if (humans?.buildHuman) {
     let mine = null; try { mine = getSave().character; } catch { /* no save */ }

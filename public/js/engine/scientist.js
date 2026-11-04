@@ -1,4 +1,4 @@
-// Jean-Lafontaine de Becancourt, the grumpy old man whose desk the Speck lives on.
+// Jean-Lafontaine de Becancourt, the grumpy old man whose desk the player lives on.
 // Long black hair falling past his shoulders, a full bushy black beard with the moustache merged into it,
 // enormous black brows over heavy-lidded old eyes, a big ruddy nose and heavy cheeks; a worn chunky
 // cardigan over a roll-neck, old trousers with turn-ups, felt slippers, and an old man's stoop.

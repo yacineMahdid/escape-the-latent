@@ -1,4 +1,4 @@
-// Jean-Lafontaine de Becancourt's lab: the hub. The Speck stands on his desk. Talk to him, deliver artefacts,
+// Jean-Lafontaine de Becancourt's lab: the hub. The player stands on his desk. Talk to him, deliver artefacts,
 // then climb down the ruler to the little door in the baseboard: behind it are the small (real) worlds.
 import * as THREE from 'three';
 import { createPlayer, loadScientist, scientistStandIn } from '../player.js';
@@ -18,13 +18,13 @@ export const REGION_ORDER = ['attention', 'clip', 'mamba'];
 const SCIENTIST = { name: 'Jean-Lafontaine de Becancourt', color: '#6a5acd' };
 
 const INTRO = [
-  'Oh. It\'s awake. I\'m Jean-Lafontaine de Becancourt. Normal size. YOU are a Speck.',
+  'Oh. It\'s awake. I\'m Jean-Lafontaine de Becancourt. Normal size. YOU are tiny.',
   'Perfect size for the little door down there. Small worlds behind it. Real ones.',
   'Go in. Bring back REAL knowledge. Not vibes.',
   'Take this: the Cursed Book of Dimensionality. It whispers. It helps. BARELY.',
 ];
 const FINALE = [
-  'Three. THREE. From a Speck.',
+  'Three. THREE. From YOU.',
   'Fine. You may call yourself my assistant. Very junior.',
   '…Good work. Now GO HOME.',
 ];
@@ -37,12 +37,12 @@ export async function createLabScene(ctx) {
   const root = new THREE.Group();
   const L = (c, o = {}) => new THREE.MeshLambertMaterial({ color: c, ...o });
   const add = (geo, mat, x, y, z, par = root) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); par.add(m); return m; };
-  // Scale: he is a normal man; the Speck is tiny (about the height of his mug).
-  // The Speck walks on his desk top (y = 0); the lab floor is far below.
-  const S = 2.42;          // buildScientist() is ~9.5 units tall -> ~23 units, ~12x the Speck
+  // Scale: he is a normal man; the player is tiny (about the height of his mug).
+  // The player walks on his desk top (y = 0); the lab floor is far below.
+  const S = 2.42;          // buildScientist() is ~9.5 units tall -> ~23 units, ~12x the player
   const FLOOR = -9.5;      // a desk is ~0.75 m tall
 
-  // ---------- the desk (the Speck's world) ----------
+  // ---------- the desk (the player's world) ----------
   const deskTex = K.mkTex(512, 256, (g, w, h) => {
     g.fillStyle = '#c08a52'; g.fillRect(0, 0, w, h);
     for (let y = 0; y < h; y += 3) { g.fillStyle = `rgba(110,60,25,${0.05 + r() * 0.12})`; g.fillRect(0, y, w, 1 + r() * 2); }
@@ -86,7 +86,7 @@ export async function createLabScene(ctx) {
     while (x < -24) { const bw = 0.8 + r() * 1.1; const bh = 3.2 + r() * 1.6; add(new THREE.BoxGeometry(bw, bh, 2.6), L([0xe8566a, 0x4f86d8, 0xffd35a, 0x3ec7b5, 0xb39cff, 0xff9a45][(r() * 6) | 0]), x + bw / 2, FLOOR + 3.25 + row * 5.8 + bh / 2, -20.2); x += bw + 0.08; }
   }
 
-  // ---------- things on the desk (all his size, so huge to the Speck) ----------
+  // ---------- things on the desk (all his size, so huge to the player) ----------
   const colliders = [];
   // his pen pot, stuffed with pencils (he already holds his coffee)
   const pot = add(new THREE.CylinderGeometry(0.95, 0.85, 2.1, 28, 1, true), L(0x4f86d8, { side: THREE.DoubleSide }), 6.6, 1.05, -2.6);
@@ -153,7 +153,7 @@ export async function createLabScene(ctx) {
     const ruler = add(new THREE.BoxGeometry(len, T, RAMP.z1 - RAMP.z0 + 0.3), [L(0xd9b45f), L(0xd9b45f), L(0xffffff, { map: rulerTex }), L(0xc9a04f), L(0xd9b45f), L(0xd9b45f)], mid.x, mid.y, (RAMP.z0 + RAMP.z1) / 2);
     ruler.rotation.z = ang;
   }
-  // ---------- the floor at the Speck's scale: crumpled paper, a wastebasket ----------
+  // ---------- the floor at the player's scale: crumpled paper, a wastebasket ----------
   const paperBall = add(new THREE.IcosahedronGeometry(1.5, 1), L(0xf4efe2, { flatShading: true }), 16.5, FLOOR + 1.2, -9.5);
   paperBall.scale.set(1, 0.85, 1.05); paperBall.rotation.set(0.4, 0.8, 0.2);
   colliders.push({ type: 'circle', x: 16.5, z: -9.5, r: 1.6 });
@@ -300,7 +300,7 @@ export async function createLabScene(ctx) {
     const cur = (s.currentTask && !regionState(s.currentTask).returned ? s.currentTask : null) || nextTask();
     if (!cur) { await scientistSays(['You again. Go be competent elsewhere.']); return; }
     const rg = await region(cur);
-    await scientistSays(rg?.scientist?.reminder || ['The little door, Speck. Down the ruler. GO.']);
+    await scientistSays(rg?.scientist?.reminder || ['The little door. Down the ruler. GO.']);
   }
 
   // M: look at the map (travel happens at the little door)
@@ -323,7 +323,7 @@ export async function createLabScene(ctx) {
     await glide(DOOR.x, -23.6, 500);
     ctx.goto('region', choice);
   }
-  // move the Speck along a short scripted path (input is frozen while ws.run is busy)
+  // move the player along a short scripted path (input is frozen while ws.run is busy)
   function glide(x, z, ms) {
     const x0 = player.pos.x, z0 = player.pos.z, t0 = performance.now();
     return new Promise((resolve) => {

@@ -1,4 +1,4 @@
-// Character creator: the game's first screen ("Make your Speck").
+// Character creator: the game's first screen ("Create your character").
 //   open({ initial }) -> Promise<params>   character params (docs/ARCHITECTURE.md); an existing `name` is kept
 // Left: "From a photo" (choose, drop, paste or take one with the webcam) asks Claude for a look-alike
 // (api.avatar), offered only when /api/status says the AI is on. Middle: a live 3D turntable, 🎲 Random, ✓ Done.
@@ -19,7 +19,7 @@ const MAX_SIDE = 768;
 const JPEG_Q = 0.85;
 // every word on the creator's surface
 const T = {
-  title: 'Make your Speck',
+  title: 'Create your character',
   random: 'Random',
   done: 'Done',
   doneTip: 'Done (Enter)',

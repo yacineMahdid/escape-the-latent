@@ -6,7 +6,7 @@ contract, change this file in the same commit.
 
 ## The game in one paragraph
 
-You are a **Speck**: a human about the height of a coffee mug. **Jean-Lafontaine
+You are tiny: a human about the height of a coffee mug. **Jean-Lafontaine
 de Becancourt** is a normal-sized, grumpy old scientist (long black hair, a black
 beard, big eyebrows; not an Einstein type); he only looks giant because you are
 tiny. The hub is his desk. He sends you on "impossible" errands: down the
@@ -25,7 +25,7 @@ challenge and an "explain it" conversation graded by Claude. You win an
 
 - Becancourt is **normal-sized**. Narration, UI and docs never call him a giant.
   Villagers may call him "your giant": that is their point of view.
-- The Speck and everything in the small worlds share one small scale (the player
+- The player and everything in the small worlds share one small scale (the player
   and villagers are about 1.9 units tall).
 - Lab: the desk top is walkable at `y = 0`; a ruler leans off its right edge
   (a ramp sloping along x) down to the room floor at `y = -9.5`, which is
@@ -33,13 +33,14 @@ challenge and an "explain it" conversation graded by Claude. You win an
   baseboard at x 22 (travel starts there; you come back out of it). Every world
   has the same little door at its left end (`DOOR_POS` in diorama.js); Becancourt is `buildScientist()` from `public/js/engine/scientist.js`
   scaled by 2.42 (~23 units tall,
-  about 12x the Speck), standing on the floor behind the desk.
+  about 12x the player), standing on the floor behind the desk.
 
 ### Names
 
 - Full name: **Jean-Lafontaine de Becancourt** (dialogue name tag, his intro).
 - Short name in tight UI (prompts, HUD task, toasts): **Becancourt**.
-- He calls the player "Speck". Villagers of the small worlds call him "your giant".
+- The player has no special name: nobody calls them anything but "you" (the creator says "Create your
+  character"). Villagers of the small worlds call Becancourt "your giant".
 - The player's book is **the Cursed Book of Dimensionality** ("the Cursed Book" for short; HUD label "Book").
 
 ## Run it
@@ -302,7 +303,7 @@ back right that leads "deeper" (the region's exit after completion).
 | `arrival` | far left of the main path (player spawns here) |
 | `lane-left` | main path, left |
 | `lane-mid` | main path, centre-left, near the stairs to the terrace |
-| `bridge` | on the bridge over the stream, by its back railing (the Speck crosses in front) |
+| `bridge` | on the bridge over the stream, by its back railing (the player crosses in front) |
 | `lane-right` | main path, right of the stream |
 | `path-to-gate` | on the winding path toward the back gate |
 | `gate` | in front of the back gate |

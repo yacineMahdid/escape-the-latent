@@ -14,7 +14,7 @@ export const ANCHORS = {
   arrival: [-33, 0, 1.6],
   'lane-left': [-21, 0, 1.4],
   'lane-mid': [-6, 0, 1.4],
-  bridge: [11.5, 0.7, 0.8],        // by the back railing: the Speck can still cross in front
+  bridge: [11.5, 0.7, 0.8],        // by the back railing: the player can still cross in front
   'lane-right': [16.4, 0, 1.2],
   'path-to-gate': [18.8, 0, -5.6],
   gate: [21, 0, -10.6],

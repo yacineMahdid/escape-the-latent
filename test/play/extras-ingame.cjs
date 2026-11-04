@@ -6,7 +6,7 @@
 //
 // Solver contract (test/play/extras/<world>.cjs):
 //   module.exports = { [challengeId]: async (p, c, h) => {} }
-//   Called right after the Speck talked to the giver and the intro lines are done:
+//   Called right after the player talked to the giver and the intro lines are done:
 //     minigame:    the .puzzle-host overlay is open (the kit is on host.__mg)
 //     quiz:        the first question box (.dlg-ask) is open
 //     environment: the puzzle has just started in the world (the HUD shows its goal)
@@ -115,7 +115,7 @@ async function playWorld(browser, regionId) {
   }
   for (const c of extras) if (!done.has(c.id)) results.push(`FAIL ${regionId}/${c.id}: never became ready`);
 
-  // everything is solved now: the artefact lies by the Speck's feet
+  // everything is solved now: the artefact lies by the player's feet
   const apos = await posOf(p, (it) => it.icon === '✦');
   if (apos) { await place(p, apos[0] + 0.5, apos[1], apos[2] + 0.4); await p.keyboard.press('KeyE'); await p.waitForTimeout(400); await drain(p); }
   const st = await p.evaluate((id) => JSON.parse(localStorage.getItem('etl-save-v1')).regions[id], regionId);

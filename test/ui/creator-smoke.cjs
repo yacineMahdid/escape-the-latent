@@ -158,7 +158,7 @@ const visibleLines = (page) => page.$eval('.cr-card', (card) => {
 async function checkConciseText(page, { photo }) {
   const lines = await visibleLines(page);
   const text = lines.join(' | ');
-  for (const w of ['Make your Speck', ...TAB_WORDS, 'Random', 'Done']) assert.ok(lines.includes(w), `"${w}" on the surface: ${text}`);
+  for (const w of ['Create your character', ...TAB_WORDS, 'Random', 'Done']) assert.ok(lines.includes(w), `"${w}" on the surface: ${text}`);
   if (photo !== null) for (const w of PHOTO_WORDS) assert.equal(lines.includes(w), photo, `"${w}" ${photo ? 'shown' : 'hidden'}: ${text}`);
   const long = lines.filter((l) => l.length > 60 || words(l) > 8);
   assert.deepEqual(long, [], 'no line over 60 characters or 8 words');
@@ -286,7 +286,7 @@ const liveTracks = (page) => page.evaluate(() => window.__streams.flatMap((s) =>
       });
       assert.deepEqual(r.problems, []);
       assert.ok(r.sci.min > -0.05 && r.sci.min < 0.05, `scientist feet at ${r.sci.min}`);
-      assert.ok(r.sci.max > 9 && r.sci.max < 10.2, `scientist height ${r.sci.max} (~5x the Speck)`);
+      assert.ok(r.sci.max > 9 && r.sci.max < 10.2, `scientist height ${r.sci.max} (~5x the player)`);
       // the lab (docs/ARCHITECTURE.md): floor y=-9.5, desk top y=0, the scientist x2.42 on the floor -> desk top 3.93 in his units
       const DESK_TOP = 9.5 / 2.42;
       assert.ok(r.sciAbove.head > DESK_TOP + 2 && r.sciAbove.mug > DESK_TOP && r.sciAbove.hand > DESK_TOP, `above the desk top (${DESK_TOP.toFixed(2)}): ${JSON.stringify(r.sciAbove)}`);
@@ -325,7 +325,7 @@ const liveTracks = (page) => page.evaluate(() => window.__streams.flatMap((s) =>
       // concise text: title, tab words, worded buttons, a short label on every row; no photo words (it is not
       // offered), no name field, no offline chip; nothing longer than a short line
       const lines = await checkConciseText(page, { photo: false });
-      assert.deepEqual(lines.filter((l) => /[A-Za-z]/.test(l)), ['Make your Speck', 'Random', 'Done', ...TAB_WORDS, ...ROW_LABELS.face], 'exactly the needed words');
+      assert.deepEqual(lines.filter((l) => /[A-Za-z]/.test(l)), ['Create your character', 'Random', 'Done', ...TAB_WORDS, ...ROW_LABELS.face], 'exactly the needed words');
       assert.equal(await page.$('.cr-card input[type="text"], .cr-name, .cr-offline'), null, 'no name field / offline chip');
       assert.equal(await page.getAttribute('.cr-card', 'aria-labelledby'), 'cr-title', 'the dialog is named by its title');
       await checkRowLabels(page);
@@ -724,7 +724,7 @@ const liveTracks = (page) => page.evaluate(() => window.__streams.flatMap((s) =>
       // the title screen belongs to core and may be animated: click through the DOM
       await page.$eval('.title-btns .etl-btn', (b) => b.click());
       await page.waitForSelector('.cr-card:not(.checking)', { timeout: 60000 });
-      assert.equal(await page.textContent('.cr-title'), 'Make your Speck', 'the first screen says what it is');
+      assert.equal(await page.textContent('.cr-title'), 'Create your character', 'the first screen says what it is');
       await page.click('.cr-dice');
       await page.click('.cr-tab[data-tab="hair"]');
       await page.click('.cr-chip[data-field="hairStyle"][data-value="ponytail"]');

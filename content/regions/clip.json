@@ -14,17 +14,17 @@
   "scientist": {
     "taskTitle": "Bring back the Twin Lens",
     "briefing": [
-      "The Bell was luck, Speck. Luck doesn't happen twice.",
+      "The Bell was luck. Luck doesn't happen twice.",
       "Pairadise claims a lens that names things nobody labelled. HA! Fetch it.",
       "Read the paper. Yes, the appendix too."
     ],
     "reminder": [
       "No lens? Called it.",
-      "Read the Cursed Book, Speck. The small print. It's your size."
+      "Read the Cursed Book. The small print. It's your size."
     ],
     "return": [
       "It named my mug. 'A photo of a mug.' Correct. Infuriatingly correct.",
-      "Twice, Speck. TWICE. That's not luck. That's a... pattern.",
+      "Twice. TWICE. That's not luck. That's a... pattern.",
       "Bottle cap. Next to the Bell."
     ]
   },

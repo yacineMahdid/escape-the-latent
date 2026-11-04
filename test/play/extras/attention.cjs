@@ -1,6 +1,6 @@
 // Solvers for Attendale's extra pack (content/extra/attention.json), driven by test/play/extras-ingame.cjs.
 // Real inputs only: mouse moves and clicks on the mini-game's dial and the dialogue buttons, typed numbers,
-// E at the word posts and the board (the Speck is teleported next to them). Nothing calls the kit's force().
+// E at the word posts and the board (the player is teleported next to them). Nothing calls the kit's force().
 //   m1 (Who's It?): reads which word 'it' means and where its key flag is on the dial (host.__mg.state), points
 //     the mouse at that flag and clicks; the ear swings there and rings. Replays from the Again card if a try is lost.
 //   q1 (Lengthwise): answers the three questions from the challenge's own answer keys.

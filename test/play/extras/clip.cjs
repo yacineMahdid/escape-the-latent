@@ -1,6 +1,6 @@
 // Solvers for Pairadise's extra pack (content/extra/clip.json), driven by test/play/extras-ingame.cjs.
 // Real inputs only: clicks on the mini-game's own buttons, arrow keys on the rafts, E at the island's props
-// (the Speck is teleported next to each one), Space through dialogue, clicks on the quiz's answers.
+// (the player is teleported next to each one), Space through dialogue, clicks on the quiz's answers.
 // Every wait is on a condition with a generous timeout: the 3D scene runs at 1-5 fps on a busy machine,
 // and the mini-game's clock caps each frame at 0.05 s, so slow frames slow the game down (one win can take
 // several minutes of wall time).

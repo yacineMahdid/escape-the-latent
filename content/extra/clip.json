@@ -280,7 +280,7 @@
           "fallback": "If an emoji does not render (e.g. 🏴‍☠️ splits into two glyphs), draw a paper shape instead: pirate flag = black pennant on a stick with a white dot."
         },
         "brine": {
-          "look": "Skipper Brine: brown bear head #8a5a36 with a navy captain's cap #2f4f8f, standing on a raft like the Speck.",
+          "look": "Skipper Brine: brown bear head #8a5a36 with a navy captain's cap #2f4f8f, standing on a raft like the player.",
           "stickers": {
             "🐢": "turtle",
             "🦀": "crab",
@@ -306,11 +306,11 @@
           }
         },
         "flow": [
-          "Round start: the rafts slide in from the right (0.3 s), the caption card flips in with round.caption and the fuse under it starts to burn (round.time s). The Speck lands on the raft nearest its last x (round 1: the middle raft, index floor((N - 1) / 2)).",
+          "Round start: the rafts slide in from the right (0.3 s), the caption card flips in with round.caption and the fuse under it starts to burn (round.time s). The player lands on the raft nearest its last x (round 1: the middle raft, index floor((N - 1) / 2)).",
           "While the fuse burns the player hops freely. For the last 3 s the fuse is red and sfx('tick') plays once a second.",
           "Fuse out: hopping locks. Every raft without answer: true tips and sinks (0.5 s, splash rings, sfx('pop')).",
-          "Speck on the true raft: its photo flies up into the caption card, they snap into one postcard (sfx('ding'), a '+1 ★' pop) that flies to the next free peg of the clothesline. glued += 1.",
-          "Speck on a sinking raft: a big splash, 'SPLASH!' in blue, sfx('buzz'), splashes += 1. The true raft still glows and lifts its photo to the card for 0.6 s, so the player sees the real pair; that card then fades (no peg).",
+          "player on the true raft: its photo flies up into the caption card, they snap into one postcard (sfx('ding'), a '+1 ★' pop) that flies to the next free peg of the clothesline. glued += 1.",
+          "player on a sinking raft: a big splash, 'SPLASH!' in blue, sfx('buzz'), splashes += 1. The true raft still glows and lifts its photo to the card for 0.6 s, so the player sees the real pair; that card then fades (no peg).",
           "Brine: on the true raft he gets '🐻 +1' and says 'Ha!'; otherwise he splashes and says 'Blast!'.",
           "After 1.4 s: glued ≥ toWin → result 'win'; splashes ≥ splashesToLose → 'lose'; else the next round."
         ],
@@ -326,13 +326,13 @@
           "fuse": "a rope under the card from x 200 to 760 at y 152, burning right to left with a spark.",
           "lagoon": "y 170-540, turquoise water #22cfd8 with light ripple lines; the Stilt Post's stilts at the far left as decor.",
           "rafts": "N rafts in a row, centres x_i = 110 + (i + 0.5) · 740 / N, deck at y 400 (112 × 24, planks #b8864e, bob ±4 px), the polaroid on a mast above (y 240-356).",
-          "riders": "the Speck (48 px tall) and Brine (52 px) stand on a deck; on the same raft they stand 20 px apart."
+          "riders": "the player (48 px tall) and Brine (52 px) stand on a deck; on the same raft they stand 20 px apart."
         },
-        "speck": "The Speck: a tiny paper human (round head, dark hair, coloured top). If getSave().character (js/game/save.js) is there, use its skin, hairColor and topColor.",
-        "testHooks": "Keep S.round (0-7), S.rafts ([{ photo, answer, x }]), S.at (the Speck's raft index), S.glued, S.splashes and S.brine.score on the kit state (container.__mg.state).",
+        "player": "The player: a tiny paper human (round head, dark hair, coloured top). If getSave().character (js/game/save.js) is there, use its skin, hairColor and topColor.",
+        "testHooks": "Keep S.round (0-7), S.rafts ([{ photo, answer, x }]), S.at (the player's raft index), S.glued, S.splashes and S.brine.score on the kit state (container.__mg.state).",
         "rule": "Section 2.3: given a batch of N (image, text) pairs, CLIP predicts which of the N × N pairings really occurred; the true pair is pulled together and every other pairing pushed apart. Each round is one caption against a batch of photos: its one true photo glues into a postcard, every other raft is a negative and sinks, and the batch grows from 3 to 6 rafts (CLIP uses 32,768). Abstract, Section 1 and Section 2.1: a fixed set of predetermined labels limits a model; natural language carries far more. Brine's stickers (one fixed word per photo) cannot tell hard negatives apart and have no sticker for a new thing; reading the whole caption can. Playing well = pairing a whole caption with its one true photo among the batch."
       },
-      "design": "A lagoon race. Mrs. Pomelo holds up a caption card while a fuse burns under it; a row of rafts carries photos on little masts. The Speck hops raft to raft (← → one raft per press, or click a raft to jump straight there). When the fuse runs out, every raft whose photo does not fit the whole caption sinks; the true one glues to the card and pins to the clothesline. Skipper Brine races on the same rafts with his sticker crate: he reads one fixed word per photo, so he picks the plainest match and splashes on detailed captions, and dives in when he has no sticker at all. 8 rounds, 3 → 6 rafts, fuses 5.0 → 3.5 s. Glue 6 to win; 3 splashes and you lose (the kit offers Again?). The rules card shows spec.goal and spec.controls.",
+      "design": "A lagoon race. Mrs. Pomelo holds up a caption card while a fuse burns under it; a row of rafts carries photos on little masts. The player hops raft to raft (← → one raft per press, or click a raft to jump straight there). When the fuse runs out, every raft whose photo does not fit the whole caption sinks; the true one glues to the card and pins to the clothesline. Skipper Brine races on the same rafts with his sticker crate: he reads one fixed word per photo, so he picks the plainest match and splashes on detailed captions, and dives in when he has no sticker at all. 8 rounds, 3 → 6 rafts, fuses 5.0 → 3.5 s. Glue 6 to win; 3 splashes and you lose (the kit offers Again?). The rules card shows spec.goal and spec.controls.",
       "paperLink": "§2.3 · §2.1 · Abstract",
       "intro": [
         "The afternoon ferry tipped my post into the lagoon! Photos on rafts, words on my cards.",
@@ -362,7 +362,7 @@
         "need": 4,
         "film": 6,
         "reminder": [
-          "Four bananas my Snapper gets wrong. Mind your film, Speck."
+          "Four bananas my Snapper gets wrong. Mind your film."
         ],
         "interactable": {
           "label": "Snap",
@@ -566,7 +566,7 @@
             "look": "A flat yellow crescent-moon cut-out with a sleepy face, 0.9 tall, on a 1.2 stake, a little paper star dangling from its tip.",
             "snapper": "a banana",
             "lens": "a moon",
-            "react": "That's the moon, Speck. Even I know it's no banana.",
+            "react": "That's the moon. Even I know it's no banana.",
             "interact": {
               "promptHeight": 2.45
             }
@@ -591,7 +591,7 @@
             "react": "A yellow canoe. Not a banana. That's film wasted!"
           }
         ],
-        "propsNote": "Positions are [x, y, z] world units (the Speck is 1.9 tall); y is the floor of that layer (main path 0, terrace 1.7, hilltop 3.4, bank -0.95). Each prop faces the camera (+z), is about 1-1.4 units big (scale multiplies the look's sizes, so small things still read from the diorama camera) and gets a collider: a number is a circle radius, {w, d} a box footprint centred on at (none for the float in the river and the cup on the well, which already has one). The bank is only 2.1 deep, so its props sit on the river side (z about 7.5) with box colliders, leaving a 0.8-wide walkway behind them like the one behind Old Scribbit, at x spots the foreground leaves do not hide. Interactable pos = at, unless interact gives pos / radius / promptHeight (the prompt floats just above the prop). Nudge a prop if it clips a tree, house or villager.",
+        "propsNote": "Positions are [x, y, z] world units (the player is 1.9 tall); y is the floor of that layer (main path 0, terrace 1.7, hilltop 3.4, bank -0.95). Each prop faces the camera (+z), is about 1-1.4 units big (scale multiplies the look's sizes, so small things still read from the diorama camera) and gets a collider: a number is a circle radius, {w, d} a box footprint centred on at (none for the float in the river and the cup on the well, which already has one). The bank is only 2.1 deep, so its props sit on the river side (z about 7.5) with box colliders, leaving a 0.8-wide walkway behind them like the one behind Old Scribbit, at x spots the foreground leaves do not hide. Interactable pos = at, unless interact gives pos / radius / promptHeight (the prompt floats just above the prop). Nudge a prop if it clips a tree, house or villager.",
         "onSnap": [
           "Flash: a white full-screen div in #ui-root (pointer-events none), opacity 0.9 → 0 over 0.3 s, then removed; w.sfx('pop').",
           "film -= 1. The prop's interactable gets enabled = false, and a paper flag on a pin pops up beside it: green #7bcd5d with a banana if it counts (the HUD's 🍌), grey #9a9aa6 with a crossed-out film strip if not (a wasted shot, the HUD's 🎞️).",
@@ -617,7 +617,7 @@
         "Six shots of film. Bet you can't!"
       ],
       "reminder": [
-        "Four bananas my Snapper gets wrong. Mind your film, Speck."
+        "Four bananas my Snapper gets wrong. Mind your film."
       ],
       "success": [
         "Four bananas, four wrong stickers. My Snapper only knows my catalogue.",

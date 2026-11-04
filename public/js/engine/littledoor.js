@@ -1,4 +1,4 @@
-// The little door: Speck-sized (about 3 units tall, the Speck is 1.9). One sits in the baseboard of
+// The little door: player-sized (about 3 units tall, the player is 1.9). One sits in the baseboard of
 // Becancourt's lab; its twin stands at the entrance of every small world. It really opens.
 //   const door = buildLittleDoor({ standalone })   // standalone: free-standing frame on a stone step
 //   door.userData.setOpen(true | false)            // animates; door.userData.update(dt) every frame

@@ -1,5 +1,5 @@
 // Belly vs. Cart (Siftsand / Mamba, challenge m1): a side-scrolling race to Penny's post office, about 36-42 s.
-// The Speck rides Noodle's head. Grains roll up to his mouth one tile at a time. GULP (Space, ↓ or the button) takes a
+// The player rides Noodle's head. Grains roll up to his mouth one tile at a time. GULP (Space, ↓ or the button) takes a
 // bead into his one small belly, whose window shows it; sand or an 'um' is 'Blech!' and a stall. SHOUT (↑ or the
 // button) at a bell: Noodle calls out his belly, right if it holds the last bead before that bell. Gulping a bell,
 // shouting at nothing, or a wrong or missed bell also stalls him (small mistakes 0.6 s, bell mistakes 1.4 s).
@@ -586,7 +586,7 @@ function paintCart(g) { // the wooden cart, front edge at (0, 0) = Kayvee's race
   }
   g.restore();
 }
-function paintSnakeIcon(g) { // race strip marker: Noodle's head (26 px) with the Speck's dot
+function paintSnakeIcon(g) { // race strip marker: Noodle's head (26 px) with the player's dot
   g.save(); g.scale(0.44, 0.44); paintHead(g, 'idle'); g.restore();
 }
 function paintMouseIcon(g) { // race strip marker: Kayvee's head
@@ -1056,7 +1056,7 @@ function drawRoadBack(g, S, C, T) {
   }
 }
 function grainArt(C, t, hl) { return t.kind === 'bead' ? beadArt(C, t.tok, hl) : t.kind === 'noise' ? umArt(hl) : sandArt(t.i % 6, hl); }
-// the bells (after Noodle's head, before the Speck): they hang above his head, flags on top once handled
+// the bells (after Noodle's head, before the player): they hang above his head, flags on top once handled
 function drawBells(g, S, C, T) {
   const [first, last] = visibleTiles(S, T);
   const hlShout = S.stall > 0 || S.winner ? null : shoutTarget(S, C);
@@ -1205,7 +1205,7 @@ function drawNoodle(g, S, C, F, T) { // Tumble on the tail, the body with its be
   blit(g, headArt(noodleMood(S, F)), hx, hy);
   return { hx, hy, ty };
 }
-function drawSpeck(g, S, F, colors, nd) { // the Speck rides his head, telling him when
+function drawSpeck(g, S, F, colors, nd) { // the player rides his head, telling him when
   const pose = F.speck ? F.speck.pose : 'idle', now = F.clock;
   const sb = pose === 'cheer' ? -Math.abs(Math.sin(now * 14)) * 4 : pose === 'point' ? 1.5 : 0;
   blit(g, speckArt(colors, pose), nd.hx - 16, nd.hy - 24 + sb);

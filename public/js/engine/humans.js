@@ -1,7 +1,7 @@
 // Animal Crossing-style humans built from primitives, in the same toy style as villagers.js.
 //   buildHuman(params)  the player: feet at y=0, ~1.9 units tall, faces +z
 //   buildScientist()    the old scientist model: a normal-sized grumpy man in a lab coat (~9.5 units, ~5x
-//                       the Speck). The game shows Becancourt from engine/scientist.js; this one is for /dev pages.
+//                       the player). The game shows Becancourt from engine/scientist.js; this one is for /dev pages.
 // Character params: see "Character params" in docs/ARCHITECTURE.md. Every builder accepts anything
 // and fills missing or invalid fields with defaults (normalizeCharacter).
 import * as THREE from 'three';
@@ -837,7 +837,7 @@ function buildAccessory(kind, p, head, F, hair, M) {
 const puff = (base, top) => (phi, th) => base + top * Math.max(0, Math.cos(th));
 
 // ---------------------------------------------------------------------------------------------
-// The old scientist model: normal-sized and permanently irritated (~9.5 units, ~5x the Speck), same toy
+// The old scientist model: normal-sized and permanently irritated (~9.5 units, ~5x the player), same toy
 // style. Not used by the game (it shows Becancourt from engine/scientist.js); /dev pages still compare it.
 
 const EXPRESSIONS = {
