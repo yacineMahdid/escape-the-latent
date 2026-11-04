@@ -665,17 +665,19 @@
         },
         {
           "question": "Zero-shot, your Lens matched a few-shot classifier on its own features. How many shots?",
-          "kind": "number",
-          "answer": 4,
-          "tolerance": 0,
-          "placeholder": "examples per class",
+          "options": [
+            "1 shot",
+            "4 shots",
+            "16 shots"
+          ],
+          "answer": 1,
           "right": [
             "Four! Words say what you mean. One photo shows a hundred things."
           ],
           "wrong": [
             "Wrong. Figure 6 drew it. Ribbit."
           ],
-          "paperLink": "§3.1.5 · Fig. 6 (zero-shot CLIP matches 4-shot logistic regression on the same feature space)"
+          "paperLink": "§3.1.5 · Fig. 6 (zero-shot CLIP matches 4-shot logistic regression on the same feature space; 16 shots = it nearly matches the best of the other public models; 1 shot = the intuitive guess it beats)"
         }
       ],
       "paperLink": "§2.2 · §6 · §3.1.5 · Fig. 6",

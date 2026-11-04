@@ -1,5 +1,6 @@
 // Mario Party-style mini-game shell for public/js/minigames/<name>.js:
 // rules card -> 3, 2, 1, GO! -> play against the clock -> FINISH! -> win (stamp) or "Again?".
+// A win is final: ▶ Continue, Space, the card's timer, ✕ and Esc all end it with api.onWin() (once).
 //
 //   import { runMinigame } from './kit.js';
 //   export default { mount(container, spec, api) { return runMinigame(container, spec, api, GAME); } };
@@ -17,7 +18,8 @@
 //     timeUp(S, spec),                           // when the clock runs out: 'win' | 'lose' (default 'lose')
 //     hud(S, spec),                              // short score text for the top bar, e.g. '★ 7 / 10'
 //   }
-//   api: { onWin(), onClose(), sfx(name) } from the host. container.__mg exposes { status, state, force(result) }.
+//   api: { onWin(), onClose(), sfx(name) } from the host (the kit stops the Esc keydowns it handles, so a host
+//   modal's onEscape does not also fire). container.__mg exposes { status, state, force(result) }.
 import { sfx as gameSfx } from '../game/sfx.js';
 
 const W = 960, H = 540;
@@ -88,12 +90,15 @@ export function runMinigame(container, spec = {}, api = {}, game = {}) {
   let pressed = new Set();
   const pointer = { x: 0, y: 0, down: false, clicked: false };
   const onKey = (e, down) => {
-    if (e.code === 'Escape') { if (down) { e.preventDefault(); closeNow(); } return; }
+    // the kit owns Esc while it runs: the host's modal Escape (a plain "close") must not also fire
+    if (e.code === 'Escape') { if (down && !closed && phase !== 'done') { e.preventDefault(); e.stopPropagation(); closeNow(); } return; }
     const k = KEYMAP[e.code]; if (!k) return;
     e.preventDefault();
     if (down && !held[k]) pressed.add(k);
     held[k] = down;
     if (down && k === 'action' && (phase === 'intro' || phase === 'retry')) startCountdown();
+    // the win card: a fresh press continues (not a key still held or mashed from the last move)
+    else if (down && k === 'action' && phase === 'result' && !e.repeat && performance.now() - resultAt > 400) keepWin();
   };
   const kd = (e) => onKey(e, true), ku = (e) => onKey(e, false);
   window.addEventListener('keydown', kd, true); window.addEventListener('keyup', ku, true);
@@ -105,7 +110,7 @@ export function runMinigame(container, spec = {}, api = {}, game = {}) {
 
   // ---- flow
   let phase = 'intro'; // intro | countdown | play | finish | result | retry | done
-  let S = null; let last = 0; let raf = 0; let closed = false; let outcome = null; let overlay = null;
+  let S = null; let last = 0; let raf = 0; let closed = false; let outcome = null; let overlay = null; let resultAt = 0;
   const setOverlay = (node) => { overlay?.remove(); overlay = node; if (node) stage.append(node); };
   const freshState = () => { S = { W, H, t: 0, score: 0 }; game.setup?.(S, spec); };
 
@@ -145,9 +150,13 @@ export function runMinigame(container, spec = {}, api = {}, game = {}) {
       if (res === 'win') {
         phase = 'result';
         const card = el('div', 'mg-card'); card.append(el('div', 'mg-ribbon', 'YOU WIN'), el('h2', '', spec.successText || 'You did it!'));
+        const btns = el('div', 'mg-btns');
+        const go = el('button', 'etl-btn primary', '▶ Continue'); go.addEventListener('click', () => keepWin());
+        btns.append(go); card.append(btns);
         setOverlay(card); stage.append(el('div', 'mg-stamp', '✓'));
+        resultAt = performance.now();
         sfx('win');
-        setTimeout(() => { if (!closed) { phase = 'done'; api.onWin?.(); } }, 1600);
+        setTimeout(keepWin, 1600);
       } else {
         phase = 'retry';
         const card = rulesCard(true);
@@ -179,8 +188,16 @@ export function runMinigame(container, spec = {}, api = {}, game = {}) {
     score.textContent = S ? (game.hud?.(S, spec) ?? '') : '';
     raf = requestAnimationFrame(frame);
   }
+  // the win card ends the game won exactly once: Continue, Space, or its 1.6 s timer, whichever comes first
+  function keepWin() {
+    if (closed || phase !== 'result') return;
+    phase = 'done';
+    api.onWin?.();
+  }
   function closeNow() {
     if (closed || phase === 'done') return;
+    // a won game stays won: ✕ or Esc on FINISH! or the win card still counts the win
+    if (outcome === 'win' && (phase === 'finish' || phase === 'result')) { closed = true; phase = 'done'; api.onWin?.(); return; }
     closed = true;
     api.onClose?.();
   }
