@@ -41,6 +41,7 @@
           "rampSeconds": 0.6,
           "unit": "degrees per second while ← or → is held; speed ramps linearly from start to max over rampSeconds of holding"
         },
+        "mouseTurn": 360,
         "rounds": [
           {
             "words": [
@@ -84,7 +85,7 @@
               "because",
               "it",
               "was",
-              "soggy"
+              "torn"
             ],
             "ask": 6,
             "means": 4,
@@ -196,7 +197,7 @@
               "because",
               "it",
               "was",
-              "pink"
+              "short"
             ],
             "ask": 6,
             "means": 4,
@@ -250,13 +251,13 @@
           "last word": "#9fe0d0",
           "little words": "#e4ddd0"
         },
-        "input": "← → (A/D) turn the ear. Moving the mouse over the canvas aims the ear at the pointer (angle from the dial centre); keys still work when the mouse is still. Space/Enter or a click rings; a click first aims at the click point, then rings.",
+        "input": "← → (A/D) turn the ear. The mouse over the dial (never the sentence strip) sets where the ear should point; the ear turns there at up to mouseTurn degrees per second, so the pie sweeps through the words on its way. A press on the dial aims at its point and its release rings once the ear has arrived; Space/Enter rings at once (or on arrival, while the ear is still turning to the mouse). Keys take over from the mouse; a still mouse never aims.",
         "embodies": "One ear = one attention head. The ear's direction is the query, each flag is a key, the card glow and pie are the softmax weights (one whole pie, shared by every word at once), and the bubble is the weighted blend of the values. Playing well = pointing the query at the right key so the attention gets sharp, like the paper's Figure 4 heads on 'its'."
       },
       "design": "Mario Party-style rush, 55 s. Each round shows a short sentence with a glowing 'it'. The player reads it, decides who 'it' really means, turns the teal ear on the dial to that word's flag (keys are scattered round the dial, not in sentence order), watches the listening pie and the glowing cards, and rings. 6 good rings win; 3 muddles or the clock lose. The 10 sentences come in pairs that differ by one word (hungry/yummy), so 'it' means a different word each time and only the meaning decides.",
       "paperLink": "Section 3.2 (an attention function maps a query and key-value pairs to a weighted sum of the values, weighted by query-key compatibility); Section 3.2.1 (dot products of the query with all keys, then a softmax gives the weights); Figure 4 (heads resolving the anaphora 'its', with very sharp attention).",
       "intro": [
-        "Psst! I built a practice ear. Wherever the ear points, it listens hardest.",
+        "Psst! My practice ear. Wherever it points, it listens hardest.",
         "Fair gossip is full of 'it'. Turn my ear so each 'it' hears who it means!"
       ],
       "success": [
@@ -264,8 +265,8 @@
         "My whiskers are tingling!"
       ],
       "retry": [
-        "Oops. 'It' heard a muddle. My whiskers drooped.",
-        "Read the whole sentence first. Then turn."
+        "My whiskers drooped. Another go?",
+        "Read the whole sentence first. Then turn the ear."
       ]
     },
     {
@@ -291,7 +292,7 @@
           ]
         },
         {
-          "question": "Their word-coat is 512 wide, shared by 8 ears. How wide is each ear's slice?",
+          "question": "The Bell's eight ears share one word-coat. How wide is each ear's slice?",
           "kind": "number",
           "answer": 64,
           "tolerance": 0,
@@ -301,18 +302,21 @@
           ]
         },
         {
-          "question": "When translating, a reply may run past the input's length. By how much, at most?",
-          "kind": "number",
-          "answer": 50,
-          "tolerance": 0,
-          "placeholder": "a number"
+          "question": "The paper's big model trained on eight GPUs. For how long?",
+          "options": [
+            "12 hours",
+            "3.5 days",
+            "a month",
+            "a year"
+          ],
+          "answer": 1
         }
       ],
-      "paperLink": "Q1: Section 3.1 (encoder and decoder are each a stack of N = 6 identical layers; Figure 1's Nx). Q2: Section 3.2.2 (h = 8 heads, d_k = d_v = d_model/h = 64 with d_model = 512). Q3: Section 6.1 (maximum output length at inference = input length + 50, terminating early when possible).",
-      "design": "Three questions in the dialogue box, all right in one go. Lengthwise, who complains nobody ever asks him anything, finally gets to ask. Long things: tower height, slice width, reply length. The answers are only in the paper (Cursed Book).",
+      "paperLink": "Q1: Section 3.1 (encoder and decoder are each a stack of N = 6 identical layers; Figure 1's Nx). Q2: Section 3.2.2 (h = 8 heads, d_k = d_v = d_model/h = 64 with d_model = 512). Q3: Abstract, Section 5.2 and Section 6.1 (the big model trained for 300,000 steps, 3.5 days, on eight P100 GPUs; the base model took 12 hours).",
+      "design": "Three questions in the dialogue box, all right in one go. Lengthwise, who complains nobody ever asks him anything, finally gets to ask. Long things: tower height, slice width, training time. The answers are only in the paper (Cursed Book): the slice question gives neither 512 nor 64, and '12 hours' (the base model) is a fair decoy for the big one.",
       "intro": [
-        "Sssomeone's talking to me? Finally! Then I shall ask YOU things.",
-        "Long things. From the paper. Three in a row, no mistakes. Ssss."
+        "Nobody ever asks me anything. Ssso I shall ask YOU. Three long questions.",
+        "From the paper. All three right in one go. Ssss."
       ],
       "wrong": [
         "Hiss! No. That's wrong-wise, not Lengthwise."
@@ -340,7 +344,7 @@
         "goal": "Ring word posts, watch the ears, tag them at Dabble's board",
         "reminder": [
           "Ring a few word posts. Each ear always does its one job.",
-          "Then tag all four on my board, down by the pier."
+          "Then tag all four ears on my board. Right here."
         ],
         "sentence": [
           "the",
@@ -353,35 +357,39 @@
           "."
         ],
         "posts": {
-          "where": "A straight row on the open main path right of the bridge: post i at x = 22.8 + 2.1*i, y = 0, z = 1.0 (i = 0..7, sentence order, left to right). The row ends at x 37.5, so the full stop stays on screen (16:9 down to 4:3) when the camera stops at x 30, and the c2 lantern at x 26 stands between 'bunny' and 'gave'. Clear of the tree at (25, -2.1), the well at (31, -1.3), the c2 stage lanterns at z = 2.9, both ramps and every villager. Check world.colliders once and nudge a post sideways if it overlaps.",
-          "look": "A cut-paper word card (0.95 wide, 0.5 tall, cream #fffdf6 with an ink back plate) on a thin wooden stick, card centre at y = 1.35, the word in ink. A tiny brass hand-bell (#ffd35a) on top. The row pops up (scale-in) when the puzzle starts.",
+          "where": "A straight row on the open main path right of the bridge: post i at x = 22.83 + 1.8*i, y = 0, z = 1.0 (i = 0..7, sentence order, left to right; the row ends at x 35.43). Seen from the row's held shot (x 29.1), the c2 lantern (x 26, z 2.9) falls in the gap between 'bunny' and 'gave'. Clear of the tree at (25, -2.1), the well at (31, -1.3), the front fence (x 31.8..38.2, z 2.75..3.35), both lanterns, the pier ramp (x 21..23 from z 3.25) and every villager; the Speck passes in front of and behind the row. Check world.colliders once and nudge a post sideways if it overlaps.",
+          "look": "A cut-paper word card (0.95 wide, 0.5 tall, cream #fffdf6 with an ink back plate) on a thin wooden stick, card centre at y = 2.0 (above the Speck's head, so a Speck standing at a post never hides its card), the word in ink. A tiny brass hand-bell (#ffd35a) on top. The row pops up (scale-in) when the puzzle starts.",
           "collider": "circle r = 0.3 at each post (w.addCollider; removed on destroy)",
-          "interactable": "label \"Ring '{word}'\" (for '.' use \"Ring the full stop\"), icon 🔔, radius 1.3, promptHeight 2.2. onInteract is instant: no dialogue.",
-          "onRing": "sfx('ding'), the little bell wiggles, the previous strings vanish, and the four ears' strings for query word i zip out (0.3 s) and stay until another post is rung."
+          "interactable": "label \"Ring '{word}'\" (for '.' use \"Ring the full stop\"), icon 🔔, radius 1.3, promptHeight 3.0 (above the bell). onInteract is instant: no dialogue.",
+          "onRing": "sfx('ding'), the little bell wiggles, the previous strings vanish, four tiny ear-trumpets (the board's trumpet, scaled 0.6, in the ears' colours) hop onto the rung card's top edge at the four ear spots, and each ear's strings zip out of its trumpet's mouth (0.3 s); they stay until another post is rung."
         },
         "ears": [
           {
             "id": "pink",
             "color": "#ff7ab8",
             "name": "Pink ear",
+            "icon": "💗",
             "job": "back"
           },
           {
             "id": "sky",
             "color": "#8fd3ff",
-            "name": "Sky ear",
+            "name": "Blue ear",
+            "icon": "💙",
             "job": "giver"
           },
           {
             "id": "gold",
             "color": "#ffd35a",
             "name": "Gold ear",
+            "icon": "💛",
             "job": "stop"
           },
           {
             "id": "teal",
             "color": "#3ec7b5",
-            "name": "Teal ear",
+            "name": "Green ear",
+            "icon": "💚",
             "job": "little"
           }
         ],
@@ -394,14 +402,14 @@
         },
         "strings": {
           "draw": "For each ear, a string from the top of post i to the top of every post j with weight >= 0.1. Weight >= 0.5: a thick paper string (tube radius 0.06) in the ear's colour. Weight 0.1..0.5: a thin string (radius 0.024, opacity 0.6; any thinner or fainter vanishes at the game's camera distance). So the even 1/8 fan shows as eight thin strings: 'teal shrugs'.",
-          "shape": "Quadratic arc from post i to post j, apex 0.8 + 0.35*|i-j| + 0.13*k above the card tops (k = ear index). Each ear's strings start and land at its own spot along the card's top edge (x offsets -0.37, -0.17, 0.17, 0.37; the bell sits in the middle) and bulge (k - 1.5)*0.18 in z, so arcs to the same post stay side by side on screen (the camera looks almost straight on, so a z offset alone does not separate them). j = i: a small loop above the post.",
+          "shape": "Quadratic arc from ear k's trumpet mouth on post i to its spot on post j's card top (x offsets -0.37, -0.17, 0.17, 0.37; the bell sits in the middle), apex 0.8 + 0.35*|i-j| + 0.13*k above the card tops, bulging (k - 1.5)*0.18 in z, so arcs to the same post stay side by side on screen. j = i: a small loop above the post. The trumpets lean outward (0.34, 0.14, -0.14, -0.34 rad), so the four mouths stay apart.",
           "dots": "Each post also gets a small dot in an ear's colour on its card while that ear listens to it most, so overlapping arcs stay readable."
         },
         "board": {
           "where": "Dabble's Fair board: on the front bank's back edge at x = 16.9, y = -0.95, z = 7.2, right beside Dabble (bank-left), facing the camera; collider: a rect as wide as the board, z 7.0..7.38, so the lane in front stays open between Dabble and the pier ramp (x 21..23). (The bank is only 2.1 deep: a board in its middle leaves only ~0.2-wide squeezes on the way from the pier to Dabble, and tall foreground grass hides x 18..19.5 from the camera.) The puzzle ends here, so the artefact appears by Dabble, as the story's resolution says.",
           "look": "A cream paper board (2.0 x 1.6) on two legs, header 'FAIR PROGRAM'; four small paper ear-trumpets pinned down its left side in the ears' colours (pink, sky, gold, teal, top to bottom), each with a blank paper tag beside it that shows the chosen tag label once set (on two lines when long).",
           "interactable": "label 'Fair board', icon 📋, radius 1.6, centred on the board's right half (x + 0.4, z + 0.35) so standing at the board never picks Dabble next door. Test hook: give it boardOf: 'e1'; give each post interactable postIndex: i (two posts are both 'the').",
-          "flow": "Press E: four questions in a row with w.ask(question, [the 7 tag labels in spec.tags order, 'Later'], { speaker: w.speakerOf('dabble'), neutral: true }): 'Pink ear's job?', 'Sky ear's job?', 'Gold ear's job?', 'Teal ear's job?'. 'Later' stops (choices so far stay on the tags). After the fourth answer, check: all four right -> every ear fires its strings from every post at once (1.2 s burst), w.confetti(80), then api.onSolved(). Otherwise w.speak('dabble', spec.feedback.wrongOne or wrongMany with {n} = number of wrong tags). Never say which tag is wrong. Tags may repeat (it is simply wrong)."
+          "flow": "Press E: the Speck steps beside the board, the camera closes in, then four questions in a row with w.ask('{icon} {name}'s job?', [the 7 tag labels in spec.tags order, 'Later'], { speaker: w.speakerOf('dabble'), neutral: true }): '💗 Pink ear's job?', '💙 Blue ear's job?', '💛 Gold ear's job?', '💚 Green ear's job?'. While a question is open its trumpet on the board waggles and its tag breathes. 'Later' stops (choices so far stay on the tags; the camera goes back). After the fourth answer, check: all four right -> the tags flutter off the board, the camera turns to the row, every ear fires its strings from every post at once (1.8 s), w.confetti(80), the camera comes back, then api.onSolved(). Otherwise w.speak('dabble', spec.feedback.wrongOne or wrongMany with {n} = number of wrong tags). Never say which tag is wrong. Tags may repeat (it is simply wrong)."
         },
         "tags": [
           {
@@ -430,7 +438,7 @@
           },
           {
             "id": "little",
-            "label": "little words find their thing"
+            "label": "little words find their pal"
           }
         ],
         "solution": {
@@ -448,12 +456,12 @@
             "Quack. {n} tags are wrong. I just deliver."
           ]
         },
-        "destroy": "Remove the posts, strings, board, colliders and interactables. Leaving the world restarts the puzzle with blank tags.",
-        "embodies": "Each ear is one attention head. Ringing a word shows that head's attention from that word (the query) to every word (the keys), drawn like the paper's coloured head plots. Nobody assigned the jobs: the heads learned them, and the player reads each job off the strings."
+        "destroy": "Remove the posts, trumpets, strings, board, colliders and interactables, and release any camera shot it holds. Leaving the world restarts the puzzle with blank tags.",
+        "embodies": "Each ear is one attention head. Ringing a word shows that head's attention from that word (the query) to every word (the keys), drawn like the paper's coloured head plots. Nobody assigned the jobs: the heads learned them, and the player reads each job off the strings.",
+        "camera": "w.camera shots, all looking down 14 degrees like the follow camera. On start: a glance at the row as it pops up (0.9 s there, 1.6 s of game time), then back. On a ring: a held shot framing the whole row and its tallest arcs (distance from the screen's aspect, at least 15), released as soon as the Speck walks off the row (x outside the row +-1.7, z outside -2.2..3.4). At the board: the Speck steps beside it (x 18.45, z 7.7) and a close-up (distance 8+) puts the board in the top half of the screen while its questions are open. On a win: the tags fly, then the row's shot for the burst, then back."
       },
-      "design": "Finale walk-around. After the intro, the Sentence stands as eight word posts past the bridge, and a 'FAIR PROGRAM' board with four blank ear tags stands by Dabble on the bank. Ring any post (E): four coloured strings show where each of the Bell's ears listens from that word. Each ear always does one job (one word back, who gave the pie, the full stop, little words find their thing). Ring a few posts, deduce the jobs, then tag the four ears at the board. All four right solves it; otherwise Dabble only says how many tags are wrong.",
+      "design": "Finale walk-around. After the intro, the camera glances at the Sentence popping up as eight word posts past the bridge, and a 'FAIR PROGRAM' board with four blank ear tags stands by Dabble on the bank. Ring any post (E): four tiny ear-trumpets hop onto that word and shoot coloured strings to where each of the Bell's ears listens, and the camera frames the whole row. Each ear always does one job (one word back, who gave the pie, the full stop, little words find their pal). Ring a few posts, deduce the jobs, then tag the four ears at the board (close-up). All four right solves it; otherwise Dabble only says how many tags are wrong.",
       "paperLink": "Section 4, last paragraph (self-attention could yield more interpretable models; individual attention heads clearly learn to perform different tasks, many tied to the syntactic and semantic structure of sentences) and Figures 3-5 (attention from one word, one colour per head).",
-      "worldEffect": "Four little tags flutter up the hill onto the Bell's ears.",
       "intro": [
         "Quack. The Fair program's printed. Except one bit: what each ear DOES.",
         "Four ears lost their tags. I deliver programs. I don't write them.",
@@ -461,12 +469,113 @@
       ],
       "reminder": [
         "Ring a few word posts. Each ear always does its one job.",
-        "Then tag all four on my board, down by the pier."
+        "Then tag all four ears on my board. Right here."
+      ],
+      "locked": [
+        "Quack. The Fair program's printed. All but one bit.",
+        "Bimble's ear and the long one's questions come first. Then see me."
       ],
       "success": [
         "Quack. All four right. The ears picked those jobs all by themselves?",
         "Nobody taught them. Clever ears. Cleverer than roller skates, anyway."
       ]
     }
-  ]
+  ],
+  "book": {
+    "guard": [
+      "Do not say which word 'it' means in any of Bimble's practice-ear sentences (e.g. 'the frog ate the pie because it was hungry' means the frog; with 'yummy' it means the pie), and never say where to turn the ear or which flag to ring.",
+      "Do not say which job each coloured ear does on Dabble's FAIR PROGRAM board (pink: one word back; blue: who gave the pie; gold: the full stop; green: little words find their pal), and never confirm or correct a tag.",
+      "Do not give the number of identical layers in the encoder or decoder stack (N = 6, Section 3.1), and never pick or confirm an option of Lengthwise's tower question.",
+      "Do not state or compute the width of one attention head's slice, d_k = d_v = d_model / h = 64 (Section 3.2.2), for Lengthwise's slice question.",
+      "Do not say how long the big model trained (3.5 days on eight P100 GPUs; the base model took 12 hours), and never pick or confirm an option of Lengthwise's training-time question.",
+      "Never confirm or correct the player's answer to a quiz question, an ear tag or a practice-ear round in this region."
+    ],
+    "offlineHints": [
+      {
+        "keywords": [
+          "practice ear",
+          "who's it",
+          "whos it",
+          "'it'",
+          "refers",
+          "refer to",
+          "anaphora",
+          "pronoun",
+          "muddle",
+          "pie-frog",
+          "gossip",
+          "query",
+          "which word"
+        ],
+        "text": "One ear asks; every word answers. Section 3.2 weighs them. Figure 4 hunts an 'its'."
+      },
+      {
+        "keywords": [
+          "ear job",
+          "ear's job",
+          "jobs",
+          "tag",
+          "tags",
+          "fair program",
+          "program",
+          "word post",
+          "posts",
+          "string",
+          "strings",
+          "pink ear",
+          "blue ear",
+          "gold ear",
+          "green ear",
+          "interpret",
+          "different tasks",
+          "trumpet"
+        ],
+        "text": "Each head learns its own trade. The end of Section 4 says so; Figures 3 to 5 show them at work."
+      },
+      {
+        "keywords": [
+          "floor",
+          "floors",
+          "tower",
+          "towers",
+          "stack",
+          "how many layers",
+          "identical layers",
+          "lengthwise",
+          "snake",
+          "long questions"
+        ],
+        "text": "Count the floors where the towers are built: Section 3.1, and the N beside Figure 1."
+      },
+      {
+        "keywords": [
+          "slice",
+          "wide",
+          "width",
+          "word-coat",
+          "word coat",
+          "d_k",
+          "d_v",
+          "per head",
+          "ear's slice",
+          "each ear"
+        ],
+        "text": "Eight ears, one coat, cut evenly. Section 3.2.2 hands each ear its width."
+      },
+      {
+        "keywords": [
+          "train",
+          "training",
+          "trained",
+          "days",
+          "hours",
+          "gpu",
+          "big model",
+          "big one",
+          "how long did"
+        ],
+        "text": "Even the big one had to learn. The opening lines and Section 5.2 keep its calendar."
+      }
+    ]
+  }
 }

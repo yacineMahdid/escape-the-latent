@@ -459,7 +459,10 @@
             "snapper": "a sandcastle",
             "lens": "a banana",
             "react": "Sand isn't fruit! ...Your Lens says banana anyway. It counts.",
-            "scale": 1.3
+            "scale": 1.3,
+            "interact": {
+              "radius": 2.2
+            }
           },
           {
             "id": "teacup",
