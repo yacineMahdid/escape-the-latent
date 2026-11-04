@@ -502,7 +502,7 @@
         "winCondition": "All 8 slots hold exactly spec.solution's tiles and E === 2 (then 2 * 3E = 12 = the right pan). Exact match, no tolerance.",
         "feedback": {
           "empty": "□",
-          "bones": "✕ bones",
+          "bones": "✕",
           "tilt": "⚖"
         },
         "hintAfterFailures": {

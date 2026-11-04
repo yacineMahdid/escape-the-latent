@@ -253,6 +253,12 @@ export async function createLabScene(ctx) {
   async function region(id) { if (!regions[id]) regions[id] = await api.region(id).catch(() => null); return regions[id]; }
 
   function nextTask() { return REGION_ORDER.find((id) => !regionState(id).returned) || null; }
+  const allReturned = () => REGION_ORDER.every((id) => regionState(id).returned);
+  async function finale() {
+    await scientistSays(FINALE, 'surprised');
+    updateSave((x) => { x.currentTask = null; x.endingSeen = true; });
+    ctx.goto('ending');
+  }
 
   async function assign(id) {
     const rg = await region(id);
@@ -272,24 +278,26 @@ export async function createLabScene(ctx) {
       await assign(nextTask());
       return;
     }
-    // deliver any artefact not yet returned, in order
+    // all three delivered but the finale never finished (closed or reloaded mid-speech): play it now
+    if (allReturned() && !s.endingSeen) { await finale(); return; }
+    // deliver any artefact not yet returned, in order: it goes on its bottle cap first, then he talks
     for (const id of REGION_ORDER) {
       const rs = regionState(id);
       if (rs.artefact && !rs.returned) {
         const rg = await region(id);
         await say([`You hand over ${theName(rg?.artefact?.name)}.`], { style: 'narration' });
+        updateSave(() => { regionState(id).returned = true; });
+        refreshShelf(); refreshHud();
+        confetti(120);
         setExpr('surprised');
         await scientistSays(rg?.scientist?.return || ['...Hm. Hmph. Fine.'], 'surprised');
-        updateSave(() => { regionState(id).returned = true; });
-        confetti(120);
-        refreshShelf();
         const nx = nextTask();
         if (nx) { setExpr('grumpy'); await assign(nx); }
-        else { await scientistSays(FINALE, 'surprised'); updateSave((x) => { x.currentTask = null; x.endingSeen = true; }); ctx.goto('ending'); }
+        else await finale();
         return;
       }
     }
-    const cur = s.currentTask || nextTask();
+    const cur = (s.currentTask && !regionState(s.currentTask).returned ? s.currentTask : null) || nextTask();
     if (!cur) { await scientistSays(['You again. Go be competent elsewhere.']); return; }
     const rg = await region(cur);
     await scientistSays(rg?.scientist?.reminder || ['The little door, Speck. Down the ruler. GO.']);
@@ -341,7 +349,8 @@ export async function createLabScene(ctx) {
     const s = getSave();
     const cur = s.currentTask;
     let task = s.introSeen ? '' : 'Talk to Becancourt';
-    if (cur) {
+    if (allReturned() && !s.endingSeen) task = 'Talk to Becancourt';
+    else if (cur && !regionState(cur).returned) {
       const rg = await region(cur);
       const rs = regionState(cur);
       task = rs.artefact && !rs.returned ? `Give Becancourt ${theName(rg?.artefact?.name)}` : (rg?.scientist?.taskTitle || '');

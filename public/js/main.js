@@ -98,7 +98,15 @@ async function createEnding() {
     ...scene,
     onEnter() { ui.appendChild(card); },
     start() {
-      card.querySelectorAll('button').forEach((b) => { b.onclick = () => { card.remove(); if (b.dataset.a === 'new') { resetSave(); location.reload(); } else goto('lab'); }; });
+      card.querySelectorAll('button').forEach((b) => {
+        b.onclick = async () => {
+          if (b.dataset.a !== 'new') { card.remove(); goto('lab'); return; }
+          card.inert = true;
+          const sure = await ask('Erase your save and start over?', ['Start over', 'Cancel'], { neutral: true });
+          card.inert = false;
+          if (sure === 0) { card.remove(); resetSave(); location.reload(); }
+        };
+      });
     },
     dispose() { card.remove(); scene.dispose(); },
   };
