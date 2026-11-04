@@ -261,12 +261,13 @@ export function buildScientist() {
   ellSolid(HEAD, F.ax * 1.04, F.ay * 1.04, F.az * 1.04);
 
   // tired, deep-set eyes: darker sockets, dot eyes with a highlight, heavy lids, bags, crow's feet
-  const socketM = new THREE.MeshStandardMaterial({ color: C.socket, roughness: 0.9, transparent: true, opacity: 0.3, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  const socketM = new THREE.MeshStandardMaterial({ color: C.socket, roughness: 0.9, transparent: true, opacity: 0.16, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   const eyes = [], lids = [], hls = [];
   const EYE = { x: 0.44, y: 0.02 };
   const wrinkles = [];
   for (const sx of [-1, 1]) {
-    F.put(add(head, new THREE.CircleGeometry(0.29, 28), socketM), sx * EYE.x, EYE.y + 0.03, 0.006).scale.set(1.12, 0.95, 1);
+    // soft shadow of the deep-set eye under the brow ridge (two stacked discs -> a soft edge)
+    for (const [r, dy] of [[0.3, 0.05], [0.22, 0.06]]) F.put(add(head, new THREE.CircleGeometry(r, 28), socketM), sx * EYE.x, EYE.y + dy, 0.006).scale.set(1.15, 0.9, 1);
     const e = F.put(add(head, new THREE.SphereGeometry(0.165, 18, 14), M.std('#16111c', { r: 0.2 })), sx * EYE.x, EYE.y, -0.03);
     e.scale.set(1, 1.35, 0.5);
     eyes.push(e);
@@ -280,7 +281,7 @@ export function buildScientist() {
     // puffy bag + two tired lines under the eye
     F.put(add(head, new THREE.SphereGeometry(0.17, 16, 10), M.std(mix(C.skin, C.socket, 0.18))), sx * EYE.x, EYE.y - 0.2, -0.025).scale.set(1.3, 0.55, 0.35);
     const lineAt = (x, y, r, arc, roll) => { const o = new THREE.Object3D(); F.put(o, x, y, 0.004, roll); o.updateMatrix(); wrinkles.push({ geo: new THREE.TorusGeometry(r, 0.022, 5, 14, arc), m: o.matrix.clone() }); };
-    lineAt(sx * EYE.x, EYE.y - 0.14, 0.15, PI * 0.8, PI * 1.1);
+    lineAt(sx * EYE.x, EYE.y - 0.15, 0.14, PI * 0.62, PI * 1.19);
     // crow's feet
     for (const d of [-0.5, 0.5]) {
       const o = new THREE.Object3D();
@@ -303,16 +304,16 @@ export function buildScientist() {
   const brows = [];
   for (const sx of [-1, 1]) {
     const b = grp(head);
-    F.put(b, sx * 0.52, 0.42, 0.11);
+    F.put(b, sx * 0.52, 0.42, 0.1);
     const bm = grp(b);
     bm.userData.sx = sx;
     const parts = [];
     for (const [x, y, r] of [[-0.28, -0.04, 0.12], [-0.12, 0.01, 0.18], [0.07, 0.04, 0.2], [0.27, 0.03, 0.19], [0.44, -0.03, 0.15]]) {
-      parts.push({ geo: new THREE.SphereGeometry(r, 12, 8), m: mat4(V(sx * x, y, -0.35 * x * x), new THREE.Euler(0, 0, sx * -0.1 * x), V(1.25, 0.82, 0.62)) });
+      parts.push({ geo: new THREE.SphereGeometry(r, 12, 8), m: mat4(V(sx * x, y, -0.48 * x * x), new THREE.Euler(0, 0, sx * -0.1 * x), V(1.25, 0.82, 0.62)) });
     }
     for (const [x, y, dx, dy, len, rad] of [[-0.22, 0.09, 0.25, 1, 0.24, 0.08], [0.04, 0.12, 0.45, 1, 0.26, 0.085], [0.28, 0.09, 0.75, 1, 0.24, 0.08], [0.5, 0.0, 1, 0.4, 0.28, 0.09], [0.46, -0.1, 1, -0.25, 0.22, 0.075]]) {
       const dir = V(sx * dx, dy, 0.15).normalize();
-      parts.push({ geo: new THREE.SphereGeometry(rad, 8, 6), m: mat4(V(sx * x, y, -0.35 * x * x).addScaledVector(dir, len * 0.28), new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(V(0, 1, 0), dir)), V(1, len / (2 * rad), 0.8)) });
+      parts.push({ geo: new THREE.SphereGeometry(rad, 8, 6), m: mat4(V(sx * x, y, -0.48 * x * x).addScaledVector(dir, len * 0.28), new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(V(0, 1, 0), dir)), V(1, len / (2 * rad), 0.8)) });
     }
     add(bm, mergeGeos(parts), browM).name = 'brow';
     brows.push(bm);

@@ -1,7 +1,7 @@
-/* The Umbral Book (owner: book). A dark tome over the cozy paper world:
-   near-black pages, violet glow edges, faint drifting motes, an eerie serif. */
-
-@property --bk-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+/* The Cursed Book of Dimensionality (owner: book). A dark tome over the cozy paper world:
+   near-black pages, violet glow edges, faint drifting motes, an eerie serif.
+   Everything that moves for long (sparks, motes, glow, shimmer) moves by transform/opacity only,
+   so it runs on the compositor and costs the main thread nothing while the player reads. */
 
 .bk-overlay {
   --bk-glow: var(--glow, #9b6bff);
@@ -27,7 +27,7 @@
 
 .bk-overlay button { font-family: inherit; color: inherit; }
 .bk-overlay :focus-visible { outline: 1px dashed rgba(190, 160, 255, .8); outline-offset: 3px; }
-.bk-overlay :is(input, textarea):focus-visible, .bk-scroll:focus-visible { outline: none; }
+.bk-overlay :is(input, textarea):focus-visible, .bk-scroll:focus-visible, .bk-pscroll:focus-visible, .bk-chatwrap:focus-visible { outline: none; }
 
 /* ---------------- the tome ---------------- */
 
@@ -58,24 +58,37 @@
 }
 @keyframes bk-sink { to { opacity: 0; transform: translateY(10px) scale(.98); filter: brightness(1.8) blur(3px); } }
 
-/* light crawling around the edge (a thin masked ring) and a slow breathing halo (opacity only: cheap) */
-.bk::before {
-  content: ''; position: absolute; inset: -2px; border-radius: inherit; pointer-events: none; z-index: 4;
-  padding: 1.5px;
-  background: conic-gradient(from var(--bk-a),
-    transparent 0deg, rgba(186, 150, 255, 0) 30deg, rgba(214, 186, 255, .95) 62deg, rgba(155, 107, 255, 0) 100deg,
-    transparent 180deg, rgba(150, 200, 255, 0) 205deg, rgba(170, 130, 255, .75) 240deg, transparent 280deg);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor; mask-composite: exclude;
-  animation: bk-orbit 16s linear infinite;
+/* light crawling round the edge: two sparks on four thin rails (1.5px, just outside the cover).
+   Each spark crosses a side in a quarter of a 16s lap and hands over at the corners (hidden under the
+   corner caps and the seal); the second spark runs half a lap behind. Transforms only. */
+.bk-rail { position: absolute; z-index: 4; overflow: hidden; pointer-events: none; }
+.bk-rail-t, .bk-rail-b { left: 10px; right: 16px; height: 1.5px; }
+.bk-rail-t { top: -2px; }
+.bk-rail-b { bottom: -2px; transform: scaleX(-1); }                     /* right to left */
+.bk-rail-r { right: -2px; top: 16px; bottom: 16px; width: 1.5px; }
+.bk-rail-l { left: -2px; top: 10px; bottom: 10px; width: 1.5px; transform: scaleY(-1); } /* bottom to top */
+.bk-rail > i {
+  --c: rgba(214, 186, 255, .95);
+  position: absolute; inset: 0; will-change: transform;
+  background: linear-gradient(90deg, transparent 35%, var(--c) 50%, transparent 65%);
+  animation: bk-run-x 16s linear infinite;
 }
+.bk-rail-l > i, .bk-rail-r > i { background: linear-gradient(180deg, transparent 35%, var(--c) 50%, transparent 65%); animation-name: bk-run-y; }
+.bk-rail > i + i { --c: rgba(170, 130, 255, .75); }
+.bk-rail-t > i:first-child, .bk-rail-b > i + i { animation-delay: -.6s; }
+.bk-rail-r > i:first-child, .bk-rail-l > i + i { animation-delay: -12.6s; }
+.bk-rail-b > i:first-child, .bk-rail-t > i + i { animation-delay: -8.6s; }
+.bk-rail-l > i:first-child, .bk-rail-r > i + i { animation-delay: -4.6s; }
+@keyframes bk-run-x { 0% { transform: translateX(-65%); } 32.5%, 100% { transform: translateX(65%); } }
+@keyframes bk-run-y { 0% { transform: translateY(-65%); } 32.5%, 100% { transform: translateY(65%); } }
+
+/* a slow breathing halo (opacity only) */
 .bk::after {
   content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1;
   box-shadow: 0 0 46px 8px rgba(155, 107, 255, .42), 0 0 120px 20px rgba(110, 60, 200, .2);
   animation: bk-breathe-glow 6s ease-in-out infinite;
 }
 @keyframes bk-breathe-glow { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
-@keyframes bk-orbit { to { --bk-a: 360deg; } }
 
 /* the page block */
 .bk-sheet {
@@ -123,7 +136,16 @@
 .bk-cn-bl::after { bottom: 4px; left: 4px; }
 .bk-cn-br::after { bottom: 4px; right: 4px; }
 
-.bk-motes { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; opacity: .9; }
+.bk-motes {
+  position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none;
+  -webkit-mask-image: linear-gradient(transparent, #000 30%); mask-image: linear-gradient(transparent, #000 30%);
+}
+.bk-mote { position: absolute; display: block; }
+.bk-mote > i {
+  display: block; width: 100%; height: 100%; border-radius: 50%;
+  background: radial-gradient(closest-side, #fff, rgba(196, 160, 255, .95) 14%, rgba(155, 107, 255, .18) 45%, transparent);
+}
+.bk-mote.cold > i { background: radial-gradient(closest-side, #fff, rgba(200, 236, 255, .9) 14%, rgba(120, 190, 255, .14) 45%, transparent); }
 
 /* ---------------- ribbon tabs + close seal ---------------- */
 
@@ -202,7 +224,7 @@
 .bk-ib:disabled { opacity: .28; cursor: default; }
 
 /* armed (press again to erase) */
-.bk-del.armed { color: #ff9cb0; background: rgba(255, 90, 130, .14); animation: bk-tremble .11s linear infinite; }
+.bk-del.armed { color: #ff9cb0; background: rgba(255, 90, 130, .14); animation: bk-tremble .11s linear 4; }
 .bk-del.armed .bk-emoji { filter: grayscale(1) sepia(1) hue-rotate(300deg) saturate(4) brightness(1.2); }
 @keyframes bk-tremble { 25% { transform: translate(1px, -1px); } 50% { transform: translate(-1px, 1px); } 75% { transform: translate(1px, 1px); } }
 
@@ -224,11 +246,14 @@
   position: relative; margin: 0 auto 24px; background: #fff;
   box-shadow: 0 0 0 1px rgba(155, 107, 255, .26), 0 12px 30px rgba(0, 0, 0, .6), 0 0 48px rgba(155, 107, 255, .16);
 }
-.bk-pg:not([data-rendered]) {
-  background: linear-gradient(100deg, #fff 35%, #f1ebff 50%, #fff 65%) 0 0 / 300% 100%;
+.bk-pg:not([data-rendered]) { overflow: hidden; }
+/* a page still being drawn: a pale band sweeps it (only pages near the view; transform only) */
+.bk-pg.near:not([data-rendered])::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(100deg, rgba(241, 235, 255, 0) 25%, #f1ebff 50%, rgba(241, 235, 255, 0) 75%);
   animation: bk-shimmer 1.8s linear infinite;
 }
-@keyframes bk-shimmer { from { background-position: 100% 0; } to { background-position: -50% 0; } }
+@keyframes bk-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
 .bk-pg-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
 .bk-hls { position: absolute; inset: 0; z-index: 1; pointer-events: none; mix-blend-mode: multiply; }
@@ -300,9 +325,15 @@
   animation: bk-spin 6s linear infinite, bk-breathe 2.4s ease-in-out infinite;
 }
 @keyframes bk-spin { to { rotate: 360deg; } }
-.bk-fail { display: flex; flex-direction: column; align-items: center; gap: 14px; pointer-events: auto; text-align: center; }
-.bk-fail-line { margin: 0; font-size: 22px; font-style: italic; color: var(--bk-dim); letter-spacing: .03em; text-shadow: 0 0 14px rgba(155, 107, 255, .45); }
-.bk-fail-link { width: 42px; height: 42px; font-size: 20px; border: 1px solid rgba(155, 107, 255, .4); }
+/* the paper would not come: a cracked sigil, ↻ again, ↗ arXiv (no words) */
+.bk-fail { display: flex; flex-direction: column; align-items: center; gap: 16px; pointer-events: auto; }
+.bk-fail-row { display: flex; gap: 14px; }
+.bk-fail .bk-ib { width: 42px; height: 42px; font-size: 20px; border: 1px solid rgba(155, 107, 255, .4); }
+.bk-sigil.bk-dead { position: relative; animation: none; color: rgba(190, 160, 255, .22); text-shadow: 0 0 18px rgba(155, 107, 255, .3); }
+.bk-sigil.bk-dead::after {                 /* the crack */
+  content: ''; position: absolute; left: 50%; top: 4%; bottom: 4%; width: .07em; margin-left: -.035em;
+  background: var(--void, #0b0912); transform: rotate(22deg); box-shadow: 0 0 .06em var(--void, #0b0912);
+}
 
 /* selection menu: 🖍 ✎ ? */
 .bk-selmenu {
@@ -314,7 +345,7 @@
 }
 .bk-selmenu[hidden] { display: none; }
 .bk-selmenu::after {
-  content: ''; position: absolute; left: 50%; bottom: -6px; width: 10px; height: 10px; margin-left: -5px;
+  content: ''; position: absolute; left: 50%; bottom: -6px; width: 10px; height: 10px; margin-left: calc(var(--ax, 0px) - 5px);
   background: #120b1d; border: solid rgba(190, 160, 255, .55); border-width: 0 1px 1px 0; transform: rotate(45deg);
 }
 .bk-selmenu.below::after { bottom: auto; top: -6px; border-width: 1px 0 0 1px; }
@@ -336,7 +367,7 @@
   animation: bk-pop .16s ease-out;
 }
 .bk-pop::before {
-  content: ''; position: absolute; left: 50%; top: -6px; width: 10px; height: 10px; margin-left: -5px;
+  content: ''; position: absolute; left: 50%; top: -6px; width: 10px; height: 10px; margin-left: calc(var(--ax, 0px) - 5px);
   background: #100a1a; border: solid rgba(190, 160, 255, .5); border-width: 1px 0 0 1px; transform: rotate(45deg);
 }
 .bk-pop-ta, .bk-nn {
@@ -413,6 +444,12 @@
 }
 .bk-a.refused .bk-l { animation: bk-frost .9s ease-out both; }
 @keyframes bk-frost { 0% { opacity: 0; color: #e8f4ff; text-shadow: 0 0 6px rgba(200, 230, 255, .8); } 100% { color: inherit; text-shadow: none; } }
+
+/* nothing came back (network, server): not a refusal, so no cold box. A small cracked sigil and ↻ */
+.bk-ex.failed .bk-q { opacity: .6; }
+.bk-ex.failed .bk-a { display: flex; align-items: center; gap: 12px; min-height: 0; text-shadow: none; }
+.bk-ex.failed .bk-sigil { font-size: 26px; line-height: 1; }
+.bk-again { border: 1px solid rgba(155, 107, 255, .35); }
 
 .bk-dots { display: inline-flex; gap: 7px; padding: 10px 0 4px; }
 .bk-dots i { width: 6px; height: 6px; border-radius: 50%; background: #c2a4ff; box-shadow: 0 0 8px #9b6bff; animation: bk-dot 1.2s ease-in-out infinite; }
@@ -500,6 +537,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bk::before, .bk::after, .bk-empty, .bk-sigil, .bk-pg:not([data-rendered]) { animation: none; }
+  .bk::after, .bk-empty, .bk-sigil, .bk-del.armed, .bk-tab.bk-new::after, .bk-dots i,
+  .bk-l, .bk-a.refused .bk-l, .bk-le.fresh .bk-lt, .bk-le.fresh::before { animation: none; }
+  .bk-rail, .bk-pg.near:not([data-rendered])::after { display: none; }
   .is-open .bk, .is-closing .bk, .bk-overlay.is-open, .bk-overlay.is-closing { animation-duration: .01s; }
 }
