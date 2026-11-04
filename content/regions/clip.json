@@ -117,7 +117,8 @@
         "afterSolved": [
           "The Lens named a thing I've got no sticker for. Rude. Brilliant, but rude."
         ]
-      }
+      },
+      "wander": false
     },
     {
       "id": "kiwi",

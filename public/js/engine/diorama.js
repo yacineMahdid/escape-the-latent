@@ -134,7 +134,7 @@ export function buildDiorama(biomeId, { seed = 11, fences = true } = {}) {
     { x0: -37, x1: 5.9, z0: -11.9, z1: -3.25, y: 1.7 },
     { x0: -37, x1: -15.1, z0: -19.5, z1: -9.7, y: 3.4 },
     { x0: 27.1, x1: 43, z0: -11.9, z1: -4.7, y: 0.9 },
-    { x0: -37, x1: 43, z0: 6.9, z1: 9.0, y: -0.95 },
+    { x0: -37, x1: 43, z0: 6.9, z1: 9.4, y: -0.95 },   // the front bank (deep enough to pass a villager)
     { ramp: true, x0: -10.75, x1: -8.25, z0: -3.25, z1: -0.4, y0: 1.7, y1: 0 },
     { ramp: true, x0: -19.55, x1: -17.45, z0: -9.7, z1: -6.8, y0: 3.4, y1: 1.7 },
     { ramp: true, x0: 27.75, x1: 29.85, z0: -4.7, z1: -3.0, y0: 0.9, y1: 0 },
@@ -268,6 +268,7 @@ export function buildDiorama(biomeId, { seed = 11, fences = true } = {}) {
   const TREEFN = { round: treeRound, pine: treePine, palm: treePalm, cactus, dead: treeDead, broad: treeBroad };
   [[-12.5, 0, -1.9, 1.05], [2.2, 0, -2.2, 1.1], [-27, 1.7, -4.6, 0.9], [-20, 3.4, -12.6, 1.1], [-29, 3.4, -13, 1], [25, 0, -2.1, 1.2], [39, 0.9, -6.5, 0.9], [41, 0, -1.5, 1.1], [-36, 0, -2, 1.1], [8, 0, -6, 1]].forEach((p, i) => {
     TREEFN[B.trees[i % 2]](...p); circle(p[0], p[2], 0.75 * p[3]);
+    colliders.push({ type: 'circle', x: p[0], z: p[2], r: 1.3 * p[3], villagersOnly: true }); // heads stay out of the leaves
   });
 
   // ---------------- hedge + gate ----------------
@@ -336,7 +337,7 @@ export function buildDiorama(biomeId, { seed = 11, fences = true } = {}) {
     for (const [x, z] of [[3.6, -0.6], [-17, -0.9], [15.4, -7.5]]) { cactus(x, 0, z, 0.55); circle(x, z, 0.45); }
   }
   if (B.props === 'dusk') { well(31, -1.3, 0x4c4a6c); for (const x of [-14.5, 1, 16.2]) lamp(x, 0, 0.2, 0xffb050); lamp(-9, 1.7, -3.9, 0xffb050); for (const [x, y, z, s] of [[-7.5, 0, -0.6, 1], [-6.8, 0, -0.3, 0.7], [4.4, 0, -1.1, 1.1], [-21, 1.7, -5.6, 0.9], [-1.6, 1.7, -5.8, 0.8], [15.6, 0, -7.4, 0.9], [26, 0, -0.4, 0.8]]) pumpkin(x, y, z, s, true); }
-  if (B.props === 'tropic') { well(31, -1.3, 0xe6c46e); for (const x of [-14.5, 1, 16.2]) torch(x, 0, 0.2); for (let i = 0; i < 6; i++) add(rbox(0.7, 0.7, 0.7, 0.06), woodM(), 30 + i * 0.8, -0.95 + 0.35, 9.6 + (i % 2) * 0.8); const um = grp(-24, -0.95, 9.4); add(new THREE.CylinderGeometry(0.05, 0.05, 2.6, 6), L(0xffffff), 0, 1.3, 0, um); add(new THREE.ConeGeometry(1.6, 0.6, 12, 1, true), L(0xffffff, { map: K.stripeTex('#ff5a6a', '#ffffff', 12), side: THREE.DoubleSide }), 0, 2.6, 0, um); }
+  if (B.props === 'tropic') { well(31, -1.3, 0xe6c46e); for (const x of [-14.5, 1, 16.2]) torch(x, 0, 0.2); for (let i = 0; i < 6; i++) add(rbox(0.7, 0.7, 0.7, 0.06), woodM(), 30 + i * 0.8, -0.95 + 0.35, 9.6 + (i % 2) * 0.8); const um = grp(-24, -0.95, 9.4); circle(-24, 9.4, 0.12); add(new THREE.CylinderGeometry(0.05, 0.05, 2.6, 6), L(0xffffff), 0, 1.3, 0, um); add(new THREE.ConeGeometry(1.6, 0.6, 12, 1, true), L(0xffffff, { map: K.stripeTex('#ff5a6a', '#ffffff', 12), side: THREE.DoubleSide }), 0, 2.6, 0, um); }
   // windmill on the hilltop (every biome)
   { const g = grp(-28.5, 3.4, -16.5); add(new THREE.CylinderGeometry(1.1, 1.5, 4.2, 8), L(BIOME === 'dusk' ? 0x8a7a8a : 0xf6ecd8), 0, 2.1, 0, g); add(new THREE.ConeGeometry(1.5, 1.6, 8), L(BIOME === 'dusk' ? 0x4c4a6c : 0xe8566a), 0, 5, 0, g); const hub = new THREE.Group(); hub.position.set(0, 4.2, 1.25); g.add(hub); for (let i = 0; i < 4; i++) { const arm = new THREE.Group(); arm.rotation.z = i * Math.PI / 2; hub.add(arm); add(rbox(0.55, 2.9, 0.08, 0.04), L(0xfff6e6), 0, 1.6, 0, arm); } add(new THREE.SphereGeometry(0.22, 10, 8), L(0x8a5a36), 0, 0, 0, hub); updaters.push((dt) => { hub.rotation.z += dt * 0.5; }); circle(-28.5, -16.5, 1.7); }
 

@@ -20,7 +20,7 @@ export function createVillagerLife({ mesh, home, world, player, collider, canWan
   let noticed = false, idleSince = 0;
 
   const others = () => world.colliders.filter((c) => c !== collider);
-  const blocked = (x, z, r) => others().some((c) => (c.type === 'circle'
+  const blocked = (x, z, r) => others().some((c) => !c.disabled && (c.type === 'circle'
     ? Math.hypot(x - c.x, z - c.z) < c.r + r
     : x > c.x0 - r && x < c.x1 + r && z > c.z0 - r && z < c.z1 + r));
   // flat ground on the same layer, nothing in the way, and room round it (wider side to side than front to back,
@@ -33,6 +33,11 @@ export function createVillagerLife({ mesh, home, world, player, collider, canWan
       const py = sampleHeight(world.zones, px, pz, hy);
       if (py === null || Math.abs(py - hy) > 0.25) return false;
     }
+    // leave the player a lane on one side (the riverbank is shallow)
+    const lane = (dz) => { const y2 = sampleHeight(world.zones, x, z + dz, hy); return y2 !== null && Math.abs(y2 - hy) < 0.25; };
+    if (!lane(1.35) && !lane(-1.35)) return false;
+    // don't stop right behind a lamp post or a pole (the camera looks from +z)
+    if (world.colliders.some((c) => !c.disabled && c.type === 'circle' && c.r < 0.4 && c.z > z && c.z - z < 3 && Math.abs(c.x - x) < 0.8)) return false;
     return Math.hypot(x - player.pos.x, z - player.pos.z) > 2.2;
   };
   const clearPath = (x0, z0, x1, z1) => {
@@ -62,7 +67,12 @@ export function createVillagerLife({ mesh, home, world, player, collider, canWan
 
   return {
     get pos() { return pos; },
-    goHome() { pos.x = hx; pos.y = hy; pos.z = hz; place(); setIdle(); },
+    // back on the home spot, facing the camera (a puzzle uses them); never onto the player
+    goHome() {
+      setIdle(); yaw = faceGoal = baseYaw; mesh.rotation.y = yaw;
+      if (Math.hypot(player.pos.x - hx, player.pos.z - hz) < (collider?.r ?? 0.55) + 0.5) return;
+      pos.x = hx; pos.y = hy; pos.z = hz; place();
+    },
     update(dt, { talking = false, held = false } = {}) {
       const dp = Math.hypot(player.pos.x - pos.x, player.pos.z - pos.z);
       const near = dp < NEAR && Math.abs(player.pos.y - pos.y) < 1.5;
@@ -70,11 +80,12 @@ export function createVillagerLife({ mesh, home, world, player, collider, canWan
       if (act) { actT += dt; if (actT > (act === 'look' ? 1.8 : act === 'wave' ? 1.5 : act === 'happy' ? 0.75 : 0.5)) act = null; }
 
       if (talking || held) {
-        state = 'idle'; target = null;
+        state = 'idle'; target = null; idleSince = 0;
         if (talking) faceGoal = toPlayer;
       } else if (near) {
         // stop, turn to the player; the first time they come close, a little wave
         if (state === 'walk') setIdle();
+        idleSince = 0;
         faceGoal = toPlayer;
         if (!noticed) { noticed = true; startAct(Math.random() < 0.6 ? 'wave' : 'happy'); }
       } else {

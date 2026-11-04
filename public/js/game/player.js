@@ -77,6 +77,8 @@ export async function createPlayer(character) {
   let facing = 1;
   // where the character looks, like Animal Crossing: 0 = toward the camera (+z), PI/2 = right, PI = away
   let heading = 0;
+  let diagUntil = 0;   // keys of a diagonal are rarely released in the same frame: keep the diagonal a moment
+  let walking = false; // a scripted walk (gliding to a door) swings the legs too
   const SPEED = 4.6;
   return {
     model,
@@ -86,6 +88,7 @@ export async function createPlayer(character) {
     place(x, y, z) { pos.x = x; pos.y = y; pos.z = z; model.position.set(x, y, z); },
     // turn toward a point (someone you talk to, a thing you use)
     faceTo(x, z) { if (Math.hypot(x - pos.x, z - pos.z) > 0.05) heading = Math.atan2(x - pos.x, z - pos.z); },
+    set walking(v) { walking = !!v; },
     // world: { zones, colliders }
     update(dt, world, frozen = false) {
       let moving = false;
@@ -98,9 +101,12 @@ export async function createPlayer(character) {
           pos.x = next.x; pos.z = next.z;
           pos.y += (next.y - pos.y) * Math.min(1, dt * 18);
           if (a.x) facing = a.x > 0 ? 1 : -1;
-          heading = Math.atan2(a.x, a.z); // turns even when a wall stops it
+          // turns even when a wall stops it
+          if (a.x && a.z) { heading = Math.atan2(a.x, a.z); diagUntil = performance.now() + 150; }
+          else if (performance.now() >= diagUntil) heading = Math.atan2(a.x, a.z);
         }
       }
+      if (walking) moving = true;
       model.position.set(pos.x, pos.y, pos.z);
       if (model.userData.animate) model.userData.animate(dt, { moving, speed: moving ? 1 : 0, facing, heading });
       if (!model.userData.handlesFacing) {

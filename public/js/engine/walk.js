@@ -35,7 +35,7 @@ export function sampleHeight(zones, x, z, currentY) {
 
 function hitsCollider(colliders, x, z, radius) {
   for (const c of colliders) {
-    if (c.disabled) continue;
+    if (c.disabled || c.villagersOnly) continue;
     if (c.type === 'circle') { if (Math.hypot(x - c.x, z - c.z) < c.r + radius) return true; }
     else if (x > c.x0 - radius && x < c.x1 + radius && z > c.z0 - radius && z < c.z1 + radius) return true;
   }

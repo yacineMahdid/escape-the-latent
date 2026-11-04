@@ -136,9 +136,9 @@ export async function createRegionScene(ctx, regionId) {
     ws.scene.add(mesh); ws.extras.push(mesh);
     stations.set(s.id, { data: s, mesh });
     world.colliders.push({ type: 'circle', x: a[0], z: a[2], r: mesh.userData.radius ?? 0.85 });
-    ws.addInteractable({ label: s.label || 'Look', icon: STATION_ICONS[s.kind] || '⚙️', pos: { x: a[0], y: a[1], z: a[2] + 0.6 }, radius: 2.2, onInteract: () => talkTo(s.id) });
+    ws.addInteractable({ label: s.label || 'Look', icon: STATION_ICONS[s.kind] || '⚙️', pos: { x: a[0], y: a[1], z: a[2] + 0.6 }, face: { x: a[0], z: a[2] }, radius: 2.2, onInteract: () => talkTo(s.id) });
   }
-  ws.addInteractable({ label: 'Little door', icon: '🚪', pos: { x: world.signpost.x, y: 0, z: world.signpost.z }, radius: 2.0, promptHeight: 3.8, onInteract: () => leave() });
+  ws.addInteractable({ label: 'Little door', icon: '🚪', pos: { x: world.signpost.x, y: 0, z: world.signpost.z }, face: { x: DOOR_POS.x, z: DOOR_POS.z }, radius: 2.0, promptHeight: 3.8, onInteract: () => leave() });
 
   // ---------- the challenge chain ----------
   const challenges = region.challenges || [];
@@ -338,7 +338,7 @@ export async function createRegionScene(ctx, regionId) {
     const speakerOf = (id) => (people.get(id) ? { name: nameOf(id), color: colorOf(id) } : null);
     return {
       THREE, scene: ws.scene, world, anchors: ANCHORS, regionId, biome: world.biome,
-      player: { get pos() { return player.pos; }, place: (x, y, z) => player.place(x, y, z) },
+      player: { get pos() { return player.pos; }, place: (x, y, z) => player.place(x, y, z), faceTo: (x, z) => player.faceTo(x, z) },
       villager: (id) => {
         const r = people.get(id);
         if (!r) return null;
@@ -533,11 +533,14 @@ export async function createRegionScene(ctx, regionId) {
     const [x, y, z] = spawnSpot(a);
     const mesh = buildArtefact(regionId);
     mesh.position.set(x, y, z);
+    const col = { type: 'circle', x, z, r: 0.35 }; // nobody strolls over it while it waits
+    world.colliders.push(col);
     ws.scene.add(mesh); ws.extras.push(mesh);
     artefactItem = ws.addInteractable({
       label: region.artefact?.name || 'artefact', icon: '✦', pos: { x, y, z }, radius: 2.2,
       onInteract: async () => {
         ws.scene.remove(mesh); ws.extras.splice(ws.extras.indexOf(mesh), 1); ws.removeInteractable(artefactItem);
+        world.colliders.splice(world.colliders.indexOf(col), 1);
         updateSave((s) => { regionState(regionId).artefact = true; if (!s.artefacts.includes(regionId)) s.artefacts.push(regionId); });
         confetti(140);
         await itemGet(region.artefact?.name || 'Artefact', region.artefact?.description || '');
@@ -551,10 +554,12 @@ export async function createRegionScene(ctx, regionId) {
   async function leave() {
     const choice = await ask('Back to the lab?', ['Go', 'Stay'], { neutral: true });
     if (choice !== 0) return;
-    // walk to the little door, it opens, through you go
-    world.door?.userData.setOpen(true);
-    await glide(DOOR_POS.x + 0.3, DOOR_POS.z + 1.2, 450);
-    await glide(DOOR_POS.x + 0.3, DOOR_POS.z - 0.2, 450);
+    // walk to the little door, it opens, through you go (from far away the page wipe covers the trip)
+    if (Math.hypot(player.pos.x - DOOR_POS.x, player.pos.z - DOOR_POS.z) < 3.5) {
+      world.door?.userData.setOpen(true);
+      await glide(DOOR_POS.x + 0.3, DOOR_POS.z + 1.2, 450);
+      await glide(DOOR_POS.x + 0.3, DOOR_POS.z - 0.2, 450);
+    }
     ctx.goto('lab');
   }
   // ws.run() skips fn while something else is running; this waits its turn instead
@@ -564,11 +569,12 @@ export async function createRegionScene(ctx, regionId) {
   }
   function glide(x, z, ms) {
     const x0 = player.pos.x, z0 = player.pos.z, t0 = performance.now();
+    player.faceTo(x, z); player.walking = true;
     return new Promise((resolve) => {
       const step = () => {
         const u = Math.min(1, (performance.now() - t0) / ms);
         player.place(x0 + (x - x0) * u, 0, z0 + (z - z0) * u);
-        if (u < 1) requestAnimationFrame(step); else resolve();
+        if (u < 1) requestAnimationFrame(step); else { player.walking = false; resolve(); }
       };
       requestAnimationFrame(step);
     });

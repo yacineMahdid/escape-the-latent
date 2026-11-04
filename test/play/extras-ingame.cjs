@@ -45,8 +45,11 @@ async function place(p, x, y, z) {
   await p.evaluate(([a, b, c]) => window.__etl.ws.player.place(a, b, c), [x, y, z]);
   await p.waitForTimeout(450);
 }
+// the game is ready for a key: no page wipe, no dialogue or run in progress (slow machines lag behind)
+const idle = (p) => p.waitForFunction(() => !document.querySelector('.page-wipe') && window.__etl?.ws && !window.__etl.ws.busy, null, { timeout: 120000 }).catch(() => {});
 // stand next to an interactable and press E (the nearest one must be this one: stand closer than its neighbours)
 async function use(p, target) {
+  await idle(p);
   const q = await posOf(p, target);
   if (!q) throw new Error(`nothing to use: ${typeof target === 'string' ? target : 'predicate'}`);
   await place(p, q[0] + 0.6, q[1], q[2] + 0.5);

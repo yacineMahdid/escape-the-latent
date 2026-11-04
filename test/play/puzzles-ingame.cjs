@@ -50,15 +50,19 @@ async function playRegion(browser, regionId) {
     const label = giver?.name || giver?.label;
     const pos = await p.evaluate((lab) => { const it = window.__etl.ws.interactables.find((x) => x.label === lab); if (!it) return null; const q = typeof it.pos === 'function' ? it.pos() : it.pos; return [q.x, q.y ?? 0, q.z]; }, label);
     if (!pos) { results.push(`FAIL ${regionId}/${c.id}: no interactable for ${label}`); continue; }
+    await p.waitForFunction(() => !document.querySelector('.page-wipe') && !window.__etl.ws.busy, null, { timeout: 120000 }).catch(() => {});
     await p.evaluate(([x, y, z]) => window.__etl.ws.player.place(x + 1.0, y, z + 0.8), pos);
     await p.waitForTimeout(500);
     await p.keyboard.press('KeyE');
     await p.waitForTimeout(400);
-    const got = await drain(p);
+    let got = await drain(p);
+    // slow machines: the board can appear seconds after the last line
+    if (got === 'done') got = await p.waitForSelector('.puzzle-host', { timeout: 60000 }).then(() => 'puzzle').catch(() => got);
     if (process.env.DEBUG) console.log('  talk', regionId, c.id, label, got);
     if (got !== 'puzzle') { results.push(`FAIL ${regionId}/${c.id}: talking to ${label} gave '${got}', not the puzzle`); continue; }
     await p.waitForTimeout(500);
-    await SOLVERS[c.puzzle](p, c.spec);
+    try { await SOLVERS[c.puzzle](p, c.spec); }
+    catch (e) { results.push(`FAIL ${regionId}/${c.id}: solver error ${String(e.message || e).split('\n')[0]}`); await p.keyboard.press('Escape').catch(() => {}); continue; }
     try { await p.waitForFunction(() => !document.querySelector('.puzzle-host'), null, { timeout: 10000 }); }
     catch { results.push(`FAIL ${regionId}/${c.id}: puzzle did not close`); continue; }
     await drain(p);

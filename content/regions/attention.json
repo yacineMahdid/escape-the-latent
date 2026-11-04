@@ -158,7 +158,8 @@
         "afterSolved": [
           "Eight ears, polished. Don't tell anyone, but I like the Bell."
         ]
-      }
+      },
+      "wander": false
     }
   ],
   "stations": [

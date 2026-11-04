@@ -47,7 +47,7 @@ export function buildVillager(spec = {}) {
   add(new THREE.CapsuleGeometry(0.36, 0.35, 8, 16), M(o.shirt), 0, 0.72, 0, body).scale.set(1, 1, 0.85);
   const arms = [];
   for (const sx of [-1, 1]) { const a = add(new THREE.CapsuleGeometry(0.1, 0.28, 6, 10), species === 'duck' ? M(o.fur) : fur, sx * 0.45, 0.75, 0, body); a.rotation.z = sx * 0.5; arms.push(a); }
-  if (species === 'duck') for (const sx of [-1, 1]) add(new THREE.SphereGeometry(0.14, 10, 8), M(0xffa53a), sx * 0.2, 0.06, 0.1, g).scale.set(1.1, 0.4, 1.6);
+  if (species === 'duck') legs.forEach((leg, i) => add(new THREE.SphereGeometry(0.14, 10, 8), M(0xffa53a), (i ? 1 : -1) * 0.01, -0.3, 0.1, leg).scale.set(1.1, 0.4, 1.6));
   const head = new THREE.Group(); head.position.y = 1.55; body.add(head);
   add(new THREE.SphereGeometry(0.62, 24, 18), fur, 0, 0, 0, head).scale.set(1.08, 0.95, 1);
   const E = o.ear;

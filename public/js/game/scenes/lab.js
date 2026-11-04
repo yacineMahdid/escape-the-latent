@@ -326,11 +326,12 @@ export async function createLabScene(ctx) {
   // move the player along a short scripted path (input is frozen while ws.run is busy)
   function glide(x, z, ms) {
     const x0 = player.pos.x, z0 = player.pos.z, t0 = performance.now();
+    player.faceTo(x, z); player.walking = true;
     return new Promise((resolve) => {
       const step = () => {
         const u = Math.min(1, (performance.now() - t0) / ms);
         player.place(x0 + (x - x0) * u, FLOOR, z0 + (z - z0) * u);
-        if (u < 1) requestAnimationFrame(step); else resolve();
+        if (u < 1) requestAnimationFrame(step); else { player.walking = false; resolve(); }
       };
       requestAnimationFrame(step);
     });
@@ -358,8 +359,8 @@ export async function createLabScene(ctx) {
     setHud({ place: 'Lab', task, artefacts: deliveredArtefacts(), mapLabel: 'Map' });
   }
 
-  ws.addInteractable({ label: 'Becancourt', icon: '💬', pos: { x: 0, y: 0, z: -2.8 }, radius: 4.0, promptHeight: 2.6, onInteract: talkToScientist });
-  ws.addInteractable({ label: 'Little door', icon: '🚪', pos: { x: DOOR.x, y: FLOOR, z: -21.6 }, radius: 2.6, promptHeight: 3.6, onInteract: travel });
+  ws.addInteractable({ label: 'Becancourt', icon: '💬', pos: { x: 0, y: 0, z: -2.8 }, face: { x: 0, z: -10.5 }, radius: 4.0, promptHeight: 2.6, onInteract: talkToScientist });
+  ws.addInteractable({ label: 'Little door', icon: '🚪', pos: { x: DOOR.x, y: FLOOR, z: -21.6 }, face: { x: DOOR.x, z: DOOR.z }, radius: 2.6, promptHeight: 3.6, onInteract: travel });
   ws.addInteractable({
     label: 'Trophies', icon: '✦', pos: { x: -6.6, y: 0, z: 0.9 }, radius: 2.4, promptHeight: 2.4,
     onInteract: async () => {
