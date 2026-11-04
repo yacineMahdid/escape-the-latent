@@ -20,7 +20,9 @@ const hashSeed = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 214
 export async function createRegionScene(ctx, regionId) {
   const region = await api.region(regionId);
   // optional extra content pack (more challenges, villagers, stations): content/extra/<regionId>.json
-  const extra = await fetch(`/content/extra/${regionId}.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  // (dev: localStorage 'etl-extra-draft' = '1' loads content/extra-draft/ instead, for unfinished packs)
+  let draft = false; try { draft = localStorage.getItem('etl-extra-draft') === '1'; } catch { /* storage blocked */ }
+  const extra = await fetch(`/content/${draft ? 'extra-draft' : 'extra'}/${regionId}.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
   if (extra) for (const key of ['challenges', 'inhabitants', 'stations']) if (Array.isArray(extra[key])) region[key] = [...(region[key] || []), ...extra[key]];
   const save = getSave();
   const world = buildDiorama(region.region.biome, { seed: hashSeed(regionId) });

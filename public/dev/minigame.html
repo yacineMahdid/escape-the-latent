@@ -8,7 +8,7 @@
 </head><body>
 <div id="game"></div><div id="ui-root"></div><div id="log">loading…</div>
 <script type="module">
-// /dev/minigame.html?region=attention&challenge=m1   mounts that challenge's mini-game with its spec
+// /dev/minigame.html?region=attention&challenge=m1   mounts that challenge's mini-game with its spec (&draft=1: content/extra-draft)
 // /dev/minigame.html?module=_demo-catch              mounts a module with an empty spec
 // window.__minigame = { won, closed, events, ready, host } for automated tests (host.__mg drives the kit).
 import { openModal } from '/js/ui/modal.js';
@@ -19,7 +19,7 @@ window.__minigame = { won: false, closed: false, events: [] };
 let name = q.get('module'); let spec = {};
 if (!name) {
   const region = await (await fetch(`/content/regions/${q.get('region') || 'attention'}.json`)).json();
-  const extra = await fetch(`/content/extra/${q.get('region') || 'attention'}.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const extra = await fetch(`/content/${q.get('draft') ? 'extra-draft' : 'extra'}/${q.get('region') || 'attention'}.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
   const all = [...(region.challenges || []), ...((extra && extra.challenges) || [])];
   const ch = all.find((c) => c.id === (q.get('challenge') || 'm1'));
   if (!ch || ch.type !== 'minigame') { log('no such mini-game challenge'); throw new Error('no minigame'); }

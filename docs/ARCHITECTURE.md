@@ -393,7 +393,9 @@ a wrong answer plays `wrong` and ends the round.
 
 **Extra content packs**: `content/extra/<regionId>.json` may hold `challenges`,
 `inhabitants` and `stations`; the game appends them to the region at load time (the
-artefact then needs those challenges too).
+artefact then needs those challenges too). Unfinished packs live in
+`content/extra-draft/<regionId>.json`; the game only reads them when
+`localStorage['etl-extra-draft'] === '1'` (tests), and `/dev/minigame.html` with `&draft=1`.
 
 ## Shared front-end modules (owner: core)
 
