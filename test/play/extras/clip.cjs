@@ -93,7 +93,14 @@ async function snap(p, h, id) {
 }
 
 async function e1(p, c, h) {
-  await p.waitForFunction(() => window.__etl.ws.interactables.filter((x) => x.label === 'Snap').length >= 10, null, { timeout: 120000, polling: 250 });
+  // the bet starts once Brine's intro is read: on a very slow frame the harness may hand over before it shows,
+  // so keep reading (Space) until the props are out
+  const t0 = Date.now();
+  while (!(await p.evaluate(() => window.__etl.ws.interactables.filter((x) => x.label === 'Snap').length >= 10))) {
+    if (Date.now() - t0 > 180000) throw new Error('the Banana Bet never put its props out');
+    if (await p.$('.dlg')) await p.keyboard.press('Space');
+    await wait(300);
+  }
   const need = c.spec.need ?? 4;
   const bananas = c.spec.props.filter((x) => x.counts).map((x) => x.id);
   if (bananas.length < need) throw new Error('not enough bananas in disguise in the spec');

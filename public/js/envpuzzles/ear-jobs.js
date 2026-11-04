@@ -6,9 +6,9 @@
 // other word). Nobody tells the player the jobs: they ring a few posts, read the strings and tag the four
 // ears on Dabble's FAIR PROGRAM board on the bank. All four right: the tags fly, every ear fires from every
 // post at once, solved. Otherwise Dabble only says how many tags are wrong.
-// Camera (w.camera): a glance at the row when it pops up; while the Speck is among the posts after a ring,
-// a held shot that frames the whole row and its strings; a close-up of the board while its questions are
-// open (the Speck steps beside it, so the board's trumpets and tags stay in view above the question box).
+// Camera (w.camera): a glance at the row when it pops up; while the Speck is among the posts, a held shot that
+// frames the whole row and its strings; a close-up of the board while its questions are open (the Speck steps
+// beside it, so the board's trumpets and tags stay in view above the question box); the finale at the row.
 // The paper (Section 4, last paragraph; Figures 3-5): attention distributions can be inspected, and
 // individual heads clearly learn different jobs (positional, syntactic, staring at the end of the
 // sentence). The figures draw one word's attention with one colour per head, as the strings do here.
@@ -241,15 +241,19 @@ export default {
       tween(0.45, (u) => g.scale.setScalar(Math.max(0.001, easeBack(u))), 0.2 + i * 0.09);
       return { i, word, x, g, bell, dots, wig: null, wigDelay: 0 };
     });
-    // the whole row and its tallest arcs, framed for this screen's shape
-    const ROW = { x0: posts[0].x, x1: posts[n - 1].x };
+    // the whole row, its tallest arcs and a Speck anywhere among the posts, framed for this screen's shape
+    const ROW = { x0: posts[0].x, x1: posts[n - 1].x, pad: 1.4 };
     const rowShot = () => {
-      const half = (ROW.x1 - ROW.x0) / 2 + 1.6;
+      const half = (ROW.x1 - ROW.x0) / 2 + ROW.pad + 1.0;
       return pose([(ROW.x0 + ROW.x1) / 2, 2.9, POST.z], Math.max(15, half / (Math.tan(16 * D2R) * aspect())));
     };
-    // while the row's shot is held, the Speck stays inside it; walking off releases it
-    const amongPosts = (p) => p.x > ROW.x0 - 1.7 && p.x < ROW.x1 + 1.7 && p.z > -2.2 && p.z < 3.4 && Math.abs(p.y - POST.y) < 0.4;
-    loops.add(() => { if (cam === 'row' && !amongPosts(w.player.pos)) shotBack(800); });
+    // the row's shot holds while the Speck is among the posts: walking in frames the row (from there the c2 lantern
+    // falls in a gap), walking off gives the follow camera back (m: a margin, so the edge never flickers)
+    const amongPosts = (p, m = 0) => p.x > ROW.x0 - ROW.pad + m && p.x < ROW.x1 + ROW.pad - m && p.z > -2.2 + m && p.z < 3.4 - m && Math.abs(p.y - POST.y) < 0.4;
+    loops.add(() => {
+      if (cam === null && !solved && amongPosts(w.player.pos, 0.3)) shotTo('row', rowShot(), 900);
+      else if (cam === 'row' && !amongPosts(w.player.pos)) shotBack(800);
+    });
 
     // ---------- the four ear-trumpets that hop onto the rung post (strings start in their mouths) ----------
     const hop = group(root); hop.visible = false;
