@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Puzzle harness</title>
+<script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js" } }</script>
+<link rel="stylesheet" href="/css/game.css">
+<style>body{background:linear-gradient(#bfe6ff,#8fd47a)} #log{position:fixed;left:8px;bottom:8px;z-index:100;background:#2b2233;color:#fffdf6;padding:6px 10px;border-radius:8px;font:13px monospace}</style>
+</head><body>
+<div id="game"></div><div id="ui-root"></div><div id="log">loading…</div>
+<script type="module">
+// /dev/puzzle.html?region=attention&challenge=c1  mounts that challenge's puzzle module with its spec.
+// window.__puzzle exposes { solved, closed, events } for automated tests.
+import { openModal, closeModal } from '/js/ui/modal.js';
+const q = new URLSearchParams(location.search);
+const regionId = q.get('region') || 'attention';
+const challengeId = q.get('challenge') || 'c1';
+const log = (m) => { document.getElementById('log').textContent = m; };
+window.__puzzle = { solved: false, closed: false, events: [] };
+const region = await (await fetch(`/content/regions/${regionId}.json`)).json();
+const ch = region.challenges.find((c) => c.id === challengeId);
+if (!ch || ch.type !== 'puzzle') { log(`no puzzle challenge ${challengeId} in ${regionId}`); throw new Error('no puzzle'); }
+const mod = await import(`/js/puzzles/${ch.puzzle}.js`);
+const host = document.createElement('div'); host.className = 'puzzle-host';
+document.getElementById('ui-root').appendChild(host);
+openModal(host, { onEscape: () => { window.__puzzle.closed = true; log('closed (Esc)'); } });
+const handle = (mod.default || mod).mount(host, ch.spec || {}, {
+  onSolved: () => { window.__puzzle.solved = true; window.__puzzle.events.push('solved'); log('SOLVED ✓'); },
+  onClose: () => { window.__puzzle.closed = true; window.__puzzle.events.push('closed'); log('closed'); },
+  sfx: (n) => window.__puzzle.events.push('sfx:' + n),
+});
+window.__puzzle.handle = handle;
+window.__puzzle.ready = true;
+log(`${regionId}/${challengeId}: ${ch.puzzle}`);
+</script></body></html>

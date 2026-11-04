@@ -1,0 +1,47 @@
+<!doctype html><html><head><meta charset="utf-8"><title>World test</title>
+<script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js" } }</script>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#000}#game{position:fixed;inset:0}</style></head>
+<body><div id="game"></div>
+<script type="module">
+import * as THREE from 'three';
+import { createEngine } from '/js/engine/core.js';
+import { buildDiorama, ANCHORS } from '/js/engine/diorama.js';
+import { buildVillager, SPECIES } from '/js/engine/villagers.js';
+import { moveOnSurface } from '/js/engine/walk.js';
+import { input } from '/js/engine/input.js';
+const q = new URLSearchParams(location.search);
+const biome = q.get('b') || 'meadow';
+const engine = createEngine(document.getElementById('game'));
+const scene = new THREE.Scene();
+const world = buildDiorama(biome);
+scene.add(world.root);
+scene.fog = new THREE.Fog(...world.biome.fog);
+const B = world.biome;
+scene.add(new THREE.HemisphereLight(B.light.sky, B.light.ground, B.light.hi));
+const sun = new THREE.DirectionalLight(B.light.sun, B.light.si); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -26, right: 26, top: 20, bottom: -14, near: 1, far: 90 }); sun.shadow.bias = -0.0004;
+scene.add(sun, sun.target);
+const cam = new THREE.PerspectiveCamera(32, 16 / 9, 0.1, 500);
+// villagers on every anchor (except arrival)
+const vs = [];
+Object.entries(ANCHORS).filter(([k]) => k !== 'arrival').forEach(([k, a], i) => { const v = buildVillager({ species: SPECIES[i % SPECIES.length] }); v.position.set(...a); v.rotation.y = 0.2; scene.add(v); vs.push(v); });
+// stand-in player
+const player = new THREE.Mesh(new THREE.CapsuleGeometry(0.35, 0.9, 6, 12), new THREE.MeshStandardMaterial({ color: 0xff7ab8 })); player.castShadow = true;
+const start = q.get('at') ? ANCHORS[q.get('at')] : ANCHORS.arrival;
+const pos = { x: start[0], y: start[1], z: start[2] };
+scene.add(player);
+const camPos = new THREE.Vector3();
+window.__pos = pos;
+window.__walk = (dx, dz, secs) => { const n = Math.round(secs * 60); for (let i = 0; i < n; i++) { const np = moveOnSurface(world, pos, dx * 4.5 / 60, dz * 4.5 / 60); Object.assign(pos, np); } };
+engine.setScene({ scene, camera: cam, update(dt, t) {
+  const ax = input.axis(); const len = Math.hypot(ax.x, ax.z) || 1;
+  if (ax.x || ax.z) Object.assign(pos, moveOnSurface(world, pos, ax.x / len * 4.5 * dt, ax.z / len * 4.5 * dt));
+  player.position.set(pos.x, pos.y + 0.8, pos.z);
+  const cx = Math.max(-24, Math.min(30, pos.x));
+  camPos.set(cx, pos.y + 6.6, pos.z + 19.5); cam.position.lerp(camPos, 1); cam.lookAt(cx, pos.y + 1.4, pos.z - 3);
+  sun.position.set(cx + B.light.dir[0], B.light.dir[1], B.light.dir[2] + pos.z); sun.target.position.set(cx, 0, pos.z - 4);
+  world.update(dt, t); vs.forEach((v) => v.userData.animate(dt, { talking: false }));
+} });
+engine.start();
+window.__ready = true;
+</script></body></html>
