@@ -141,8 +141,8 @@ export async function itemGet(name, description) {
   el.className = 'item-get etl-panel';
   const star = document.createElement('div'); star.className = 'item-get-star'; star.textContent = '✦';
   const t = document.createElement('div'); t.className = 'item-get-title'; const b = document.createElement('b'); b.textContent = name; t.append(b);
-  el.title = description || '';
-  el.append(star, t);
+  const d = document.createElement('div'); d.className = 'item-get-desc'; d.textContent = description || '';
+  el.append(star, t, d);
   root().appendChild(el);
   openModal(el, {});
   await wait(400);
@@ -161,8 +161,8 @@ export async function askValue(question, { speaker = null, style = 'npc', placeh
   const text = document.createElement('div'); text.className = 'dlg-text'; text.textContent = question; box.appendChild(text);
   const row = document.createElement('form'); row.className = 'dlg-choices';
   const inp = document.createElement('input'); inp.className = 'dlg-input'; inp.placeholder = placeholder; inp.autocomplete = 'off';
-  const ok = document.createElement('button'); ok.type = 'submit'; ok.className = 'etl-btn primary'; ok.textContent = '➤'; ok.title = 'Answer';
-  const no = document.createElement('button'); no.type = 'button'; no.className = 'etl-btn'; no.textContent = '✕'; no.title = 'Not now';
+  const ok = document.createElement('button'); ok.type = 'submit'; ok.className = 'etl-btn primary'; ok.textContent = 'Answer';
+  const no = document.createElement('button'); no.type = 'button'; no.className = 'etl-btn'; no.textContent = 'Later';
   row.append(inp, ok, no); box.appendChild(row);
   root().appendChild(box);
   try {

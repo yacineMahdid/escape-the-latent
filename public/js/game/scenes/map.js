@@ -87,13 +87,13 @@ export async function openMapOverlay() {
       info.appendChild(row('📄', rg.paper.title, `${rg.paper.authors} · arXiv ${rg.paper.arxivId}`));
       info.appendChild(row('🗓', String(rg.paper.year)));
       const votes = row('▲', '…', 'alphaXiv votes'); info.appendChild(votes);
-      api.paperMeta(rg.paper.arxivId).then((m) => { votes.querySelector('b').textContent = m?.votes != null ? m.votes.toLocaleString() : '–'; }).catch(() => { votes.querySelector('b').textContent = '–'; });
+      api.paperMeta(rg.paper.arxivId).then((m) => { votes.querySelector('b').textContent = m?.votes != null ? `${m.votes.toLocaleString()} votes` : '–'; }).catch(() => { votes.querySelector('b').textContent = '–'; });
     }
     const st = document.createElement('div'); st.className = 'map-info-status';
-    st.textContent = rs.returned ? '✓' : save.currentTask === id ? (rs.artefact ? '✦ → Grumm' : '📍') : '🔒';
+    st.textContent = rs.returned ? '✓ Done' : save.currentTask === id ? (rs.artefact ? '✦ Bring it to Grumm' : '📍 Current task') : '🔒 Locked';
     info.appendChild(st);
     const canGo = rs.returned || save.currentTask === id;
-    const go = document.createElement('button'); go.className = 'etl-btn primary'; go.textContent = canGo ? '✈️' : '🔒'; go.title = canGo ? `Travel to ${rg?.region?.name || id}` : 'Locked'; go.disabled = !canGo || !rg;
+    const go = document.createElement('button'); go.className = 'etl-btn primary'; go.textContent = canGo ? '✈️ Travel' : '🔒 Locked'; go.title = canGo ? `Travel to ${rg?.region?.name || id}` : 'Locked'; go.disabled = !canGo || !rg;
     go.onclick = () => close(id);
     info.appendChild(go);
   }
@@ -101,11 +101,11 @@ export async function openMapOverlay() {
   function showTeaser(t) {
     Object.values(pins).forEach((p) => p.classList.remove('sel'));
     info.innerHTML = '';
-    const h = document.createElement('div'); h.className = 'map-info-title'; h.textContent = '?'; info.appendChild(h);
+    const h = document.createElement('div'); h.className = 'map-info-title'; h.textContent = 'Uncharted'; info.appendChild(h);
     info.appendChild(row('📄', t.name, `arXiv ${t.id}`));
     const votes = row('▲', '…', 'alphaXiv votes'); info.appendChild(votes);
-    api.paperMeta(t.id).then((m) => { votes.querySelector('b').textContent = m?.votes != null ? m.votes.toLocaleString() : '–'; }).catch(() => { votes.querySelector('b').textContent = '–'; });
-    const st = document.createElement('div'); st.className = 'map-info-status'; st.textContent = '🔒'; info.appendChild(st);
+    api.paperMeta(t.id).then((m) => { votes.querySelector('b').textContent = m?.votes != null ? `${m.votes.toLocaleString()} votes` : '–'; }).catch(() => { votes.querySelector('b').textContent = '–'; });
+    const st = document.createElement('div'); st.className = 'map-info-status'; st.textContent = '🔒 Not yet'; info.appendChild(st);
   }
 
   return result;

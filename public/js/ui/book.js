@@ -149,8 +149,10 @@ function loadDoc(arxivId, onProgress) {
     return docEntry.promise;
   }
   if (docEntry) {
+    // another paper: let the previous one go (destroy is safe to repeat, and also stops a half-done load)
     const old = docEntry;
-    old.promise.then(() => old.task?.destroy()).catch(() => {});
+    old.task?.destroy();
+    old.promise.finally(() => old.task?.destroy()).catch(() => {});
   }
   const entry = { arxivId, task: null, listeners: new Set(onProgress ? [onProgress] : []) };
   entry.promise = loadPdfjs().then((pdfjs) => {
@@ -342,6 +344,7 @@ class Reader {
       if (!this.menu.hidden && !this.menu.contains(e.target)) this.hideMenu();
     };
     window.addEventListener('pointerup', this.onUp);
+    window.addEventListener('pointercancel', this.onUp);
     document.addEventListener('selectionchange', this.onSelChange);
     this.book.root.addEventListener('pointerdown', this.onAnyDown, true);
     this.pnum.addEventListener('focus', () => this.pnum.select());
@@ -373,6 +376,8 @@ class Reader {
       await this.build();
       if (this.closed) return;
       this.setState('ready');
+      // arrows / PageDown scroll the paper straight away (unless the player is typing somewhere)
+      if (this.book.tab === 'read' && !typing(document.activeElement)) this.scroller.focus({ preventScroll: true });
     } catch (err) {
       if (this.closed) return;
       console.warn('[book] the paper would not open:', err?.message || err);
@@ -825,6 +830,7 @@ class Reader {
     cancelAnimationFrame(this.scrollRaf);
     clearTimeout(this.selT); clearTimeout(this.roT); clearTimeout(this.posT);
     window.removeEventListener('pointerup', this.onUp);
+    window.removeEventListener('pointercancel', this.onUp);
     document.removeEventListener('selectionchange', this.onSelChange);
     this.book.root.removeEventListener('pointerdown', this.onAnyDown, true);
     this.unsub?.();
@@ -835,6 +841,8 @@ class Reader {
       pv.textLayer?.cancel();
       if (pv.canvas) { pv.canvas.width = 0; pv.canvas.height = 0; }
     }
+    // PDF.js parks a hidden measuring canvas on <body>; take it away with the book
+    setTimeout(() => { try { this.pdfjs?.TextLayer.cleanup(); } catch { /* ignore */ } }, 0);
   }
 }
 
@@ -886,7 +894,11 @@ class NotesPane {
   }
 
   card(a) {
-    const quote = h('blockquote', { class: 'bk-nq', title: 'Read', text: a.text || '…', onclick: () => this.book.jump(a) });
+    const quote = h('blockquote', {
+      class: 'bk-nq', title: 'Read', role: 'button', tabindex: '0', text: a.text || '…',
+      onclick: () => this.book.jump(a),
+      onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.book.jump(a); } },
+    });
     const ta = h('textarea', { class: 'bk-nn', rows: '1', placeholder: '✎', maxlength: '2000', 'aria-label': 'Note' });
     ta.value = a.note;
     ta.addEventListener('input', () => { autogrow(ta); this.saveSoon(a.id, ta.value); });

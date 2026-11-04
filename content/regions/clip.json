@@ -1107,6 +1107,37 @@
       },
       {
         "keywords": [
+          "log",
+          "exp",
+          "learned",
+          "learnable",
+          "logarithm",
+          "multiplicative"
+        ],
+        "text": "The knob turns itself as the Lens learns. Section 2.3 tells how it is held."
+      },
+      {
+        "keywords": [
+          "pin",
+          "clipping",
+          "clipped",
+          "clip value",
+          "clip at",
+          "clamp",
+          "100",
+          "maximum",
+          "max",
+          "limit",
+          "ceiling",
+          "stop",
+          "snap",
+          "unstable",
+          "instability"
+        ],
+        "text": "Every knob needs a ceiling. Section 2.5 says why. A table at the very end says where."
+      },
+      {
+        "keywords": [
           "knob",
           "temperature",
           "tau",
@@ -1119,32 +1150,6 @@
           "soft"
         ],
         "text": "The knob's first setting was borrowed from older work. Section 2.5 whispers it. Mind which way it divides."
-      },
-      {
-        "keywords": [
-          "pin",
-          "clip",
-          "clipped",
-          "100",
-          "maximum",
-          "limit",
-          "ceiling",
-          "snap",
-          "unstable",
-          "instability"
-        ],
-        "text": "Every knob needs a ceiling. Section 2.5 says why. A table at the very end says where."
-      },
-      {
-        "keywords": [
-          "log",
-          "exp",
-          "learned",
-          "learnable",
-          "logarithm",
-          "multiplicative"
-        ],
-        "text": "The knob turns itself as the Lens learns. Section 2.3 tells how it is held."
       },
       {
         "keywords": [
@@ -1234,8 +1239,11 @@
         "keywords": [
           "limitation",
           "limitations",
-          "can't",
-          "cannot",
+          "can't do",
+          "cannot do",
+          "not do",
+          "unable",
+          "weakness",
           "generate",
           "novel",
           "new caption",

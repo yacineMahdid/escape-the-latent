@@ -52,11 +52,11 @@ async function openBook(paper, regionId) {
 async function pauseMenu() {
   const wrap = document.createElement('div');
   wrap.className = 'pause-overlay';
-  wrap.innerHTML = `<div class="pause-card etl-panel"><div class="pause-title">⏸</div>
-    <div class="pause-help"><span><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd> 🚶</span><span><kbd>E</kbd> 💬</span><span><kbd>B</kbd> 📖</span><span><kbd>M</kbd> 🗺️</span></div>
+  wrap.innerHTML = `<div class="pause-card etl-panel"><div class="pause-title">Paused</div>
+    <div class="pause-help"><span><kbd>←↑↓→</kbd> move</span><span><kbd>E</kbd> talk / use</span><span><kbd>B</kbd> book</span><span><kbd>M</kbd> map</span></div>
     <div class="pause-ai"></div>
-    <div class="pause-btns"><button class="etl-btn primary" data-a="resume" title="Resume">▶</button><button class="etl-btn" data-a="title" title="Title screen">⌂</button><button class="etl-btn" data-a="reset" title="Erase save">🗑</button></div></div>`;
-  const ai = wrap.querySelector('.pause-ai'); ai.textContent = status.ai ? '● AI' : '○ AI'; ai.title = status.ai ? 'Claude connected' : 'No ANTHROPIC_API_KEY on the server: offline book and keyword grading';
+    <div class="pause-btns"><button class="etl-btn primary" data-a="resume">Resume</button><button class="etl-btn" data-a="title">Title screen</button><button class="etl-btn" data-a="reset">Erase save</button></div></div>`;
+  const ai = wrap.querySelector('.pause-ai'); ai.textContent = status.ai ? 'Book: online' : 'Book: offline (no API key)';
   ui.appendChild(wrap);
   const choice = await new Promise((resolve) => {
     openModal(wrap, { onEscape: () => resolve('resume') });
@@ -65,7 +65,7 @@ async function pauseMenu() {
   closeModal(wrap); wrap.remove();
   if (choice === 'title') return showTitle();
   if (choice === 'reset') {
-    const sure = await ask('🗑 Erase save?', ['✓', '✕']);
+    const sure = await ask('Erase your save?', ['Erase', 'Cancel']);
     if (sure === 0) { resetSave(); location.reload(); }
   }
 }
@@ -74,9 +74,9 @@ async function createEnding() {
   const scene = createBackdropScene('meadow', { cast: [['bear', 'lane-mid'], ['bunny', 'terrace-3'], ['frog', 'bridge'], ['cat', 'lane-right'], ['duck', 'terrace-2'], ['snake', 'path-to-gate']] });
   const card = document.createElement('div');
   card.className = 'ending-card etl-panel';
-  card.innerHTML = `<div class="ending-title">✦ ✦ ✦</div>
+  card.innerHTML = `<div class="ending-title">You escaped the Latent</div>
     <ol class="ending-list"></ol>
-    <div class="ending-btns"><button class="etl-btn primary" data-a="lab" title="Back to the lab">⌂</button><button class="etl-btn" data-a="new" title="New game">↺</button></div>`;
+    <div class="ending-btns"><button class="etl-btn primary" data-a="lab">Back to the lab</button><button class="etl-btn" data-a="new">New game</button></div>`;
   const list = card.querySelector('.ending-list');
   for (const id of ['attention', 'clip', 'mamba']) {
     const rg = await api.region(id).catch(() => null);
@@ -132,15 +132,15 @@ async function showTitle() {
     const last = getSave().lastScene || 'lab';
     if (last.startsWith('region:')) goto('region', last.slice(7)); else goto('lab');
   };
-  if (hasSave) mk('▶', true, () => go(false)).title = 'Continue';
-  mk(hasSave ? '↺' : '▶', !hasSave, async () => {
-    if (hasSave) { const sure = await ask('🗑 Erase save?', ['✓', '✕']); if (sure !== 0) return; }
+  if (hasSave) mk('Continue', true, () => go(false));
+  mk(hasSave ? 'New game' : 'Start', !hasSave, async () => {
+    if (hasSave) { const sure = await ask('Erase your save and start over?', ['Start over', 'Cancel']); if (sure !== 0) return; }
     go(true);
-  }).title = hasSave ? 'New game' : 'Start';
+  });
   status = await api.status().catch(() => ({ ai: false }));
   const st = card.querySelector('.title-status');
-  st.textContent = status.ai ? '● AI' : '○ AI';
-  st.title = status.ai ? 'Claude connected' : 'No ANTHROPIC_API_KEY: offline book, keyword grading';
+  st.textContent = status.ai ? '● Book online' : '○ Book offline (no API key)';
+  st.title = status.ai ? 'Claude answers the book, makes your character and grades explanations' : 'Set ANTHROPIC_API_KEY and restart the server for the full game';
 }
 
 showTitle();

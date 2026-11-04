@@ -102,7 +102,7 @@ export async function createRegionScene(ctx, regionId) {
     // concepts the book already knows: acknowledge once, never ask again
     for (const f of fundamentals.filter((x) => x.giver === id && !solved()[x.id] && isLearned(x.concept))) {
       updateSave(() => { regionState(regionId).solved[f.id] = true; });
-      await speak(id, f.known || [`📖 ✦ ${f.title}`]);
+      await speak(id, f.known || [`Your book already knows ${f.title}.`]);
     }
     const mine = chain.filter((c) => c.giver === id);
     const next = mine.find(ready);
@@ -129,7 +129,7 @@ export async function createRegionScene(ctx, regionId) {
       const kind = stations.get(id)?.data.kind;
       if (kind === 'sign') await say([`“${label}”`], { style: 'narration' });
       else if (stations.get(id)?.data.lines) await say(stations.get(id).data.lines, { style: 'narration' });
-      else await say([pending ? '🔒' : '…'], { style: 'narration' });
+      else await say([pending ? 'Locked. Something else comes first.' : 'Nothing to do here now.'], { style: 'narration' });
     }
   }
 
@@ -148,7 +148,7 @@ export async function createRegionScene(ctx, regionId) {
       }
     } catch (e) {
       console.error('challenge failed to open', e);
-      await say(['… ✕'], { style: 'narration' });
+      await say(['This challenge failed to open.'], { style: 'narration' });
     }
     return false;
   }
@@ -158,13 +158,13 @@ export async function createRegionScene(ctx, regionId) {
     const chk = f.check || {};
     const speaker = people.get(giverId) ? { speaker: { name: nameOf(giverId), color: colorOf(giverId) } } : { style: 'narration' };
     if (chk.kind === 'choice') {
-      const opts = [...(chk.options || []), '✕'];
+      const opts = [...(chk.options || []), 'Not sure yet'];
       const i = await ask(chk.question, opts, { ...speaker, neutral: true });
       if (i === opts.length - 1) return null;
       return i === chk.answer;
     }
     if (chk.kind === 'number') {
-      const v = await askValue(chk.question, { ...speaker, placeholder: '#' });
+      const v = await askValue(chk.question, { ...speaker, placeholder: 'a number' });
       if (v === null) return null;
       const n = Number(String(v).replace(/[, ]/g, '').replace(/%$/, ''));
       if (!Number.isFinite(n)) return false;
@@ -186,13 +186,13 @@ export async function createRegionScene(ctx, regionId) {
     learn(f.concept, { title: f.title, record: f.record || '', region: region.region.name });
     confetti(50);
     await speak(giverId, f.success || ['Yes! Exactly.']);
-    toast(`📖 ✦ ${f.title}`, 2600); pulseHud('book');
+    toast(`📖 Learned: ${f.title}`, 2800); pulseHud('book');
   }
 
   async function runPuzzle(c) {
     let mod;
     try { mod = await import(`../../puzzles/${c.puzzle}.js`); }
-    catch (e) { console.error(e); await say(['🧩 ✕'], { style: 'narration' }); return false; }
+    catch (e) { console.error(e); await say(['This puzzle is missing.'], { style: 'narration' }); return false; }
     const host = document.createElement('div');
     host.className = 'puzzle-host';
     document.getElementById('ui-root').appendChild(host);
@@ -273,13 +273,13 @@ export async function createRegionScene(ctx, regionId) {
         await itemGet(region.artefact?.name || 'Artefact', region.artefact?.description || '');
         world.setGateOpen(true);
         setHud({ task: `Bring the ${region.artefact?.name || 'artefact'} to Grumm`, artefacts: getSave().artefacts });
-        toast('✦ → Grumm ⟵', 3000); pulseHud('map');
+        toast('Bring it to Grumm: signpost, far left', 3600); pulseHud('map');
       },
     });
   }
 
   async function leave() {
-    const choice = await ask('✈️ Back to the lab?', ['✓', '✕']);
+    const choice = await ask('Back to the lab?', ['Go', 'Stay']);
     if (choice === 0) ctx.goto('lab');
   }
 
@@ -293,11 +293,12 @@ export async function createRegionScene(ctx, regionId) {
       ws.snapCamera();
     },
     async start() {
-      await banner(region.region.name);
+      await banner(region.region.name, region.paper?.title || '');
       if (!st.arrived) {
         updateSave(() => { regionState(regionId).arrived = true; });
         await ws.run(() => say(region.story?.arrival || [], { style: 'narration' }));
         pulseHud('book');
+        toast('📖 The paper is in your book (B)', 3600);
       }
     },
   };

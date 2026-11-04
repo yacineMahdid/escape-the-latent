@@ -376,14 +376,18 @@ Save (`etl-save-v1`) gains `learned: { [conceptId]: { title, record, region, at 
 The book shows these on a **Learned** tab (grouped by region, newest first),
 read via `getSave().learned` from `js/game/save.js`.
 
-## Minimal text (hard rule from the player)
+## Concise text (rule from the player)
 
-The player wants **as little text as possible** on screen.
+Remove text that is **superfluous or redundant**; keep every word the player
+needs to understand what is going on. This is not "icons only".
 
-* Prefer icons, symbols, colour and numbers over words. Buttons are an icon plus
-  at most 1-2 words (often just the icon with a `title` tooltip).
-* No instructional paragraphs, no "how to use this panel" blurbs, no status
-  sentences. One-line hints only when unavoidable (<= 60 characters).
-* Errors and states are short in-world words or icons ("✕ no ink", "…", "✓").
-* Dialogue lines <= 90 characters, at most 3 lines per block.
-* Details that are nice-to-have go in tooltips (`title`), never on the surface.
+* Keep: the current task, what a button does (short label, icon optional),
+  who you are talking to, questions and their options, puzzle goal and controls
+  (one or two short lines), results and errors that change what you do next,
+  key hints for controls.
+* Cut: subtitles and taglines nobody needs, "how to use this panel" paragraphs,
+  repeated information (the same fact in a banner, a toast and the HUD),
+  filler status sentences, decorative words.
+* Short beats long: labels of 1-3 words, hints under ~60 characters, dialogue
+  lines under ~90 characters and at most 3 lines per block.
+* Nice-to-have details go in tooltips (`title`).

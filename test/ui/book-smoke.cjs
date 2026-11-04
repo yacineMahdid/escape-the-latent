@@ -58,7 +58,11 @@ async function step(name, fn) {
   }
 }
 
-const shot = (page, name) => page.screenshot({ path: path.join(OUT, `book-${name}.png`) });
+// let pop-in / fade animations settle, then shoot
+const shot = async (page, name) => {
+  await sleep(450);
+  await page.screenshot({ path: path.join(OUT, `book-${name}.png`) });
+};
 const storage = (page, key) => page.evaluate((k) => JSON.parse(localStorage.getItem(k) || 'null'), key);
 
 function seedLearned(page, learned) {
@@ -100,6 +104,7 @@ async function main() {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
     const page = await ctx.newPage();
     page.on('pageerror', (e) => errors.push(e.message));
+    page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push(`console: ${m.text()}`); });
 
     // fresh storage + three learned concepts in two regions
     await page.goto(`${BASE}/dev/book.html?auto=0`);
@@ -347,17 +352,48 @@ async function main() {
       await shot(page, 'learned');
     });
 
-    await step('B and Esc close the book (the harness sees the promise resolve)', async () => {
+    await step('Tab keeps keyboard focus inside the book', async () => {
+      for (let i = 0; i < 14; i++) {
+        await page.keyboard.press('Tab');
+        assert.ok(await page.evaluate(() => !!document.activeElement?.closest('.bk-overlay')), `focus escaped after ${i + 1} Tab presses`);
+      }
+    });
+
+    await step('B and Esc close the book (the promise resolves, PDF.js leftovers go too)', async () => {
+      const before = await page.evaluate(() => window.__book.closes);
       await page.click('.bk-tab[data-tab="read"]');
       await page.keyboard.press('Escape');
       await page.waitForSelector('.bk-overlay', { state: 'detached' });
-      assert.equal(await page.evaluate(() => window.__book.closes), 1);
+      assert.equal(await page.evaluate(() => window.__book.closes), before + 1);
+      await page.waitForFunction(() => !document.querySelector('.hiddenCanvasElement'));
       await page.keyboard.press('KeyB'); // the harness opens it again, like the game
       await page.waitForSelector('.bk-overlay.is-open');
       await page.waitForSelector('.bk-read.on');
       await page.keyboard.press('KeyB');
       await page.waitForSelector('.bk-overlay', { state: 'detached' });
-      assert.equal(await page.evaluate(() => window.__book.closes), 2);
+      assert.equal(await page.evaluate(() => window.__book.closes), before + 2);
+    });
+
+    await step('an answer that arrives after the book is shut waits on the page', async () => {
+      await page.keyboard.press('KeyB');
+      await page.waitForSelector('.bk-overlay.is-open');
+      await page.click('.bk-tab[data-tab="ask"]');
+      const n = (await storage(page, CHAT_KEY)).length;
+      await page.route('**/api/book', async (route) => { await sleep(900); await route.continue().catch(() => {}); });
+      await page.fill('.bk-qin', 'what do the heads see?');
+      await page.press('.bk-qin', 'Enter');
+      await page.waitForSelector('.bk-ex .bk-dots');
+      await page.keyboard.press('Escape');
+      await page.waitForSelector('.bk-overlay', { state: 'detached' });
+      await page.waitForFunction(([k, count]) => (JSON.parse(localStorage.getItem(k) || '[]')).length === count + 1, [CHAT_KEY, n], { timeout: 10000 });
+      await page.unroute('**/api/book');
+      await page.keyboard.press('KeyB');
+      await page.waitForSelector('.bk-ask.on .bk-ex');
+      const last = await page.$$eval('.bk-ex', (els) => [els.length, els[els.length - 1].textContent]);
+      assert.equal(last[0], n + 1);
+      assert.ok(last[1].includes('what do the heads see?') && last[1].includes('Many small gazes'), last[1]);
+      await page.keyboard.press('Escape');
+      await page.waitForSelector('.bk-overlay', { state: 'detached' });
     });
 
     await step('empty Learned pages show one faint glyph, no words', async () => {
@@ -367,6 +403,20 @@ async function main() {
       assert.equal(await page.$$eval('.bk-le', (els) => els.length), 0);
       assert.equal(await page.$eval('.bk-learned', (e) => e.innerText.trim()), '✦');
       await shot(page, 'learned-empty');
+    });
+
+    await step('in the lab (no region, no paper): blank pages, the book still mutters', async () => {
+      await page.goto(`${BASE}/dev/book.html?tab=ask&region=&arxiv=`);
+      await page.waitForSelector('.bk-ask.on');
+      await page.fill('.bk-qin', 'hello?');
+      await page.press('.bk-qin', 'Enter');
+      await waitAnswer(page, 1);
+      assert.ok((await page.$eval('.bk-ex .bk-a', (e) => e.textContent)).includes('pages stay blank'));
+      assert.equal((await storage(page, 'etl-book-chat-lab')).length, 1);
+      await page.click('.bk-tab[data-tab="read"]');
+      await page.waitForSelector('.bk-read[data-state="blank"] .bk-empty');
+      await page.keyboard.press('Escape');
+      await page.waitForSelector('.bk-overlay', { state: 'detached' });
     });
 
     await step('a paper that will not load: one eerie line + ↗ arXiv', async () => {
@@ -424,7 +474,7 @@ async function main() {
       await hi.close();
     });
 
-    assert.deepEqual(errors, [], 'no uncaught page errors');
+    assert.deepEqual(errors, [], 'no page errors or console errors');
     console.log(`\n${passed} checks passed. Screenshots: ${path.relative(ROOT, OUT)}/book-*.png`);
   } finally {
     await browser.close();

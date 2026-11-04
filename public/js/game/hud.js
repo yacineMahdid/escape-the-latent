@@ -10,11 +10,11 @@ export function mountHud({ onBook, onMap, onMenu } = {}) {
     bar = document.createElement('div');
     bar.className = 'hud';
     bar.innerHTML = `
-      <div class="hud-left"><div class="hud-task etl-panel" title="">📜</div></div>
+      <div class="hud-left"><div class="hud-task etl-panel"></div></div>
       <div class="hud-right">
-        <div class="hud-artefacts etl-panel" title="Artefacts"></div>
-        <button class="etl-btn hud-icon hud-book" title="Book (B)">📖</button>
-        <button class="etl-btn hud-icon hud-map" title="Map (M)">🗺️</button>
+        <div class="hud-artefacts etl-panel" title="Artefacts brought back"></div>
+        <button class="etl-btn hud-book" title="Read the paper, take notes, ask the book">📖 Book <kbd>B</kbd></button>
+        <button class="etl-btn hud-map"><span class="hud-map-label">🗺️ Map</span> <kbd>M</kbd></button>
         <button class="etl-btn hud-icon hud-menu" title="Menu (Esc)">☰</button>
       </div>`;
     root().appendChild(bar);
@@ -28,13 +28,12 @@ export function mountHud({ onBook, onMap, onMenu } = {}) {
 
 export function setHud({ place, task, artefacts, mapLabel } = {}) {
   if (!bar) return;
-  if (task !== undefined || place !== undefined) {
+  if (task !== undefined) {
     const el = bar.querySelector('.hud-task');
-    const tip = [place, task].filter(Boolean).join(' · ');
-    el.title = tip; el.style.display = tip ? '' : 'none';
+    el.textContent = task ? `📜 ${task}` : ''; el.title = place || ''; el.style.display = task ? '' : 'none';
   }
   if (artefacts !== undefined) { const el = bar.querySelector('.hud-artefacts'); el.textContent = `✦ ${artefacts.length}/3`; }
-  if (mapLabel !== undefined) { const b = bar.querySelector('.hud-map'); b.textContent = mapLabel === 'Leave' ? '✈️' : '🗺️'; b.title = mapLabel === 'Leave' ? 'Leave (M)' : 'Map (M)'; }
+  if (mapLabel !== undefined) bar.querySelector('.hud-map-label').textContent = mapLabel === 'Leave' ? '✈️ Leave' : '🗺️ Map';
 }
 
 export function hideHud() { if (bar) bar.style.display = 'none'; hidePrompt(); }
@@ -48,13 +47,13 @@ export function pulseHud(which) {
 }
 
 const v = new THREE.Vector3();
-export function showPrompt(icon, worldPos, camera, renderer) {
+export function showPrompt(label, worldPos, camera, renderer) {
   if (!prompt) {
     prompt = document.createElement('div'); prompt.className = 'etl-passive talk-prompt';
     const k = document.createElement('kbd'); k.textContent = 'E'; const i = document.createElement('span'); prompt.append(k, i);
     root().appendChild(prompt);
   }
-  prompt.lastChild.textContent = icon;
+  prompt.lastChild.textContent = label;
   v.copy(worldPos).project(camera);
   const r = renderer.domElement.getBoundingClientRect();
   prompt.style.left = `${r.left + (v.x * 0.5 + 0.5) * r.width}px`;

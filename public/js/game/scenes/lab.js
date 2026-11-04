@@ -173,7 +173,7 @@ export async function createLabScene(ctx) {
       const rs = regionState(id);
       if (rs.artefact && !rs.returned) {
         const rg = await region(id);
-        await say([`✦ ${rg?.artefact?.name || ''}`], { style: 'narration' });
+        await say([`You hand over the ${rg?.artefact?.name || 'artefact'}.`], { style: 'narration' });
         setExpr('surprised');
         await grummSays(rg?.scientist?.return || ['...Hm. Hmph. Fine.'], 'surprised');
         updateSave(() => { regionState(id).returned = true; });
@@ -193,7 +193,7 @@ export async function createLabScene(ctx) {
 
   async function openMap() {
     const s = getSave();
-    if (!s.introSeen) { toast('👋 Grumm first', 2000); return; }
+    if (!s.introSeen) { toast('Talk to Grumm first', 2200); return; }
     const { openMapOverlay } = await import('./map.js');
     const choice = await openMapOverlay(ctx);
     if (choice) ctx.goto('region', choice);
@@ -202,9 +202,9 @@ export async function createLabScene(ctx) {
   async function openTaskBook() {
     const s = getSave();
     const id = s.currentTask || REGION_ORDER.find((x) => regionState(x).arrived);
-    if (!s.introSeen) { toast('📖 ?', 1500); return; }
+    if (!s.introSeen) { toast('No book yet', 1800); return; }
     const rg = id ? await region(id) : null;
-    if (!rg) { toast('📖 …', 1500); return; }
+    if (!rg) { toast('Nothing to read yet', 1800); return; }
     await ctx.openBook({ arxivId: rg.paper.arxivId, title: rg.paper.title }, id);
   }
 
@@ -223,10 +223,10 @@ export async function createLabScene(ctx) {
   ws.addInteractable({ label: 'Grumm', icon: '💬', pos: { x: 0, y: 0, z: -3.6 }, radius: 4.2, promptHeight: 3.2, onInteract: talkToGrumm });
   ws.addInteractable({ label: 'Map', icon: '🗺️', pos: { x: 12.2, y: 0, z: -3.4 }, radius: 3.4, promptHeight: 3.2, onInteract: openMap });
   ws.addInteractable({
-    label: 'Shelf', icon: '✦', pos: { x: -12, y: 0, z: -2.2 }, radius: 2.6, promptHeight: 2.4,
+    label: 'Trophies', icon: '✦', pos: { x: -12, y: 0, z: -2.2 }, radius: 2.6, promptHeight: 2.4,
     onInteract: async () => {
       const done = REGION_ORDER.filter((id) => regionState(id).returned);
-      if (!done.length) { await say(['…'], { style: 'narration' }); return; }
+      if (!done.length) { await say(['An empty shelf.'], { style: 'narration' }); return; }
       const lines = [];
       for (const id of done) { const rg = await region(id); lines.push(`✦ ${rg?.artefact?.name || id}`); }
       await say([lines.join('   ')], { style: 'narration' });
@@ -242,7 +242,7 @@ export async function createLabScene(ctx) {
         await ws.run(() => say(['A very large floor. A very large man.'], { style: 'narration' }));
         await ws.run(talkToGrumm);
       } else if (REGION_ORDER.some((id) => regionState(id).artefact && !regionState(id).returned)) {
-        toast('✦ → Grumm', 2500);
+        toast('Give Grumm the artefact', 2600);
       }
     },
   };
