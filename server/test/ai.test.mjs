@@ -1,6 +1,7 @@
 // Claude paths with an injected stub client: exact request shapes, refusals, parsing, error mapping.
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import http from 'node:http';
 import Anthropic from '@anthropic-ai/sdk';
 
 import {
@@ -9,7 +10,7 @@ import {
 } from './helpers.mjs';
 import {
   createAI, MODEL, BETAS, BOOK_SCHEMA, CHARACTER_SCHEMA, GRADE_SCHEMA, CHARACTER_ENUMS, DEFAULT_CHARACTER,
-  normalizeCharacter, parseImageDataUrl, offlineGrade, toAIError, AIError,
+  normalizeCharacter, parseImageDataUrl, offlineGrade, offlineBookAnswer, toAIError, AIError,
 } from '../ai.js';
 
 const CONTRACT_KEYS = ['skin', 'hairStyle', 'hairColor', 'eyeColor', 'glasses', 'facialHair', 'freckles', 'topStyle', 'topColor', 'bottomColor', 'shoeColor', 'accessory'];
@@ -177,6 +178,40 @@ describe('book: responses', () => {
       const res = await postJSON(srv.port, '/api/book', { regionId: 'fixture', question: 'softmax?' });
       assert.deepEqual(res.json, { answer: FIXTURE.book.offlineHints[0].text, refused: false, offline: true });
       assert.equal(client.calls.length, 0);
+    } finally {
+      await srv.close();
+    }
+  });
+
+  it('cancels the Claude call when the player closes the book mid-question', async () => {
+    let called;
+    let aborted;
+    const wasCalled = new Promise((r) => { called = r; });
+    const wasAborted = new Promise((r) => { aborted = r; });
+    const client = {
+      beta: {
+        messages: {
+          create: (params, options) => new Promise((_, reject) => {
+            called();
+            options.signal.addEventListener('abort', () => {
+              aborted(true);
+              reject(new Anthropic.APIUserAbortError());
+            });
+          }),
+        },
+      },
+    };
+    const logger = recordingLogger();
+    const srv = await startTestServer({ ai: createAI({ client, logger }), logger });
+    try {
+      const req = http.request({ host: '127.0.0.1', port: srv.port, method: 'POST', path: '/api/book', agent: false, headers: { 'content-type': 'application/json' } });
+      req.on('error', () => {});
+      req.end(JSON.stringify({ regionId: 'fixture', question: 'A slow question?' }));
+      await wasCalled;
+      req.destroy();
+      const result = await Promise.race([wasAborted, new Promise((r) => setTimeout(() => r(false), 3000))]);
+      assert.equal(result, true, 'the SDK request was aborted');
+      assert.doesNotMatch(logger.text(), /\[ai\] book failed/);
     } finally {
       await srv.close();
     }
@@ -484,6 +519,13 @@ describe('helpers', () => {
     assert.equal(parseImageDataUrl('data:image/png;base64,R0lGODlhAQABAAAAACw=').mediaType, 'image/gif');
     assert.equal(parseImageDataUrl(`data:image/webp;base64,${Buffer.from('RIFF\x00\x00\x00\x00WEBPVP8 ').toString('base64')}`).mediaType, 'image/webp');
     assert.equal(parseImageDataUrl('data:image/png;base64,'), null);
+  });
+
+  it('offline hints accept keywords given as a single string', () => {
+    const region = { book: { offlineHints: [{ keywords: 'softmax', text: 'S' }, { keywords: ['heads'], text: 'H' }, { text: 'no keywords' }, null] } };
+    assert.equal(offlineBookAnswer(region, 'What is a SOFTMAX?').answer, 'S');
+    assert.equal(offlineBookAnswer(region, 'so many heads').answer, 'H');
+    assert.equal(offlineBookAnswer({}, 'anything').offline, true);
   });
 
   it('offlineGrade accepts any real attempt when no keyword groups exist', () => {
