@@ -66,7 +66,15 @@ export function createBoard(container, spec = {}, api = {}, opts = {}) {
   let solved = false;
   let hintShown = false;
   let solveTimer = 0;
+  let done = false; // api.onSolved() has been called
   close.addEventListener('click', () => { if (!solved) api.onClose?.(); });
+  // a solved board stays solved: Esc during the stamp finishes at once instead of reaching the host's "close"
+  const onEsc = (e) => {
+    if (e.code !== 'Escape' || !solved || done) return;
+    e.preventDefault(); e.stopPropagation();
+    clearTimeout(solveTimer); done = true; api.onSolved?.();
+  };
+  window.addEventListener('keydown', onEsc, true);
   // empty the feedback area but keep its height, so nothing under the pointer moves mid-click
   const blank = () => { feedback.style.minHeight = `${feedback.offsetHeight}px`; feedback.className = 'pz-feedback'; feedback.replaceChildren(); };
   const clearBad = () => { if (!solved && feedback.classList.contains('pz-bad')) blank(); };
@@ -125,9 +133,9 @@ export function createBoard(container, spec = {}, api = {}, opts = {}) {
       show([h('div', { class: 'pz-line' }, [h('span', { text: spec.successText || 'Solved!' })])], 'good');
       root.classList.add('pz-solved');
       root.append(h('div', { class: 'pz-stamp', text: '✓' }));
-      solveTimer = setTimeout(() => api.onSolved?.(), opts.solveDelay ?? 1500);
+      solveTimer = setTimeout(() => { if (!done) { done = true; api.onSolved?.(); } }, opts.solveDelay ?? 1500);
     },
-    destroy() { clearTimeout(solveTimer); wrap.remove(); },
+    destroy() { clearTimeout(solveTimer); window.removeEventListener('keydown', onEsc, true); wrap.remove(); },
   };
 }
 
