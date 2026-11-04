@@ -12,7 +12,7 @@
 // shout reads the belly out (C). Kayvee is attention with its KV cache: he never compresses, so he is never wrong, but
 // every step and every lookup gets slower as his cart grows (§3.1; §4.5: without a KV cache, ~5x the throughput).
 // Playing well = compressing the road into one belly by choosing, which is both fast and right.
-// Spec: content/extra-draft/mamba.json, challenge m1. Test hooks on container.__mg.state: road, roadIndex, dN, dK,
+// Spec: content/extra/mamba.json, challenge m1. Test hooks on container.__mg.state: road, roadIndex, dN, dK,
 // n (Kayvee's cart), belly, right, bells, mistakes (= slips + bellMistakes), stall (seconds left), finish, winner,
 // tiles [{ i, tok, kind, target, done: null | 'gulped' | 'slid' | 'missed' | 'ok' | 'wrong' }], log [{ ev, t, i }].
 // The race logic (config, newRace, gulp, shout, advance, simulate) is pure and exported for headless tuning checks.

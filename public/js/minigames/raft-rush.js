@@ -7,7 +7,7 @@
 // The paper (CLIP, §2.3): each round is one caption against a batch of photos; the true pair is pulled
 // together and every other pairing (the negatives) sinks; the batch grows from 3 to 6 rafts (CLIP's is
 // 32,768). Abstract, §1, §2.1: whole natural-language captions beat a fixed set of predetermined labels.
-// Spec: content/extra-draft/clip.json, challenge m1. Test hooks on container.__mg.state: round (0-7),
+// Spec: content/extra/clip.json, challenge m1. Test hooks on container.__mg.state: round (0-7),
 // rafts [{ photo, answer, x }], at, glued, splashes, brine.score,
 // stage ('pre' | 'intro' | 'fuse' | 'resolve' | 'over'), stageT, fuse (this round's seconds).
 import { runMinigame, draw } from './kit.js';

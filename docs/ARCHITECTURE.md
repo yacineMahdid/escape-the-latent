@@ -410,7 +410,10 @@ a wrong answer plays `wrong` and ends the round.
 
 **Extra content packs**: `content/extra/<regionId>.json` may hold `challenges`,
 `inhabitants` and `stations`; the game appends them to the region at load time (the
-artefact then needs those challenges too). Unfinished packs live in
+artefact then needs those challenges too). It may also hold `book: { guard, offlineHints }`:
+the server folds those into the region's book (server/regions.js), so the Cursed Book
+never gives away the pack's answers. Every world has a published pack: a mini-game (m1),
+an environmental puzzle (e1) and a quiz (q1). Unfinished packs live in
 `content/extra-draft/<regionId>.json`; the game only reads them when
 `localStorage['etl-extra-draft'] === '1'` (tests), and `/dev/minigame.html` with `&draft=1`.
 

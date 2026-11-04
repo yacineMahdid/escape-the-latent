@@ -9,7 +9,7 @@
 // The paper (Section 4, last paragraph; Figures 3-5): attention distributions can be inspected, and
 // individual heads clearly learn different jobs (positional, syntactic, staring at the end of the
 // sentence). The figures draw one word's attention with one colour per head, as the strings do here.
-// Spec: content/extra-draft/attention.json, challenge e1 (positions, weights, string rules, board flow).
+// Spec: content/extra/attention.json, challenge e1 (positions, weights, string rules, board flow).
 // Test hooks: each post's interactable has it.postIndex = i (two posts are both 'the'); the board's has
 // it.boardOf = 'e1'. The root group is named 'ear-jobs'; its userData holds { query, chosen, weights }.
 const INK = '#2b2233';

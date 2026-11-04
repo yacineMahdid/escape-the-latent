@@ -12,7 +12,7 @@
 // the hardware better) bleed into each other unless the selective state resets at the boundary (Δ_t → ∞, or
 // g_t → 1 in Theorem 1). The clear marble is that boundary token: a big gulp that carries nothing. The sand
 // shows that selection holds the state across ignored noise; Umberto's ums are Variable Spacing.
-// Spec: content/extra-draft/mamba.json, challenge e1 (positions, props, menu, run, judging, text).
+// Spec: content/extra/mamba.json, challenge e1 (positions, props, menu, run, judging, text).
 // Test hooks: interactables have it.id 'R1'..'R4' (label 'Ribbon') and 'dispatch' (label 'Dispatch bell');
 // while mounted, window.__etl.parcelDay = { placed, marbles, running, last, speed } (speed: a test-only time
 // scale for the run, 1 by default). deliveries(spec, placed) is the judge, exported for checks.

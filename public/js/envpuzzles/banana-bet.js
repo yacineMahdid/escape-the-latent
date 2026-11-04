@@ -10,7 +10,7 @@
 // 25.2, ImageNet-R 37.7, ObjectNet 32.6, ImageNet-A 2.7) while CLIP holds (60.2, 88.9, 72.3, 77.1).
 // The player builds that robustness test out of the island; the plain banana is in distribution (a
 // tie) and the look-alikes are the Snapper's shortcut (yellow + curved = banana).
-// Spec: content/extra-draft/clip.json, challenge e1 (positions, looks, verdicts, flow).
+// Spec: content/extra/clip.json, challenge e1 (positions, looks, verdicts, flow).
 // Test hook: every prop's interactable has it.id = prop id (label 'Snap'); it.enabled is false once
 // snapped (until the film runs out and the bet restarts).
 import { taperTubeGeo } from '../engine/toyparts.js';

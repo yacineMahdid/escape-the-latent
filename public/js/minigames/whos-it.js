@@ -8,7 +8,7 @@
 // through a softmax (§3.2.1) to give the weights, which are the pie slices shared by every word at once, and what
 // 'it' turns into is the blend of the values weighted by those slices (§3.2): the bubble, and the colour of the
 // 'it' card when you ring. Playing well = one sharp head on the word 'it' refers to, like Figure 4's heads on 'its'.
-// Spec: content/extra-draft/attention.json, challenge m1. Test hooks on container.__mg.state:
+// Spec: content/extra/attention.json, challenge m1. Test hooks on container.__mg.state:
 //   stage ('pre' | 'listen' | 'rung' | 'over'), stageT, fuseLeft, ri (round of this try, 0-based),
 //   rd { words, ask, means, decoy }, theta (ear angle in degrees, 0 = up, clockwise), flags [{ word, phi, color }]
 //   (live key angles, drift included), w (live weights), top (index of the biggest slice), good, muddles,
