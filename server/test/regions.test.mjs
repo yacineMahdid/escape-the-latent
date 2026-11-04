@@ -45,6 +45,30 @@ describe('region store', () => {
     assert.equal(store.getRegion('meadow'), null);
   });
 
+  it('folds in the published extra pack: challenges, book guard lines and offline hints', () => {
+    const dir = tmpDir();
+    const extraDir = tmpDir();
+    fs.writeFileSync(path.join(dir, 'meadow.json'), JSON.stringify({ ...FIXTURE, id: 'meadow' }));
+    const store = createRegionStore({ dir, extraDir });
+    const base = store.getRegion('meadow');
+    const n = base.challenges.length;
+    const guards = (base.book?.guard || []).length;
+    fs.writeFileSync(path.join(extraDir, 'meadow.json'), JSON.stringify({
+      challenges: [{ id: 'q1', type: 'quiz', giver: 'x' }],
+      book: { guard: ['Never say 42.'], offlineHints: [{ keywords: ['answer'], text: 'Look closer.' }] },
+    }));
+    const region = store.getRegion('meadow');
+    assert.equal(region.challenges.length, n + 1);
+    assert.ok(findChallenge(region, 'q1'));
+    assert.equal(region.book.guard.length, guards + 1);
+    assert.equal(region.book.guard.at(-1), 'Never say 42.');
+    assert.equal(region.book.offlineHints.at(-1).text, 'Look closer.');
+    assert.equal(store.getRegion('meadow'), region, 'unchanged files come from memory');
+    assert.equal(base.challenges.length, n, 'the base region object is left alone');
+    fs.rmSync(path.join(extraDir, 'meadow.json'));
+    assert.equal(store.getRegion('meadow').challenges.length, n, 'no pack, no extra challenges');
+  });
+
   it('fills a missing id from the file name', () => {
     const dir = tmpDir();
     const { id, ...rest } = FIXTURE;

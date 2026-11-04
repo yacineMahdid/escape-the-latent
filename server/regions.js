@@ -1,4 +1,5 @@
-// Server-side copy of the region content (content/regions/<id>.json).
+// Server-side copy of the region content (content/regions/<id>.json), plus its published extra pack
+// (content/extra/<id>.json: more challenges, and book guard lines / offline hints for them).
 // The rubric, guard list and offline keyword groups are read from here, never from the client.
 // Files are re-read whenever their mtime (or size) changes, so content can be edited while the server runs.
 import fs from 'node:fs';
@@ -18,8 +19,10 @@ export function defaultRegionsDir(env = process.env) {
   return env.REGIONS_DIR ? path.resolve(env.REGIONS_DIR) : path.join(ROOT, 'content', 'regions');
 }
 
-export function createRegionStore({ dir = defaultRegionsDir(), logger = console } = {}) {
+export function createRegionStore({ dir = defaultRegionsDir(), extraDir = path.join(path.dirname(dir), 'extra'), logger = console } = {}) {
   const cache = new Map(); // id -> { mtimeMs, size, region }
+  const extraCache = new Map(); // id -> { mtimeMs, size, extra }
+  const merged = new Map(); // id -> { base, extra, region }
 
   function load(id, file, st) {
     const hit = cache.get(id);
@@ -38,6 +41,44 @@ export function createRegionStore({ dir = defaultRegionsDir(), logger = console 
     return region;
   }
 
+  function loadExtra(id) {
+    const file = path.join(extraDir, `${id}.json`);
+    let st;
+    try { st = fs.statSync(file); } catch { extraCache.delete(id); return null; }
+    if (!st.isFile()) return null;
+    const hit = extraCache.get(id);
+    if (hit && hit.mtimeMs === st.mtimeMs && hit.size === st.size) return hit.extra;
+    try {
+      const extra = JSON.parse(fs.readFileSync(file, 'utf8'));
+      if (!extra || typeof extra !== 'object' || Array.isArray(extra)) throw new Error('not a JSON object');
+      extraCache.set(id, { mtimeMs: st.mtimeMs, size: st.size, extra });
+      return extra;
+    } catch (err) {
+      logger.warn?.(`[regions] could not load extra/${id}.json: ${err.message}${hit ? ' (keeping the previous version)' : ''}`);
+      return hit ? hit.extra : null;
+    }
+  }
+
+  // the region with its extra pack folded in (the same object while neither file changes)
+  function withExtra(id, base) {
+    const extra = loadExtra(id);
+    if (!extra) return base;
+    const m = merged.get(id);
+    if (m && m.base === base && m.extra === extra) return m.region;
+    const list = (a) => (Array.isArray(a) ? a : []);
+    const region = {
+      ...base,
+      challenges: [...list(base.challenges), ...list(extra.challenges)],
+      book: {
+        ...(base.book || {}),
+        guard: [...list(base.book?.guard), ...list(extra.book?.guard)],
+        offlineHints: [...list(base.book?.offlineHints), ...list(extra.book?.offlineHints)],
+      },
+    };
+    merged.set(id, { base, extra, region });
+    return region;
+  }
+
   function getRegion(id) {
     if (!isValidRegionId(id)) return null;
     const file = path.join(dir, `${id}.json`);
@@ -49,7 +90,8 @@ export function createRegionStore({ dir = defaultRegionsDir(), logger = console 
       return null;
     }
     if (!st.isFile()) return null;
-    return load(id, file, st);
+    const base = load(id, file, st);
+    return base ? withExtra(id, base) : null;
   }
 
   function listRegions() {
