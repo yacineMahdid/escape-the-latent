@@ -10,32 +10,50 @@ export async function loadHumans() {
   return humans;
 }
 
-// Jean-Lafontaine de Becancourt: engine/scientist.js, else the older model in humans.js,
-// else false (callers then use scientistStandIn()).
+// Jean-Lafontaine de Becancourt: the model in engine/scientist.js, else false (callers then use
+// scientistStandIn()). The old Einstein-style model in humans.js is never used.
 let scientistBuilder = null;
 export async function loadScientist() {
   if (scientistBuilder !== null) return scientistBuilder;
-  try { scientistBuilder = (await import('../engine/scientist.js')).buildScientist; }
-  catch (e) { const h = await loadHumans(); scientistBuilder = (h && h.buildScientist) || false; }
+  try { scientistBuilder = (await import('../engine/scientist.js')).buildScientist || false; }
+  catch (e) { console.warn('scientist.js unavailable, using the stand-in', e); scientistBuilder = false; }
   return scientistBuilder;
 }
 
-// Fallback figure if no model loads: a grumpy old man, long black hair, black beard, big brows (~10 units).
+// Fallback figure (~10 units, feet at 0, faces +z): a grumpy old man with long black hair, a black
+// beard, big black brows, a sweater and his coffee mug. Same userData API as the real model.
 export function scientistStandIn() {
   const g = new THREE.Group();
+  const body = new THREE.Group(); g.add(body); // animate() bobs this, never the root the scene positions
   const m = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85 });
-  const black = m(0x1f1a1f);
-  const body = new THREE.Mesh(new THREE.CapsuleGeometry(1.6, 3.4, 8, 16), m(0x6b6a3a)); body.position.y = 3.6; g.add(body);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(1.8, 24, 18), m(0xe8b796)); head.position.y = 7.6; g.add(head);
-  const hair = new THREE.Mesh(new THREE.SphereGeometry(2.0, 20, 14), black); hair.position.set(0, 8.0, -0.55); hair.scale.set(1.15, 1, 1); g.add(hair);
-  for (const sx of [-1, 1]) { const lock = new THREE.Mesh(new THREE.CapsuleGeometry(0.55, 2.4, 6, 12), black); lock.position.set(sx * 1.75, 6.6, -0.25); g.add(lock); }
-  const beard = new THREE.Mesh(new THREE.SphereGeometry(1.35, 18, 14), black); beard.position.set(0, 6.55, 1.0); beard.scale.set(1.1, 1, 0.8); g.add(beard);
-  for (const sx of [-0.62, 0.62]) {
-    const e = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10), m(0x1e1824)); e.position.set(sx, 7.85, 1.66); g.add(e);
-    const brow = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.38, 0.42), black); brow.position.set(sx, 8.4, 1.62); brow.rotation.z = sx > 0 ? 0.32 : -0.32; g.add(brow);
+  const black = m(0x211c22), skin = m(0xe2b08c), sweater = m(0x7a6a3a);
+  const add = (geo, mat, x, y, z, parent = body) => { const o = new THREE.Mesh(geo, mat); o.position.set(x, y, z); parent.add(o); return o; };
+  add(new THREE.CapsuleGeometry(0.55, 2.4, 6, 12), m(0x4a4250), -0.65, 1.6, 0);
+  add(new THREE.CapsuleGeometry(0.55, 2.4, 6, 12), m(0x4a4250), 0.65, 1.6, 0);
+  add(new THREE.CapsuleGeometry(1.7, 2.6, 8, 20), sweater, 0, 4.9, 0).scale.set(1, 1, 0.82);
+  for (const sx of [-1, 1]) add(new THREE.CapsuleGeometry(0.5, 2.2, 6, 12), sweater, sx * 1.95, 5.1, 0.3).rotation.z = sx * 0.35;
+  const mug = add(new THREE.CylinderGeometry(0.48, 0.44, 1.0, 20), m(0xfffdf6), -2.3, 4.1, 1.0);
+  add(new THREE.CylinderGeometry(0.5, 0.5, 0.16, 20), m(0xe8566a), 0, 0.2, 0, mug);
+  const head = new THREE.Group(); head.position.set(0, 8.2, 0.2); body.add(head);
+  add(new THREE.SphereGeometry(1.55, 28, 20), skin, 0, 0, 0, head).scale.set(1.05, 1, 1);
+  add(new THREE.SphereGeometry(1.68, 24, 18), black, 0, 0.25, -0.35, head).scale.set(1.08, 1.02, 1);
+  for (const sx of [-1, 1]) add(new THREE.CapsuleGeometry(0.5, 2.6, 6, 12), black, sx * 1.45, -1.3, -0.35, head).rotation.z = sx * -0.12;
+  add(new THREE.SphereGeometry(1.25, 22, 16), black, 0, -1.05, 0.55, head).scale.set(1.05, 1.15, 0.75);
+  add(new THREE.SphereGeometry(0.42, 16, 12), m(0xd99a7c), 0, -0.15, 1.5, head);
+  const mouth = add(new THREE.SphereGeometry(0.2, 12, 8), m(0x5a2030), 0, -0.82, 1.55, head); mouth.scale.set(1.6, 0.5, 0.5);
+  const brows = [];
+  for (const sx of [-1, 1]) {
+    add(new THREE.SphereGeometry(0.17, 12, 10), m(0x1e1824), sx * 0.55, 0.22, 1.42, head).scale.set(1, 1.3, 0.6);
+    const b = add(new THREE.CapsuleGeometry(0.2, 0.75, 6, 10), black, sx * 0.6, 0.62, 1.38, head); b.rotation.z = Math.PI / 2; b.userData.sx = sx; brows.push(b);
   }
   g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
-  let t = 0; g.userData.setExpression = () => {}; g.userData.animate = (dt) => { t += dt; g.position.y = Math.sin(t * 1.5) * 0.04; };
+  let t = 0; let expr = 'grumpy';
+  const pose = () => brows.forEach((b) => { const sx = b.userData.sx; b.position.y = expr === 'surprised' ? 0.85 : expr === 'grumpy' ? 0.52 : 0.64; b.rotation.z = Math.PI / 2 + (expr === 'surprised' ? sx * 0.15 : expr === 'grumpy' ? -sx * 0.35 : 0); });
+  g.userData.setExpression = (e) => { expr = ['grumpy', 'neutral', 'surprised', 'talking'].includes(e) ? e : 'neutral'; pose(); };
+  g.userData.expression = () => expr;
+  g.userData.parts = { head, brows, mug };
+  g.userData.animate = (dt, { talking = false } = {}) => { t += dt; body.position.y = Math.sin(t * 1.5) * 0.04; mouth.scale.y = talking || expr === 'talking' ? 0.5 + Math.abs(Math.sin(t * 11)) * 1.2 : expr === 'surprised' ? 1.4 : 0.5; };
+  pose();
   return g;
 }
 
