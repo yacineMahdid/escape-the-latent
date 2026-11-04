@@ -19,6 +19,9 @@ const hashSeed = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 214
 
 export async function createRegionScene(ctx, regionId) {
   const region = await api.region(regionId);
+  // optional extra content pack (more challenges, villagers, stations): content/extra/<regionId>.json
+  const extra = await fetch(`/content/extra/${regionId}.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  if (extra) for (const key of ['challenges', 'inhabitants', 'stations']) if (Array.isArray(extra[key])) region[key] = [...(region[key] || []), ...extra[key]];
   const save = getSave();
   const world = buildDiorama(region.region.biome, { seed: hashSeed(regionId) });
   const player = await createPlayer(save.character);
@@ -32,8 +35,10 @@ export async function createRegionScene(ctx, regionId) {
       book: () => ctx.openBook({ arxivId: region.paper.arxivId, title: region.paper.title }, regionId),
       map: () => leave(),
       menu: () => ctx.pauseMenu(),
+      tick: (dt, t) => { for (const fn of envUpdaters) fn(dt, t); },
     },
   });
+  const envUpdaters = new Set(); // per-frame hooks of running environmental puzzles
 
   // ---------- who stands where ----------
   const people = new Map(); // id -> { data, mesh, talking }
@@ -114,11 +119,17 @@ export async function createRegionScene(ctx, regionId) {
       else if (ok === false) await speak(id, next.wrong || ['Hmm… no.']);
       return;
     }
+    if (next && next.type === 'environment') {
+      if (activeEnv.has(next.id)) { await speak(id, next.reminder || next.spec?.reminder || ['Still at it?']); return; }
+      await speak(id, next.intro || ['…!']);
+      await startEnvironment(next);
+      return;
+    }
     if (next) {
       await speak(id, next.intro || ['…!']);
-      const ok = await runChallenge(next);
+      const ok = next.type === 'quiz' ? await runQuiz(next, id) : await runChallenge(next);
       if (ok) await onSolved(next);
-      else if (next.type === 'explain' && next.retry) await speak(id, next.retry);
+      else if ((next.type === 'explain' || next.type === 'minigame' || next.type === 'quiz') && next.retry) await speak(id, next.retry);
       return;
     }
     const pending = mine.find((c) => !isSolved(c));
@@ -137,6 +148,7 @@ export async function createRegionScene(ctx, regionId) {
   async function runChallenge(c) {
     try {
       if (c.type === 'puzzle') return await runPuzzle(c);
+      if (c.type === 'minigame') return await runMinigame(c);
       if (c.type === 'code') {
         const term = await import('../../ui/terminal.js');
         const res = await term.open({ challenge: c, regionId });
@@ -188,6 +200,91 @@ export async function createRegionScene(ctx, regionId) {
     confetti(50);
     await speak(giverId, f.success || ['Yes! Exactly.']);
     toast(`📖 Learned: ${f.title}`, 2800); pulseHud('book');
+  }
+
+  // Mario Party-style mini-game: public/js/minigames/<c.minigame>.js, same overlay host as puzzles
+  async function runMinigame(c) {
+    let mod;
+    try { mod = await import(`../../minigames/${c.minigame}.js`); }
+    catch (e) { console.error(e); await say(['This mini-game is missing.'], { style: 'narration' }); return false; }
+    const host = document.createElement('div');
+    host.className = 'puzzle-host';
+    document.getElementById('ui-root').appendChild(host);
+    let handle = null;
+    const result = await new Promise((resolve) => {
+      let done = false;
+      const finish = (v) => { if (!done) { done = true; resolve(v); } };
+      openModal(host, { onEscape: () => finish(false) });
+      try { handle = (mod.default || mod).mount(host, { title: c.title, ...(c.spec || {}) }, { onWin: () => finish(true), onClose: () => finish(false), sfx }); }
+      catch (e) { console.error(e); finish(false); }
+    });
+    try { handle?.destroy?.(); } catch (e) { console.error(e); }
+    closeModal(host); host.remove();
+    return result;
+  }
+
+  // a villager's questions: every answer must be right (a wrong one ends the round; ask again later)
+  async function runQuiz(c, giverId) {
+    const speaker = people.get(giverId) ? { speaker: { name: nameOf(giverId), color: colorOf(giverId) } } : { style: 'narration' };
+    for (const q of c.questions || []) {
+      let ok;
+      if (q.kind === 'number') {
+        const v = await askValue(q.question, { ...speaker, placeholder: q.placeholder || 'a number' });
+        if (v === null) return false;
+        const n = Number(String(v).replace(/[, ]/g, '').replace(/%$/, ''));
+        ok = Number.isFinite(n) && Math.abs(n - q.answer) <= (q.tolerance ?? Math.max(1e-9, Math.abs(q.answer) * 1e-3));
+      } else {
+        const opts = [...(q.options || []), 'Not sure yet'];
+        const i = await ask(q.question, opts, { ...speaker, neutral: true });
+        if (i === opts.length - 1) return false;
+        ok = i === q.answer;
+      }
+      if (!ok) { await speak(giverId, q.wrong || c.wrong || ['Hmm… not quite.']); return false; }
+      if (q.right) await speak(giverId, q.right);
+    }
+    return true;
+  }
+
+  // Environmental puzzle: public/js/envpuzzles/<c.environment>.js lives in the 3D world until solved.
+  const activeEnv = new Map(); // challenge id -> handle
+  function envApi(c) {
+    const speakerOf = (id) => (people.get(id) ? { name: nameOf(id), color: colorOf(id) } : null);
+    return {
+      THREE, scene: ws.scene, world, anchors: ANCHORS, regionId, biome: world.biome,
+      player: { get pos() { return player.pos; }, place: (x, y, z) => player.place(x, y, z) },
+      villager: (id) => people.get(id)?.mesh || null,
+      station: (id) => stations.get(id)?.mesh || null,
+      addInteractable: (it) => ws.addInteractable(it),
+      removeInteractable: (it) => ws.removeInteractable(it),
+      addCollider: (col) => { world.colliders.push(col); return col; },
+      removeCollider: (col) => { const i = world.colliders.indexOf(col); if (i >= 0) world.colliders.splice(i, 1); },
+      onUpdate: (fn) => { envUpdaters.add(fn); return () => envUpdaters.delete(fn); },
+      speak: (id, lines) => speak(id, lines),
+      say: (lines, opts) => say(lines, opts),
+      ask: (q, opts, o = {}) => ask(q, opts, o),
+      askValue: (q, o = {}) => askValue(q, o),
+      speakerOf, toast, confetti, sfx,
+      setTask: (text) => setHud({ task: text }),
+    };
+  }
+  async function startEnvironment(c) {
+    let mod;
+    try { mod = await import(`../../envpuzzles/${c.environment}.js`); }
+    catch (e) { console.error(e); await say(['This puzzle is missing.'], { style: 'narration' }); return; }
+    let handle = null;
+    const solve = () => {
+      if (!activeEnv.has(c.id)) return;
+      activeEnv.delete(c.id);
+      const go = () => { if (ws.busy) { setTimeout(go, 150); return; } ws.run(async () => { try { handle?.destroy?.(); } catch (e) { console.error(e); } await onSolved(c); refreshTask(); }); };
+      go();
+    };
+    try { handle = (mod.default || mod).mount(envApi(c), c.spec || {}, { onSolved: solve, onProgress: (text) => setHud({ task: text }) }); }
+    catch (e) { console.error(e); await say(['This puzzle failed to start.'], { style: 'narration' }); return; }
+    activeEnv.set(c.id, handle);
+    setHud({ task: c.spec?.goal || c.title || '' });
+  }
+  function refreshTask() {
+    setHud({ task: st.artefact && !st.returned ? `Bring ${theName(region.artefact?.name)} to Becancourt` : (region.scientist?.taskTitle || '') });
   }
 
   async function runPuzzle(c) {
@@ -304,7 +401,8 @@ export async function createRegionScene(ctx, regionId) {
   if (allSolved() && !st.artefact) spawnArtefact(challenges[challenges.length - 1]?.giver);
 
   return {
-    scene: ws.scene, camera: ws.camera, update: ws.update, dispose: ws.dispose,
+    scene: ws.scene, camera: ws.camera, update: ws.update,
+    dispose() { for (const h of activeEnv.values()) { try { h?.destroy?.(); } catch (e) { console.error(e); } } activeEnv.clear(); envUpdaters.clear(); ws.dispose(); },
     async onEnter() {
       world.door?.userData.openNow(true); // you just came through it
       setTimeout(() => world.door?.userData.setOpen(false), 500);

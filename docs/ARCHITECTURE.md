@@ -330,6 +330,71 @@ dnd.item(el, data); dnd.target(el, data);     // drag, or click an item then cli
 with `paper | pin | tick | pop | stamp | buzz | ding | win` (public/js/game/sfx.js).
 Dev pages: `/dev/kit.html` (kit demo) and `/dev/puzzle.html?region=<id>&challenge=<cid>`.
 
+### More challenge types: mini-games, environmental puzzles, quizzes
+
+Besides `puzzle`, `code` and `explain`, a challenge can be:
+
+```jsonc
+{ "id": "m1", "type": "minigame", "title": "Bell Rush", "giver": "plonk", "requires": ["c1"],
+  "minigame": "bell-rush",                 // public/js/minigames/<name>.js
+  "spec": { "goal": "one line", "controls": [["← →", "move"], ["Space", "ring"]], "duration": 30,
+            "successText": "...", "loseText": "...", /* anything the game needs */ },
+  "intro": ["..."], "success": ["..."], "retry": ["said when the player loses or quits"] }
+
+{ "id": "e1", "type": "environment", "title": "...", "giver": "bimble",
+  "environment": "lantern-walk",           // public/js/envpuzzles/<name>.js
+  "spec": { "goal": "HUD line while it runs", "reminder": ["..."], /* placements, rules */ },
+  "intro": ["..."], "reminder": ["said if you talk to the giver while it runs"], "success": ["..."] }
+
+{ "id": "q1", "type": "quiz", "title": "...", "giver": "dabble",
+  "questions": [ { "question": "...", "options": ["a", "b", "c"], "answer": 1, "right": ["..."], "wrong": ["..."] },
+                 { "question": "...", "kind": "number", "answer": 512, "tolerance": 0 } ],
+  "intro": ["..."], "wrong": ["..."], "success": ["..."], "retry": ["..."] }
+```
+
+**Mini-games** (Mario Party-style, 20-60 s): build on `public/js/minigames/kit.js`:
+
+```js
+import { runMinigame, draw } from './kit.js';
+const GAME = {
+  goal, controls, duration,                 // rules card + clock (spec overrides)
+  setup(S, spec), update(S, dt, input, spec), draw(g, S, spec),   // 960 x 540 canvas units
+  result(S, spec) -> 'win' | 'lose' | null, timeUp(S, spec) -> 'win' | 'lose', hud(S, spec) -> '★ 3/5',
+};
+export default { mount(container, spec, api) { return runMinigame(container, spec, api, GAME); } };
+```
+
+The kit does the rules card, 3-2-1-GO, the timer bar, FINISH!, the win stamp (then
+`api.onWin()`) and "Again?" on a loss. Input: arrows/WASD + Space/Enter, and the
+mouse or a finger. `container.__mg` = `{ status, state, force(result) }` for tests.
+Dev page: `/dev/minigame.html?region=<id>&challenge=<cid>` (or `?module=<name>`).
+
+**Environmental puzzles** live in the 3D world itself: the player walks around and
+uses things. `public/js/envpuzzles/<name>.js`:
+
+```js
+export default {
+  mount(w, spec, api) {  // api: { onSolved(), onProgress(text) }  (onSolved once)
+    // w: { THREE, scene, world (zones, colliders), anchors, regionId, biome, player { pos, place },
+    //      villager(id) / station(id) -> mesh, addInteractable(it) / removeInteractable(it),
+    //      addCollider(c) / removeCollider(c), onUpdate(fn(dt, t)) -> unsubscribe,
+    //      speak(id, lines), say(lines, opts), ask(q, options, opts), askValue(q, opts),
+    //      speakerOf(id), toast(msg, ms), confetti(n), sfx(name), setTask(text) }
+    return { destroy() {} };   // remove everything you added
+  },
+};
+```
+
+Talking to the giver starts it (intro lines), the HUD shows `spec.goal`, talking to the
+giver again plays `reminder`. Leaving the world destroys it (it restarts next time).
+
+**Quizzes** are a villager's questions in the dialogue box: all must be right in one go;
+a wrong answer plays `wrong` and ends the round.
+
+**Extra content packs**: `content/extra/<regionId>.json` may hold `challenges`,
+`inhabitants` and `stations`; the game appends them to the region at load time (the
+artefact then needs those challenges too).
+
 ## Shared front-end modules (owner: core)
 
 ```js
