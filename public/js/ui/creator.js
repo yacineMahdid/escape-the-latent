@@ -300,10 +300,10 @@ function createPreview(canvas) {
   function setModel(params, { poof = false } = {}) {
     finishSwap();
     const next = buildHuman(params);
-    // room for the hop (body up 0.22, stretched ~5%) and the poof's ~10% overshoot
+    // room for a hop (the top rises ~0.36 at its peak) and for the poof's 10% overshoot
     const y = new THREE.Box3().setFromObject(next).max.y;
-    const h = Number.isFinite(y) && y > 0 ? y : 2;
-    fitTop = Math.max(2.1, h * 1.05 + 0.22, h * 1.1) + 0.06;
+    const h = Number.isFinite(y) ? Math.max(1.6, y) : 2;
+    fitTop = Math.max(h + 0.4, h * 1.1) + 0.08;
     table.add(next);
     if (model && poof && !reducedMotion()) {
       next.scale.setScalar(0.001);
@@ -731,12 +731,16 @@ async function run(initial, resolve) {
   });
 
   // ---- is Claude here? The photo column is kept while we ask, so the stage does not jump.
+  // No answer for a while: fold it away (and bring it back if the answer turns up later).
+  const giveUp = setTimeout(() => { if (!closed && photoMode === 'checking') hidePhoto(true); }, 5000);
   api.status().then((s) => !!s?.ai).catch(() => false).then((on) => {
+    clearTimeout(giveUp);
     if (closed) return;
-    if (on) { photoMode = 'on'; card.classList.remove('checking'); } else hidePhoto(performance.now() - openedAt > 450);
+    if (on) { photoMode = 'on'; card.classList.remove('checking', 'no-photo'); } else if (photoMode !== 'off') hidePhoto(performance.now() - openedAt > 450);
   });
 
   // ---- done (✓, or Enter anywhere that is not a control)
+  let finish = () => {};
   function onKey(e) {
     if (e.key !== 'Enter' || e.repeat || e.isComposing || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
     if (closed || performance.now() - openedAt < 400) return;
@@ -748,7 +752,6 @@ async function run(initial, resolve) {
   }
   window.addEventListener('keydown', onKey);
 
-  let finish = () => {};
   await new Promise((done) => {
     finish = () => {
       if (closed || photo.dataset.state === 'busy') return;

@@ -996,7 +996,7 @@
       "known": [
         "Your book knows our coats already? Good. Saves a speech."
       ],
-      "record": "Embedding: a learned table hands each token its coat of numbers, a vector. Same word, same coat, wherever it stands."
+      "record": "A learned table hands each token its coat of numbers, a vector. Same word, same coat, wherever it stands."
     },
     {
       "id": "f2",
@@ -1029,7 +1029,7 @@
       "known": [
         "Your book knows how a look is sliced? Bon. No quiz, then."
       ],
-      "record": "Softmax: raise e to each score and divide by their sum, e^(s_i) / Σ_j e^(s_j). The slices make one whole; the loudest take the most."
+      "record": "Raise e to each score, then divide by the sum of those powers: e^(s_i) / Σ_j e^(s_j). The slices make one whole; the loudest takes the most."
     },
     {
       "id": "f3",
@@ -1057,7 +1057,7 @@
       "known": [
         "Your creepy book already knows my sums? Never mind, then!"
       ],
-      "record": "Dot product: multiply matching entries and add them up, a · b = Σ_i a_i b_i. It swells when two vectors point the same way, sinks below zero when they oppose."
+      "record": "Multiply matching entries and add them up, a · b = Σ_i a_i b_i. It swells when two vectors point the same way, sinks below zero when they oppose."
     },
     {
       "id": "f4",
@@ -1090,7 +1090,7 @@
       "known": [
         "That spooky book of yours knows my satchel already? Hmph. Show-off."
       ],
-      "record": "Hidden state: a recurrent model's one small satchel of memory. Each step remakes it from the last satchel and the new input, h_t = f(h_(t-1), x_t); it never grows."
+      "record": "A recurrent model's one small satchel of memory. Each step remakes it from the last satchel and the new input, h_t = f(h_(t-1), x_t); it never grows."
     }
   ],
   "artefact": {

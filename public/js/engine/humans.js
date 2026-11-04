@@ -1,6 +1,7 @@
 // Animal Crossing-style humans built from primitives, in the same toy style as villagers.js.
 //   buildHuman(params)  the player: feet at y=0, ~1.9 units tall, faces +z
-//   buildScientist()    Professor Grumm: a giant (~9.5 units) grumpy scientist in a lab coat
+//   buildScientist()    the old scientist model: a normal-sized grumpy man in a lab coat (~9.5 units, ~5x
+//                       the Speck). The game shows Becancourt from engine/scientist.js; this one is for /dev pages.
 // Character params: see "Character params" in docs/ARCHITECTURE.md. Every builder accepts anything
 // and fills missing or invalid fields with defaults (normalizeCharacter).
 import * as THREE from 'three';
@@ -836,7 +837,8 @@ function buildAccessory(kind, p, head, F, hair, M) {
 const puff = (base, top) => (phi, th) => base + top * Math.max(0, Math.cos(th));
 
 // ---------------------------------------------------------------------------------------------
-// Professor Grumm: a giant, permanently irritated scientist (~9.5 units), same toy style.
+// The old scientist model: normal-sized and permanently irritated (~9.5 units, ~5x the Speck), same toy
+// style. Not used by the game (it shows Becancourt from engine/scientist.js); /dev pages still compare it.
 
 const EXPRESSIONS = {
   neutral: { browY: 0.02, browRot: 0.1, browS: 1, eyeY: 1, eyeX: 1, lid: 0.18, crease: 0 },
@@ -844,7 +846,7 @@ const EXPRESSIONS = {
   surprised: { browY: 0.32, browRot: -0.22, browS: 1.12, eyeY: 1.4, eyeX: 1.22, lid: 0, crease: 0 },
   talking: { browY: -0.08, browRot: 0.36, browS: 1, eyeY: 0.92, eyeX: 1, lid: 0.35, crease: 0.6 },
 };
-const LIFT = 0.15; // Grumm's upper body sits a little higher so more of him shows above the lab desk
+const LIFT = 0.15; // his upper body sits a little higher so more of him shows above a desk
 
 export function buildScientist() {
   const M = materials();
@@ -856,7 +858,7 @@ export function buildScientist() {
   const rand = rng(1234567);
 
   const root = new THREE.Group();
-  root.name = 'grumm';
+  root.name = 'old-scientist';
   const body = grp(root);
 
   // ---- legs + big round shoes

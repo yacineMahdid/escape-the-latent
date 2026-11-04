@@ -9,7 +9,8 @@
 .cr-overlay.out .cr-card { animation: cr-drop .22s ease-in forwards; }
 
 .cr-card {
-  position: relative; display: flex; gap: 20px; align-items: stretch;
+  --gap: 20px;
+  position: relative; display: flex; gap: var(--gap); align-items: stretch;
   width: min(1140px, 100%); height: min(640px, 100%); padding: 20px;
   border-radius: 24px;
   background-color: var(--paper);
@@ -17,22 +18,33 @@
   background-size: 14px 14px;
   animation: cr-pop .38s cubic-bezier(.2, 1.4, .4, 1);
 }
+.cr-card:focus { outline: none; }
 .cr-card button { font-family: var(--font-ui); }
-.cr-card button:focus-visible, .cr-photo:focus-visible, .cr-any:focus-within { outline: 3px dashed var(--pink); outline-offset: 3px; }
+.cr-card button:focus-visible, .cr-frame:focus-visible, .cr-any:focus-within { outline: 3px dashed var(--pink); outline-offset: 3px; }
 
 /* ---------------- photo zone: a taped polaroid ---------------- */
 .cr-photo {
-  position: relative; flex: 0 0 270px; align-self: center; display: flex; flex-direction: column; gap: 8px;
+  position: relative; flex: 0 0 270px; min-width: 0; align-self: center; display: flex; flex-direction: column; gap: 8px;
   padding: 14px 14px 10px; background: #fff; border: 4px solid var(--ink); border-radius: 10px;
   box-shadow: 5px 5px 0 rgba(43, 34, 51, .3); transform: rotate(-2.5deg); cursor: pointer;
-  transition: transform .18s ease; animation: cr-slide .4s cubic-bezier(.2, 1.3, .4, 1);
+  transition: transform .18s ease, flex-basis .34s ease, margin-right .34s ease, padding .34s ease, border-width .34s ease, opacity .2s ease;
+  animation: cr-slide .4s cubic-bezier(.2, 1.3, .4, 1);
 }
-.cr-photo:hover, .cr-photo:focus-visible { transform: rotate(-1deg) translateY(-4px); }
-.cr-card.no-photo .cr-photo { display: none; }
+.cr-photo:hover, .cr-photo:focus-within { transform: rotate(-1deg) translateY(-4px); }
+/* while /api/status answers, the column is kept (invisible) so the stage never jumps */
+.cr-card.checking .cr-photo { visibility: hidden; animation: none; }
+/* no Claude: the polaroid folds away and the stage widens into its place */
+.cr-card.no-photo .cr-photo {
+  flex-basis: 0; margin-right: calc(-1 * var(--gap)); padding-left: 0; padding-right: 0; border-left-width: 0; border-right-width: 0;
+  overflow: hidden; opacity: 0; visibility: hidden; pointer-events: none; animation: none;
+  transition: flex-basis .34s ease, margin-right .34s ease, padding .34s ease, border-width .34s ease, opacity .2s ease, visibility 0s linear .34s;
+}
+.cr-card.no-anim .cr-photo { transition: none !important; }
 .cr-tape {
   position: absolute; top: -17px; left: 50%; width: 96px; height: 28px; transform: translateX(-50%) rotate(4deg);
   background: rgba(255, 122, 184, .6); border-left: 3px dotted rgba(255, 255, 255, .8); border-right: 3px dotted rgba(255, 255, 255, .8);
 }
+.cr-shot { position: relative; }
 .cr-frame {
   position: relative; aspect-ratio: 4 / 5; border-radius: 8px; border: 3px dashed #cbbfa6; background: #f6efdc;
   overflow: hidden; display: grid; place-items: center;
@@ -46,7 +58,7 @@
 .cr-photo.has-img .cr-photo-icon, .cr-photo.cam .cr-photo-icon { visibility: hidden; }
 .cr-photo.cam .cr-video { display: block; transform: scaleX(-1); }
 .cr-photo.cam .cr-photo-img { display: none; }
-.cr-photo.cam { cursor: default; }
+.cr-photo.cam, .cr-photo.cam .cr-frame { cursor: default; }
 
 /* paper pinwheel while Claude looks */
 .cr-spin {
@@ -68,6 +80,7 @@
 .cr-mini:hover { background: #fff3c4; }
 .cr-mini svg { width: 28px; height: 28px; }
 .cr-mini[hidden], .cr-camx { display: none; }
+.cr-cam.wait { opacity: .55; cursor: progress; }
 .cr-photo.cam .cr-camx { display: grid; }
 .cr-photo.cam .cr-cam { display: none; }
 .cr-snap {
@@ -103,35 +116,18 @@
 .cr-canvas { position: relative; flex: 1; min-height: 0; width: 100%; display: block; touch-action: none; cursor: grab; }
 .cr-canvas:active { cursor: grabbing; }
 .cr-stage.no-gl .cr-canvas { visibility: hidden; }
-.cr-actions { position: relative; display: flex; align-items: center; justify-content: center; gap: 14px; padding: 8px 12px 16px; }
+.cr-actions { position: relative; display: flex; align-items: center; justify-content: center; gap: 22px; padding: 8px 12px 16px; }
 .cr-round {
-  width: 56px; height: 56px; border-radius: 50%; border: 4px solid var(--ink); background: var(--paper); color: var(--ink);
+  flex: none; width: 56px; height: 56px; border-radius: 50%; border: 4px solid var(--ink); background: var(--paper); color: var(--ink);
   font: bold 27px/1 var(--font-ui); cursor: pointer; display: grid; place-items: center; padding: 0;
-  box-shadow: 3px 3px 0 rgba(43, 34, 51, .3); transition: transform .12s;
+  box-shadow: 3px 3px 0 rgba(43, 34, 51, .3); transition: transform .12s, opacity .15s;
 }
-.cr-round:hover { transform: translateY(-2px) scale(1.06); background: #fff3c4; }
-.cr-round:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 rgba(43, 34, 51, .3); }
+.cr-round:not(:disabled):hover { transform: translateY(-2px) scale(1.06); background: #fff3c4; }
+.cr-round:not(:disabled):active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 rgba(43, 34, 51, .3); }
+.cr-round:disabled { opacity: .45; cursor: progress; filter: saturate(.5); }
 .cr-ok { width: 66px; height: 66px; background: var(--pink); color: #fff; font-size: 36px; text-shadow: 2px 2px 0 rgba(43, 34, 51, .35); }
-.cr-ok:hover { background: #ff92c6; }
+.cr-ok:not(:disabled):hover { background: #ff92c6; }
 .cr-dice.roll { animation: cr-roll .5s cubic-bezier(.3, 1.5, .5, 1); }
-.cr-name {
-  width: 150px; min-width: 0; text-align: center; font: bold 19px var(--font-ui); color: #fff; background: var(--pink);
-  border: 4px solid var(--ink); border-radius: 12px; padding: 6px 10px; box-shadow: 3px 3px 0 rgba(43, 34, 51, .3); outline: none;
-}
-.cr-name::placeholder { color: rgba(255, 255, 255, .78); font-weight: normal; font-style: italic; }
-.cr-name:focus { box-shadow: 0 0 0 4px #fff3c4, 3px 3px 0 rgba(43, 34, 51, .3); }
-
-.cr-offline {
-  position: absolute; top: 12px; left: 12px; z-index: 2; width: 48px; height: 48px; border-radius: 14px; display: none; place-items: center;
-  border: 3px solid var(--ink); background: var(--paper); font-size: 24px; cursor: help; box-shadow: 2px 2px 0 rgba(43, 34, 51, .25);
-}
-.cr-offline span { filter: grayscale(1); opacity: .55; }
-.cr-offline i {
-  position: absolute; right: -9px; bottom: -9px; width: 25px; height: 25px; border-radius: 50%; display: grid; place-items: center;
-  font: bold 19px/1 var(--font-ui); font-style: normal; color: #c03a5a; background: var(--paper); border: 2px solid var(--ink);
-}
-.cr-card.no-photo .cr-offline { display: grid; }
-.cr-card.checking .cr-offline { display: none; }
 
 /* poof: paper bits + a cloud when the new look arrives */
 .cr-poof { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; z-index: 3; }
@@ -200,15 +196,52 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .cr-overlay, .cr-card, .cr-photo, .cr-badge, .cr-dice.roll, .cr-spin { animation: none !important; }
+  .cr-card.no-photo .cr-photo { transition: none; }
 }
 
-/* ---------------- narrow screens: stack and scroll ---------------- */
-@media (max-width: 900px) {
+/* ---------------- tablets: a slimmer polaroid keeps the stage wide ---------------- */
+@media (max-width: 1100px) {
+  .cr-photo { flex-basis: 200px; }
+  .cr-photo-icon { font-size: 58px; }
+}
+
+/* ---------------- narrow portrait screens: stack and scroll ---------------- */
+@media (max-width: 900px) and (orientation: portrait), (max-width: 900px) and (min-height: 501px) {
   .cr-overlay { padding: 10px; align-items: stretch; }
-  .cr-card { flex-direction: column; height: auto; max-height: 100%; overflow: auto; gap: 14px; padding: 16px; }
+  .cr-card { --gap: 14px; flex-direction: column; height: auto; max-height: 100%; overflow: auto; padding: 16px; }
   .cr-photo { flex: none; width: 190px; margin-top: 8px; }
   .cr-photo-icon { font-size: 52px; }
+  .cr-card.no-photo .cr-photo { display: none; }
   .cr-stage { flex: none; height: min(380px, 56vh); min-width: 0; }
   .cr-controls { flex: none; }
   .cr-panel { overflow: visible; }
+}
+
+/* ---------------- phones in landscape: one row, everything smaller ---------------- */
+@media (max-height: 500px) and (orientation: landscape) {
+  .cr-overlay { padding: 8px; }
+  .cr-card { --gap: 10px; height: 100%; padding: 10px; border-radius: 18px; }
+  .cr-photo { flex-basis: 128px; padding: 8px 8px 6px; gap: 6px; border-width: 3px; }
+  .cr-tape { width: 62px; height: 18px; top: -11px; }
+  .cr-photo-icon { font-size: 38px; }
+  .cr-photo-foot { height: 30px; }
+  .cr-mini { width: 38px; height: 30px; }
+  .cr-mini svg { width: 22px; height: 22px; }
+  .cr-snap { width: 42px; height: 42px; bottom: 8px; }
+  .cr-badge { width: 34px; height: 34px; top: -11px; right: -11px; font-size: 21px; }
+  .cr-spin { width: 52px; height: 52px; }
+  .cr-spin::after { inset: 16px; }
+  .cr-stage { min-width: 0; }
+  .cr-actions { gap: 16px; padding: 4px 8px 8px; }
+  .cr-round { width: 44px; height: 44px; font-size: 21px; border-width: 3px; }
+  .cr-ok { width: 52px; height: 52px; font-size: 28px; }
+  .cr-controls { flex-basis: min(330px, 42vw); }
+  .cr-tabs { padding: 0 8px; gap: 4px; }
+  .cr-tab { height: 40px; margin-top: 6px; border-width: 3px; }
+  .cr-tab.on { height: 46px; }
+  .cr-tab svg { width: 26px; height: 26px; }
+  .cr-panel { gap: 10px; padding: 12px 10px; border-width: 3px; }
+  .cr-row + .cr-row { padding-top: 10px; }
+  .cr-chip { width: 42px; height: 42px; border-radius: 12px; }
+  .cr-sw { width: 26px; height: 26px; }
 }

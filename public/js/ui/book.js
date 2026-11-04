@@ -1278,18 +1278,20 @@ class Motes {
     this.w = 0;
     this.h = 0;
     this.anims = [];
-    this.ro = new ResizeObserver(() => { clearTimeout(this.t); this.t = setTimeout(() => this.build(), 120); });
+    // first size at once, later ones (window resizes) once they settle
+    this.ro = new ResizeObserver(() => { clearTimeout(this.t); if (this.w) this.t = setTimeout(() => this.build(), 120); else this.build(); });
     this.ro.observe(host);
   }
 
   build() {
-    const r = this.host.getBoundingClientRect();
-    if (!r.width || !r.height || (Math.abs(r.width - this.w) < 2 && Math.abs(r.height - this.h) < 2)) return;
+    // layout size, not getBoundingClientRect: the book opens with a scale-in transform
+    const w = this.host.clientWidth, hgt = this.host.clientHeight;
+    if (!w || !hgt || (Math.abs(w - this.w) < 2 && Math.abs(hgt - this.h) < 2)) return;
     this.stop();
-    this.w = r.width;
-    this.h = r.height;
+    this.w = w;
+    this.h = hgt;
     const still = reducedMotion() || typeof Element.prototype.animate !== 'function';
-    const n = Math.round(clamp((r.width * r.height) / 12000, 24, 90));
+    const n = Math.round(clamp((w * hgt) / 12000, 24, 90));
     const rnd = Math.random;
     const frag = document.createDocumentFragment();
     const loop = (el, frames, duration, more) => {

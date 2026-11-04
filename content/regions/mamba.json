@@ -68,7 +68,7 @@
         "shirt": "#ff7ab8"
       },
       "anchor": "lane-mid",
-      "role": "Flavour, and the region's curious kid: rides on Noodle's tail and wants to know where the road ends. A natural giver for later fundamentals (hidden state, exponential decay, sigmoid/softplus, linear projections). Never explains anything.",
+      "role": "Flavour, and the region's curious kid: rides on Noodle's tail and wants to know where the road ends. Gives f1 (hidden state: already in the book in normal play, so his first talk opens with its known line, then his default, or f2 after c1) and f2 (exponential decay, after c1). afterSolved needs f2, so it only shows after c1. Never explains anything.",
       "lines": {
         "default": [
           "I'm Tumble! I ride on Noodle's tail. Where does the road END?",
@@ -88,7 +88,7 @@
         "shirt": "#a05a8c"
       },
       "anchor": "terrace-1",
-      "role": "Red herring and flavour: a sandy desert pack-rat who never chooses and keeps every letter forever (attention's KV cache: no compression, so each lookup gets slower as the pile grows; Section 3.1). His overflowing letter cart is the right pan of the c2 scale (a Transformer layer's MHA + MLP).",
+      "role": "Red herring and flavour: a sandy desert pack-rat who never chooses and keeps every letter forever (attention's KV cache: no compression, so each lookup gets slower as the pile grows; Section 3.1). His overflowing letter cart is the right pan of the c2 scale (a Transformer layer's MHA + MLP). Gives f3 (Big-O, his first talk after c1: each new letter checked against every letter in his cart). Default shows before c1; afterSolved from f3 on.",
       "lines": {
         "default": [
           "Why choose? I keep EVERY letter. Every single one. Forever!",
@@ -127,7 +127,7 @@
         "shirt": "#c8453c"
       },
       "anchor": "lane-right",
-      "role": "Giver of c4 (explain). The postmistress, a ginger bear in a post-box-red uniform, proud of her one big rubber stamp that prints a whole road at once and treats every grain alike: an LTI SSM / global convolution in a post-office cap. Fine for evenly spaced beads (Copying), smudges on scattered ones (Selective Copying). Skeptical of the 'fussy' snake.",
+      "role": "Giver of c4 (explain). The postmistress, a ginger bear in a post-box-red uniform, proud of her one big rubber stamp that prints a whole road at once and treats every grain alike: an LTI SSM / global convolution in a post-office cap. Fine for evenly spaced beads (Copying), smudges on scattered ones (Selective Copying). Skeptical of the 'fussy' snake. Gives f4 (convolution: her first talk after c3 checks you can read her stamp, so her 'scanner' default never shows after c3); c4 follows on the next talk.",
       "lines": {
         "default": [
           "Post office. My one stamp prints a whole road at once. Every grain alike. Fast!",
@@ -530,7 +530,10 @@
       "giver": "scanner",
       "requires": [
         "c1",
-        "c2"
+        "c2",
+        "f1",
+        "f2",
+        "f3"
       ],
       "prompt": "Two numpy functions, `float64`. A loop over time is fine.\n\n### 1. `selective_scan(x, delta, A, B, C, h0=None)` → `(y, h_last)`\nThe SSM of **Eq. (2a)/(2b)**, time-varying as in **Algorithm 2**, discretized by the **ZOH of Eq. (4)**.\n- `x` `(L, D)`; `delta` `(L, D)`, all > 0: one Δ per step and channel\n- `A` `(D, N)`, all < 0: row `d` is the diagonal of channel `d`'s A\n- `B`, `C` `(L, N)`: one row per step, shared by all channels\n- `h0` `(D, N)`: the belly before step 0; `None` = zeros\n- channel `d` runs its own SSM with an `N`-long state `h[d]`, using `A[d]`, `delta[t, d]`, `B[t]`, `C[t]`\n- `y[t, d] = C[t] · h_t[d]` (sum over the `N` pockets)\n- `y` `(L, D)`; `h_last` `(D, N)`: the state after the last step\n\n### 2. `s6(x, A, W_B, W_C, w_delta, delta_bias)` → `y` `(L, D)`\nSelection (**Section 3.2**, **Algorithm 2**), then `selective_scan` from a zero belly.\n- `x` `(L, D)`; `A` `(D, N)`; `W_B`, `W_C` `(D, N)`; `w_delta`, `delta_bias` `(D,)`\n- `B = x @ W_B`, `C = x @ W_C` (s_B, s_C = Linear_N, no bias)\n- `Δ = τ_Δ(Parameter + s_Δ(x))`: Parameter = `delta_bias`; `s_Δ(x) = Broadcast_D(Linear_1(x))` with `Linear_1(x) = x @ w_delta`; τ_Δ as Section 3.2 chooses\n",
       "starterCode": "import numpy as np\n\n\ndef selective_scan(x, delta, A, B, C, h0=None):\n    \"\"\"x (L, D), delta (L, D) > 0, A (D, N) < 0, B and C (L, N), h0 (D, N) or None.\n\n    Returns (y, h_last): y (L, D), h_last (D, N).\n    \"\"\"\n    x = np.asarray(x, dtype=np.float64)\n    A = np.asarray(A, dtype=np.float64)\n    L, D = x.shape\n    N = A.shape[1]\n    # TODO: the hourglasses are empty.\n    return np.zeros((L, D)), np.zeros((D, N))\n\n\ndef s6(x, A, W_B, W_C, w_delta, delta_bias):\n    \"\"\"x (L, D), A (D, N), W_B and W_C (D, N), w_delta and delta_bias (D,). Returns y (L, D).\"\"\"\n    x = np.asarray(x, dtype=np.float64)\n    # TODO: Noodle chooses nothing yet.\n    return np.zeros_like(x)\n",
@@ -552,7 +555,8 @@
       "requires": [
         "c1",
         "c2",
-        "c3"
+        "c3",
+        "f4"
       ],
       "question": "Why can't my stamp carry scattered beads? What does Noodle do with each grain instead?",
       "rubric": [
@@ -633,6 +637,133 @@
       ]
     }
   ],
+  "fundamentals": [
+    {
+      "id": "f1",
+      "concept": "hidden-state",
+      "title": "Hidden state",
+      "giver": "tumble",
+      "requires": [],
+      "intro": [
+        "Noodle has ONE small belly, and the road never ends. How does it all fit?!"
+      ],
+      "check": {
+        "kind": "choice",
+        "question": "At grain 5, Noodle's belly is made from…",
+        "options": [
+          "Grain 5 alone",
+          "Belly at grain 4 + grain 5",
+          "All 5 grains, kept whole",
+          "An empty belly"
+        ],
+        "answer": 1
+      },
+      "wrong": [
+        "Nope! I'd know. I live on his tail."
+      ],
+      "success": [
+        "Old belly plus one new grain, again and again. It never gets bigger!"
+      ],
+      "known": [
+        "Ooh, your book glows! It knows how Noodle's one belly holds a whole road? Aww."
+      ],
+      "record": "A recurrent model's one small belly of memory: each step remakes it from the last state and the new input, h_t = f(h_(t-1), x_t). It never grows."
+    },
+    {
+      "id": "f2",
+      "concept": "exponential-decay",
+      "title": "Exponential decay",
+      "giver": "tumble",
+      "requires": [
+        "c1"
+      ],
+      "intro": [
+        "Noodle's ruby used to fade on the sand, grain by grain. I counted! Can you?"
+      ],
+      "check": {
+        "kind": "number",
+        "question": "A glow of 1 keeps half of itself each grain. Left after 3 grains? (decimal)",
+        "answer": 0.125,
+        "tolerance": 0.006
+      },
+      "wrong": [
+        "Nope! I counted on both ears. Twice."
+      ],
+      "success": [
+        "0.125! An eighth. Fading, fading... but never quite zero."
+      ],
+      "known": [
+        "Your book knows how a glow fades, grain by grain? Phooey. I counted for nothing."
+      ],
+      "record": "Multiply by the same share a (0 < a < 1) each step and a^t is left after t steps; at e^(-k) a step, e^(-kt). It dwindles, and never quite dies."
+    },
+    {
+      "id": "f3",
+      "concept": "big-o",
+      "title": "Big-O cost",
+      "giver": "kayvee",
+      "requires": [
+        "c1"
+      ],
+      "intro": [
+        "Each new letter, I check against ALL the letters in my cart."
+      ],
+      "check": {
+        "kind": "choice",
+        "question": "For n letters, my total checking grows like…",
+        "options": [
+          "n",
+          "log n",
+          "n²",
+          "Constant"
+        ],
+        "answer": 2
+      },
+      "wrong": [
+        "Nope. And I've checked a LOT of letters."
+      ],
+      "success": [
+        "n². Twice the road, four times the checking. My poor paws!"
+      ],
+      "known": [
+        "Your book already knows how my checking piles up? Hmph. Back to sorting."
+      ],
+      "record": "How the toil swells with n: one pass is O(n), doubling when n doubles; each against all is O(n²), and quadruples."
+    },
+    {
+      "id": "f4",
+      "concept": "convolution",
+      "title": "Convolution",
+      "giver": "penny",
+      "requires": [
+        "c3"
+      ],
+      "intro": [
+        "The scanner agrees? Hmph. First, prove you can read my stamp."
+      ],
+      "check": {
+        "kind": "choice",
+        "question": "At each grain: 1 × this grain + 2 × the grain before. Road 0, 1, 0, 0 prints…",
+        "options": [
+          "0, 2, 1, 0",
+          "0, 1, 0, 0",
+          "1, 2, 0, 0",
+          "0, 1, 2, 0"
+        ],
+        "answer": 3
+      },
+      "wrong": [
+        "Hmph. Wrong. My stamp would blush."
+      ],
+      "success": [
+        "Hmph. You CAN read a stamp. Now, about that snake..."
+      ],
+      "known": [
+        "Your book reads stamps already? Hmph. Saves ink."
+      ],
+      "record": "One kernel, slid along the sequence: each output a weighted sum of nearby inputs, by the same weights at every position."
+    }
+  ],
   "artefact": {
     "id": "sifting-hourglass",
     "name": "The Sifting Hourglass",
@@ -648,7 +779,9 @@
       "Do not say that τ_Δ is softplus.",
       "Never write scan or s6 code or pseudo-code (no per-step update with Ā_t and B̄_t).",
       "Do not explain why time-invariant (LTI) models fail on Selective Copying (constant versus random spacing, static kernels, content-awareness), or that selection breaks the convolution view and forces a scan.",
-      "Never confirm, grade or correct the player's answer to any puzzle, code task or explanation in this region."
+      "Never confirm, grade or correct the player's answer to any puzzle, code task or explanation in this region.",
+      "Do not give, hint at or confirm the answers to the villagers' concept checks: Noodle's belly at grain 5 is made from his belly at grain 4 plus grain 5 (not grain 5 alone, not all 5 grains kept whole, not an empty belly); a glow that starts at 1 and keeps half of itself each grain has 0.125 (1/8) left after 3 grains; checking each new letter against every letter already in the cart takes n(n-1)/2 checks in all and grows like n² (not n, log n or a constant); a stamp printing 1 × this grain + 2 × the grain before turns road 0, 1, 0, 0 into 0, 1, 2, 0 (not 0, 2, 1, 0 / 1, 2, 0, 0 / 0, 1, 0, 0).",
+      "Do not say what a recurrent state at a step is made from (the previous state h_(t-1) and the current input x_t, Eq. 2a). Do not compute any power, decay, count of checks, growth rate or stamp print for numbers or roads the player brings, and never say which option of a villager's question is right. A general definition of exponential decay, Big-O or convolution is allowed if no other rule here forbids it."
     ],
     "offlineHints": [
       {
@@ -799,6 +932,58 @@
           "appendix c"
         ],
         "text": "An old gate sleeps in the snake. Theorem 1 wakes it. Appendix C shows its bones."
+      },
+      {
+        "keywords": [
+          "glow",
+          "fade",
+          "fades",
+          "fading",
+          "decay",
+          "exponential",
+          "half",
+          "halves",
+          "halving",
+          "eighth",
+          "made from",
+          "grain 5",
+          "hidden state",
+          "tumble"
+        ],
+        "text": "The belly's making: Equation 2a. Its fading: Equation 4, then 3a. The counting is yours."
+      },
+      {
+        "keywords": [
+          "big-o",
+          "big o",
+          "o(n",
+          "quadratic",
+          "n squared",
+          "n^2",
+          "n²",
+          "grows like",
+          "grow like",
+          "how fast",
+          "kayvee",
+          "checking",
+          "letters"
+        ],
+        "text": "A cart that forgets nothing pays for it. Section 3.1 names the toll."
+      },
+      {
+        "keywords": [
+          "print",
+          "grain before",
+          "this grain",
+          "weighted sum",
+          "0, 1, 0, 0",
+          "0,1,0,0",
+          "read my stamp",
+          "read her stamp",
+          "read the stamp",
+          "read a stamp"
+        ],
+        "text": "The stamp's portrait: Equation 3. Press it yourself."
       }
     ]
   }

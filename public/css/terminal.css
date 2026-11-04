@@ -71,6 +71,7 @@
   background: #f3ead2; border: 1.5px solid rgba(43, 34, 51, .16); border-radius: 6px; padding: 0 5px;
   overflow-wrap: anywhere;
 }
+.md-code.md-nowrap { white-space: nowrap; }
 .md-pre {
   margin: 0 0 12px; padding: 10px 12px; overflow: auto;
   background: #f6efdc; border: 2px solid rgba(43, 34, 51, .2); border-radius: 10px;
@@ -98,7 +99,7 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
 
 /* ---------------- editor (right, top) ---------------- */
 
-.term-right { min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto minmax(118px, 31%); }
+.term-right { min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto minmax(104px, 22%); }
 .term-stage { position: relative; min-height: 0; display: flex; }
 .term-editor {
   --lh: 22px; --pad-y: 12px;
@@ -198,21 +199,16 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
   scrollbar-width: thin; scrollbar-color: rgba(255, 253, 246, .3) transparent;
 }
 .term-log:empty::before { content: '▸'; color: rgba(243, 236, 220, .28); }
-.term-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 9px; padding: 2px 0; }
+.term-row { display: flex; align-items: baseline; gap: 4px 9px; padding: 2px 0; }
 .term-mark { flex: none; width: 1.1em; text-align: center; font-weight: 700; }
 .term-ic { flex: none; align-self: center; font-size: 17px; }
-.term-row.ok .term-mark { color: #6fe3c9; }
-.term-row.ok .term-name { color: #cdebe4; }
 .term-row.bad { color: #ffd2e2; }
 .term-row.bad .term-mark, .term-row.bad .term-ic { color: #ff86b2; }
 .term-row.warn { color: #ffd35a; font-weight: 700; }
 .term-row.muted { color: rgba(243, 236, 220, .45); }
-.term-msg { min-width: 0; overflow-wrap: anywhere; }
-.term-why {
-  flex-basis: 100%; margin: 0 0 4px 1.1em; padding: 2px 0 2px 10px;
-  border-left: 3px solid rgba(255, 134, 178, .6);
-  color: #ffe1ec; font-size: 13.5px; white-space: pre-wrap; overflow-wrap: anywhere;
-}
+.term-row[title]:not([title=""]) { cursor: help; }
+.term-msg { flex: 0 1 auto; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.term-fail { margin-bottom: 8px; }
 .term-lnk {
   flex: none; align-self: center;
   font: 700 11.5px/1 var(--font-code); color: #fff; background: #e2557f;
@@ -228,9 +224,11 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
 .term-sum.ok b { color: #6fe3c9; }
 .term-sum.bad b { color: #ff9cc0; }
 .term-pips { display: flex; flex-wrap: wrap; gap: 5px; }
-.term-pips i { width: 13px; height: 13px; border-radius: 50%; border: 2px solid #fffdf6; }
+.term-pips i { width: 13px; height: 13px; border-radius: 50%; border: 2px solid #fffdf6; cursor: help; }
 .term-pips i.ok { background: var(--teal); }
-.term-pips i.bad { background: var(--pink); }
+.term-pips i.bad { background: var(--pink); cursor: pointer; }
+.term-pips i.bad:hover { transform: scale(1.2); }
+.term-pips i.sel { box-shadow: 0 0 0 2px #2b2233, 0 0 0 4px var(--pink); }
 .term-stdout, .term-stderr {
   margin: 0 0 8px; padding: 0 0 6px; font: inherit; white-space: pre-wrap; overflow-wrap: anywhere;
   border-bottom: 2px dashed rgba(255, 253, 246, .12); max-height: 14em; overflow: auto;
@@ -277,11 +275,31 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
   .term { padding: 20px 12px 12px; }
   .term-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(110px, 32%) minmax(0, 1fr); gap: 10px; }
   .term-prompt { border-right: 0; border-bottom: 3px dashed rgba(43, 34, 51, .2); padding: 0 6px 10px 2px; }
-  .term-right { grid-template-rows: minmax(0, 1fr) auto minmax(90px, 30%); }
+  .term-right { grid-template-rows: minmax(0, 1fr) auto minmax(90px, 24%); }
   .term-keys { padding: 10px 2px; gap: 12px; }
   .term-key { width: 46px; height: 46px; font-size: 20px; }
   .term-close { top: -16px; right: -6px; width: 42px; height: 42px; }
   .term-tag { font-size: 16px; left: 14px; max-width: calc(100% - 80px); }
+}
+
+/* phone landscape: too short to stack, so keep the task beside the editor */
+@media (max-width: 860px) and (max-height: 500px) {
+  .term-overlay { padding: 22px 8px 8px; }
+  .term { padding: 16px 10px 10px; }
+  .term-body { grid-template-columns: minmax(0, 37%) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 12px; }
+  .term-prompt { border-right: 3px dashed rgba(43, 34, 51, .2); border-bottom: 0; padding: 0 10px 8px 2px; font-size: 14px; line-height: 1.45; }
+  .term-right { grid-template-rows: minmax(0, 1fr) auto minmax(56px, 25%); }
+  .term-editor { --lh: 19px; --pad-y: 7px; border-width: 3px; border-radius: 12px; }
+  .term-hl, .term-ta { font-size: 13px; padding-left: 10px; }
+  .term-gutter { width: 38px; }
+  .term-keys { padding: 7px 2px 8px; gap: 10px; }
+  .term-key { width: 36px; height: 36px; font-size: 16px; border-width: 3px; box-shadow: 0 3px 0 var(--ink), 1px 6px 0 rgba(43, 34, 51, .2); }
+  .term-out { padding: 7px 34px 8px 12px; border-width: 3px; border-radius: 12px; font-size: 12.5px; }
+  .term-sum { margin-bottom: 4px; padding-bottom: 4px; }
+  .term-spin { top: 7px; right: 9px; width: 16px; height: 16px; }
+  .term-close { top: -14px; right: -4px; width: 36px; height: 36px; font-size: 15px; }
+  .term-tag { top: -18px; font-size: 14px; padding: 1px 12px 2px; border-width: 3px; }
+  .term-stamp { width: 112px; height: 112px; margin: -56px 0 0 -56px; font-size: 68px; border-width: 5px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -326,6 +344,11 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
 }
 .ex-q { font-size: 21px; line-height: 1.45; overflow-wrap: anywhere; }
 .ex-q .md-code, .ex-reply .md-code { font-size: .82em; }
+/* long questions and replies scroll inside themselves, so the answer card never gets squeezed */
+.ex-q, .ex-reply {
+  max-height: 24vh; overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: rgba(43, 34, 51, .35) transparent;
+}
 
 .ex-reply {
   display: flex; align-items: flex-start; gap: 10px;
@@ -337,7 +360,8 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
 @keyframes ex-reply-in { from { transform: translateY(6px); } }
 .ex-reply[data-mood="pass"] { background: #dcf6ef; }
 .ex-reply[data-mood="fail"] { background: #ffe2ee; }
-.ex-reply[data-mood="error"] { background: var(--paper-2); color: var(--ink-soft); font-weight: 700; cursor: help; }
+.ex-reply[data-mood="error"] { background: var(--paper-2); color: var(--ink-soft); font-weight: 700; }
+.ex-reply[data-mood="error"][title]:not([title=""]) { cursor: help; }
 .ex-reply-mark { flex: none; font-weight: 700; font-size: 20px; line-height: 1.3; }
 .ex-reply-mark:empty { display: none; }
 .ex-reply[data-mood="pass"] .ex-reply-mark { color: #179b86; }
@@ -359,12 +383,12 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
 @keyframes ex-dot { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-7px); } }
 
 .ex-card {
-  position: relative; border: 3px solid var(--ink); border-radius: 16px; overflow: hidden;
+  position: relative; flex: none; border: 3px solid var(--ink); border-radius: 16px; overflow: hidden;
   background: #fffefa; box-shadow: inset 0 3px 0 rgba(43, 34, 51, .06);
 }
 .ex-card:focus-within { box-shadow: inset 0 3px 0 rgba(43, 34, 51, .06), 0 0 0 4px rgba(255, 122, 184, .28); }
 .ex-ta {
-  display: block; width: 100%; min-height: 172px; max-height: 42vh; resize: vertical;
+  display: block; width: 100%; min-height: min(172px, 30vh); max-height: 42vh; resize: vertical;
   border: 0; outline: 0; margin: 0; padding: 6px 18px 10px;
   font: 18px/30px var(--font-ui); color: var(--ink);
   background: repeating-linear-gradient(transparent 0 29px, rgba(143, 211, 255, .6) 29px 30px) 0 6px / 100% 30px local, transparent;
@@ -374,11 +398,8 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
 .ex-ta[readonly] { color: var(--ink-soft); }
 .is-pass .ex-card { border-color: #179b86; }
 
-.ex-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.ex-meta { display: flex; align-items: center; gap: 6px; color: var(--ink-soft); font: 700 13px var(--font-code); }
-.ex-pen { font-size: 15px; opacity: .6; }
-.ex-off { color: #c0560f; font-size: 16px; cursor: help; margin-left: 8px; }
-.ex-off[hidden] { display: none; }
+.ex-answer { flex: none; display: flex; flex-direction: column; gap: 14px; }
+.ex-foot { flex: none; display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
 .ex-keys { display: flex; align-items: center; gap: 14px; padding-bottom: 4px; }
 
 /* the explain keys are the terminal's typewriter keys, a touch smaller */
@@ -415,8 +436,24 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
   .ex-bubble { padding: 26px 14px 14px; gap: 10px; }
   .ex-q { font-size: 18px; }
   .ex-reply { font-size: 16px; }
-  .ex-ta { font-size: 16px; min-height: 130px; }
+  .ex-ta { font-size: 16px; min-height: min(130px, 30vh); }
   .ex-key { width: 44px; height: 44px; font-size: 19px; }
+}
+
+/* short screens (phone landscape): tighter, and the keys sit beside the answer card */
+@media (max-height: 500px) {
+  .ex-overlay { padding: 26px 10px 10px; }
+  .ex-bubble { gap: 8px; padding: 22px 16px 12px; }
+  .ex-bubble::after { display: none; }
+  .ex-q { font-size: 16px; max-height: 22vh; }
+  .ex-reply { font-size: 15px; padding: 6px 12px; max-height: 22vh; }
+  .ex-answer { flex-direction: row; align-items: flex-end; gap: 12px; }
+  .ex-card { flex: 1; min-width: 0; }
+  .ex-ta { font: 16px/26px var(--font-ui); min-height: min(132px, 32vh); padding-top: 4px; background-position: 0 4px; background-size: 100% 26px;
+    background-image: repeating-linear-gradient(transparent 0 25px, rgba(143, 211, 255, .6) 25px 26px); }
+  .ex-keys { flex-direction: column; gap: 12px; padding: 0 2px 4px; }
+  .ex-key { width: 42px; height: 42px; font-size: 18px; }
+  .ex-tag { top: -19px; font-size: 15px; padding: 1px 12px 2px; border-width: 3px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

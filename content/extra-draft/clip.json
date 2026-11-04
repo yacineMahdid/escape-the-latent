@@ -1,0 +1,664 @@
+{
+  "challenges": [
+    {
+      "id": "m1",
+      "type": "minigame",
+      "title": "Raft Rush",
+      "giver": "pomelo",
+      "requires": [
+        "c1"
+      ],
+      "minigame": "raft-rush",
+      "spec": {
+        "goal": "Hop on the photo that fits the words. Glue 6 pairs before 3 splashes!",
+        "controls": [
+          [
+            "← →",
+            "hop"
+          ],
+          [
+            "click",
+            "hop there"
+          ]
+        ],
+        "duration": 0,
+        "durationNote": "0 = no kit clock (the kit hides its bar). Each round has its own fuse (round.time). At most 8 rounds, about 45 s.",
+        "toWin": 6,
+        "splashesToLose": 3,
+        "successText": "Six postcards glued!",
+        "loseText": "Splash! Read every word, then hop.",
+        "hud": "★ {glued}/6 · 💦 {splashes}/3",
+        "rounds": [
+          {
+            "caption": "Turtle on the beach!",
+            "time": 5.0,
+            "photos": [
+              {
+                "main": "🐢",
+                "bg": "sand",
+                "answer": true
+              },
+              {
+                "main": "🦀",
+                "bg": "sand"
+              },
+              {
+                "main": "⛵",
+                "bg": "sea"
+              }
+            ]
+          },
+          {
+            "caption": "My crab in his best top hat",
+            "time": 4.7,
+            "photos": [
+              {
+                "main": "🦀",
+                "bg": "sand",
+                "top": "🎩",
+                "answer": true
+              },
+              {
+                "main": "🦀",
+                "bg": "sand"
+              },
+              {
+                "main": "🐢",
+                "bg": "sand",
+                "top": "🎩"
+              }
+            ]
+          },
+          {
+            "caption": "Coconut in sunglasses. Cool.",
+            "time": 4.5,
+            "photos": [
+              {
+                "main": "🥥",
+                "bg": "sand",
+                "face": "🕶️",
+                "answer": true
+              },
+              {
+                "main": "🥥",
+                "bg": "sand"
+              },
+              {
+                "main": "🐢",
+                "bg": "sand",
+                "face": "🕶️"
+              },
+              {
+                "main": "🥥",
+                "bg": "sand",
+                "top": "🎩"
+              }
+            ]
+          },
+          {
+            "caption": "Octopus watching the sunset",
+            "time": 4.3,
+            "photos": [
+              {
+                "main": "🐙",
+                "bg": "sunset",
+                "answer": true
+              },
+              {
+                "main": "⛵",
+                "bg": "sunset"
+              },
+              {
+                "main": "🐟",
+                "bg": "sea"
+              },
+              {
+                "main": "🦀",
+                "bg": "sand"
+              }
+            ]
+          },
+          {
+            "caption": "Turtle napping on a boat",
+            "time": 4.1,
+            "photos": [
+              {
+                "main": "🐢",
+                "bg": "sea",
+                "under": "⛵",
+                "corner": "💤",
+                "answer": true
+              },
+              {
+                "main": "🐢",
+                "bg": "sea",
+                "under": "⛵"
+              },
+              {
+                "main": "🐢",
+                "bg": "sand",
+                "corner": "💤"
+              },
+              {
+                "main": "⛵",
+                "bg": "sea"
+              },
+              {
+                "main": "🦀",
+                "bg": "sea",
+                "under": "⛵",
+                "corner": "💤"
+              }
+            ]
+          },
+          {
+            "caption": "Pineapple flying a pirate flag",
+            "time": 3.9,
+            "photos": [
+              {
+                "main": "🍍",
+                "bg": "sand",
+                "top": "🏴‍☠️",
+                "answer": true
+              },
+              {
+                "main": "🍍",
+                "bg": "sand"
+              },
+              {
+                "main": "⛵",
+                "bg": "sea",
+                "top": "🏴‍☠️"
+              },
+              {
+                "main": "🥥",
+                "bg": "sand",
+                "top": "🏴‍☠️"
+              },
+              {
+                "main": "🍍",
+                "bg": "sand",
+                "top": "🎩"
+              }
+            ]
+          },
+          {
+            "caption": "A crab riding a turtle, yee-haw!",
+            "time": 3.7,
+            "photos": [
+              {
+                "main": "🐢",
+                "bg": "sea",
+                "top": "🦀",
+                "answer": true
+              },
+              {
+                "main": "🦀",
+                "bg": "sand",
+                "top": "🐢"
+              },
+              {
+                "main": "🐢",
+                "bg": "sea"
+              },
+              {
+                "main": "🦀",
+                "bg": "sand"
+              },
+              {
+                "main": "🐢",
+                "bg": "sea",
+                "top": "🎩"
+              },
+              {
+                "main": "🐟",
+                "bg": "sea",
+                "top": "🦀"
+              }
+            ]
+          },
+          {
+            "caption": "Fish wearing a crown at night",
+            "time": 3.5,
+            "photos": [
+              {
+                "main": "🐟",
+                "bg": "night",
+                "top": "👑",
+                "answer": true
+              },
+              {
+                "main": "🐟",
+                "bg": "sea",
+                "top": "👑"
+              },
+              {
+                "main": "🐟",
+                "bg": "night"
+              },
+              {
+                "main": "🐙",
+                "bg": "night",
+                "top": "👑"
+              },
+              {
+                "main": "🐟",
+                "bg": "night",
+                "top": "🎩"
+              },
+              {
+                "main": "🐟",
+                "bg": "sea"
+              }
+            ]
+          }
+        ],
+        "roundsNote": "Play the rounds in this order, one batch each (3, 3, 4, 4, 5, 5, 6, 6 rafts). Shuffle each round's rafts with a seeded RNG, new seed every try. Exactly one photo per round has answer: true: it is the only one that fits the WHOLE caption, and every other raft shares part of it (a hard negative). With 6 to win and 3 splashes to lose, 8 rounds always settle the game.",
+        "photoArt": {
+          "frame": "A polaroid on a little mast above each raft: white card 100 × 116 around a 100 × 100 picture (thicker bottom border). No words on photos.",
+          "order": [
+            "bg",
+            "under",
+            "main",
+            "face",
+            "top",
+            "corner"
+          ],
+          "bg": {
+            "sand": "beige #f7e2a6 with a few darker dots #e8c77e",
+            "sea": "light blue #8fdcf0 with two white wave arcs",
+            "sunset": "vertical gradient #ffb35a → #ff7ab8, a half sun #ffe06a on the horizon",
+            "night": "navy #2a3a6a with 5 small white stars"
+          },
+          "slots": {
+            "main": "the subject emoji, 52 px, centred (y +6)",
+            "under": "what the subject sits on, 48 px, low (y +28); the main is then drawn 16 px higher, on top of it",
+            "face": "worn over the main's eyes, 26 px (y -4)",
+            "top": "worn on, flying from, or riding on top of the main, 30 px, just above it (y -26)",
+            "corner": "a small state badge, 22 px, top-right corner (💤 = asleep)"
+          },
+          "fallback": "If an emoji does not render (e.g. 🏴‍☠️ splits into two glyphs), draw a paper shape instead: pirate flag = black pennant on a stick with a white dot."
+        },
+        "brine": {
+          "look": "Skipper Brine: brown bear head #8a5a36 with a navy captain's cap #2f4f8f, standing on a raft like the Speck.",
+          "stickers": {
+            "🐢": "turtle",
+            "🦀": "crab",
+            "⛵": "boat",
+            "🥥": "coconut",
+            "🐟": "fish",
+            "🐙": "octopus"
+          },
+          "stickersNote": "Brine's crate: one fixed word per photo, from its main emoji only. Any other main (🍍) has no sticker.",
+          "start": "Each round he stands on the rightmost raft.",
+          "rule": [
+            "A raft is a candidate if its main emoji's sticker word appears in the caption (whole word, case-insensitive, punctuation ignored).",
+            "He picks the plainest candidate: fewest filled slots among under, face, top, corner (bg does not count); ties go to the leftmost raft.",
+            "No candidate: at 1.2 s he shouts 'No sticker for THAT!' and dives into the sea (a miss; he climbs back on next round)."
+          ],
+          "move": "He waits 1.2 s (a 🏷️ tag with his sticker word pops over his head), then hops one raft every 0.3 s toward his pick.",
+          "expected": "With these rounds Brine gets R1 and R4 right and every other round wrong (2 of 8), whatever the shuffle.",
+          "score": "A small '🐻 {score}' tally above him. It never decides the result.",
+          "bubbles": {
+            "right": "Ha!",
+            "splash": "Blast!",
+            "none": "No sticker for THAT!"
+          }
+        },
+        "flow": [
+          "Round start: the rafts slide in from the right (0.3 s), the caption card flips in with round.caption and the fuse under it starts to burn (round.time s). The Speck lands on the raft nearest its last x (round 1: the middle raft, index floor((N - 1) / 2)).",
+          "While the fuse burns the player hops freely. For the last 3 s the fuse is red and sfx('tick') plays once a second.",
+          "Fuse out: hopping locks. Every raft without answer: true tips and sinks (0.5 s, splash rings, sfx('pop')).",
+          "Speck on the true raft: its photo flies up into the caption card, they snap into one postcard (sfx('ding'), a '+1 ★' pop) that flies to the next free peg of the clothesline. glued += 1.",
+          "Speck on a sinking raft: a big splash, 'SPLASH!' in blue, sfx('buzz'), splashes += 1. The true raft still glows and lifts its photo to the card for 0.6 s, so the player sees the real pair; that card then fades (no peg).",
+          "Brine: on the true raft he gets '🐻 +1' and says 'Ha!'; otherwise he splashes and says 'Blast!'.",
+          "After 1.4 s: glued ≥ toWin → result 'win'; splashes ≥ splashesToLose → 'lose'; else the next round."
+        ],
+        "input": [
+          "← / → (A / D): hop one raft (0.18 s arc, sfx('paper')); held, it repeats after 0.25 s every 0.2 s. No hop past the ends.",
+          "Click or tap a raft (deck or polaroid): one long hop straight onto it (0.28 s).",
+          "Hops are only allowed while the fuse burns. Space does nothing during play."
+        ],
+        "layout": {
+          "canvas": "960 × 540 kit units.",
+          "sky": "y 0-170, pale sky; a clothesline across y 26 with 6 pegs; glued postcards (56 × 38: a tiny photo and two ink lines) hang from them.",
+          "card": "caption card centred at (480, 110), 600 × 60, cream #fffdf6, 4 px ink border, caption in 30 px bold ink. Mrs. Pomelo's head (pink pig #f7a8b8, green collar #8fcf5a) peeks over its left end.",
+          "fuse": "a rope under the card from x 200 to 760 at y 152, burning right to left with a spark.",
+          "lagoon": "y 170-540, turquoise water #22cfd8 with light ripple lines; the Stilt Post's stilts at the far left as decor.",
+          "rafts": "N rafts in a row, centres x_i = 110 + (i + 0.5) · 740 / N, deck at y 400 (112 × 24, planks #b8864e, bob ±4 px), the polaroid on a mast above (y 240-356).",
+          "riders": "the Speck (48 px tall) and Brine (52 px) stand on a deck; on the same raft they stand 20 px apart."
+        },
+        "speck": "The Speck: a tiny paper human (round head, dark hair, coloured top). If getSave().character (js/game/save.js) is there, use its skin, hairColor and topColor.",
+        "testHooks": "Keep S.round (0-7), S.rafts ([{ photo, answer, x }]), S.at (the Speck's raft index), S.glued, S.splashes and S.brine.score on the kit state (container.__mg.state).",
+        "rule": "Section 2.3: given a batch of N (image, text) pairs, CLIP predicts which of the N × N pairings really occurred; the true pair is pulled together and every other pairing pushed apart. Each round is one caption against a batch of photos: its one true photo glues into a postcard, every other raft is a negative and sinks, and the batch grows from 3 to 6 rafts (CLIP uses 32,768). Abstract, Section 1 and Section 2.1: a fixed set of predetermined labels limits a model; natural language carries far more. Brine's stickers (one fixed word per photo) cannot tell hard negatives apart and have no sticker for a new thing; reading the whole caption can. Playing well = pairing a whole caption with its one true photo among the batch."
+      },
+      "design": "A lagoon race. Mrs. Pomelo holds up a caption card while a fuse burns under it; a row of rafts carries photos on little masts. The Speck hops raft to raft (← → one raft per press, or click a raft to jump straight there). When the fuse runs out, every raft whose photo does not fit the whole caption sinks; the true one glues to the card and pins to the clothesline. Skipper Brine races on the same rafts with his sticker crate: he reads one fixed word per photo, so he picks the plainest match and splashes on detailed captions, and dives in when he has no sticker at all. 8 rounds, 3 → 6 rafts, fuses 5.0 → 3.5 s. Glue 6 to win; 3 splashes and you lose (the kit offers Again?). The rules card shows spec.goal and spec.controls.",
+      "paperLink": "§2.3 · §2.1 · Abstract",
+      "worldEffect": "Skipper Brine squelches back to his pier, peeling soggy stickers off his cap.",
+      "intro": [
+        "The afternoon ferry tipped my post into the lagoon! Photos on rafts, words on my cards.",
+        "Hop on the photo my card describes before the rest sink. Brine's racing you!"
+      ],
+      "success": [
+        "Six postcards glued, and dry! Brine's still wringing out his cap."
+      ],
+      "retry": [
+        "Soggy postcards! Dry off and hop again when you're ready."
+      ]
+    },
+    {
+      "id": "e1",
+      "type": "environment",
+      "title": "The Banana Bet",
+      "giver": "brine",
+      "requires": [
+        "c2",
+        "m1"
+      ],
+      "environment": "banana-bet",
+      "spec": {
+        "goal": "Snap 4 bananas that fool Brine's Snapper · 🎞️ 6",
+        "progress": "Fool the Snapper: 🍌 {n}/4 · 🎞️ {film}",
+        "progressNote": "api.onProgress replaces the whole HUD task line, so the progress text carries the goal too.",
+        "need": 4,
+        "film": 6,
+        "reminder": [
+          "Four bananas my Snapper gets wrong. Mind your film, Speck."
+        ],
+        "interactable": {
+          "label": "Snap",
+          "icon": "📷",
+          "radius": 1.8,
+          "promptHeight": 1.8,
+          "note": "Same label on every prop: the prompt never says what a thing is, the player has to look."
+        },
+        "verdict": "Snapper: “{snapper}” {mark} · Lens: “{lens}” ✓",
+        "verdictNote": "mark = ✓ when the prop has snapperRight: true (only the crate), else ✗. The Lens is always right.",
+        "props": [
+          {
+            "id": "sketch",
+            "counts": true,
+            "shift": "ImageNet Sketch",
+            "where": "hilltop, left of the Lens",
+            "at": [
+              -26.4,
+              3.4,
+              -11.2
+            ],
+            "collider": 0.4,
+            "look": "A small wooden easel (three brown sticks, 1.3 tall) holding a cream paper sheet (0.9 × 0.7) with a grey pencil banana on it: hatched outline, no colour (canvas texture).",
+            "snapper": "a sheet of paper",
+            "lens": "a banana",
+            "react": "A DRAWING of a banana? Sneaky. ...It counts."
+          },
+          {
+            "id": "painting",
+            "counts": true,
+            "shift": "ImageNet-R (cartoon, painting)",
+            "where": "terrace, in front of house 3 (by the free terrace-3 anchor)",
+            "at": [
+              -1.4,
+              1.7,
+              -4.9
+            ],
+            "collider": 0.4,
+            "look": "A painted board (1.0 × 0.8) in a bright pink frame on a short post: a cartoon banana with a huge smile and stick arms, flat bright colours.",
+            "snapper": "a smiley face",
+            "lens": "a banana",
+            "react": "It's smiling at me. I don't like it. It counts."
+          },
+          {
+            "id": "float",
+            "counts": true,
+            "shift": "ImageNet-R (toy)",
+            "where": "in the river, in front of the stairs to the terrace",
+            "at": [
+              -6.5,
+              -0.85,
+              5.1
+            ],
+            "collider": null,
+            "interact": {
+              "pos": [
+                -6.5,
+                -0.5,
+                5.1
+              ],
+              "radius": 2.4
+            },
+            "look": "An inflatable banana pool float: a glossy yellow curved tube (torus arc of 120°, arc radius 1.0, tube 0.28) with brown tips and a little white valve, bobbing ±0.06 and rocking slowly (w.onUpdate).",
+            "snapper": "a life ring",
+            "lens": "a banana",
+            "react": "A bouncy banana? Not in my catalogue! Blast."
+          },
+          {
+            "id": "sandcastle",
+            "counts": true,
+            "shift": "ImageNet-R (sculpture)",
+            "where": "front bank, right of the beach umbrella",
+            "at": [
+              -19.5,
+              -0.95,
+              8.0
+            ],
+            "collider": 0.6,
+            "look": "A banana sculpted from sand (a curved, lumpy capsule 1.2 long, #e9cf8f) lying on the beach, a red toy bucket and a blue spade beside it.",
+            "snapper": "a sandcastle",
+            "lens": "a banana",
+            "react": "Sand isn't fruit! My Snapper agrees. Your Lens doesn't."
+          },
+          {
+            "id": "teacup",
+            "counts": true,
+            "shift": "ObjectNet (odd place, odd pose)",
+            "where": "on the rim of the well",
+            "at": [
+              31.0,
+              0.82,
+              -0.7
+            ],
+            "collider": null,
+            "interact": {
+              "pos": [
+                31.0,
+                0,
+                -0.2
+              ],
+              "radius": 2.0,
+              "promptHeight": 2.0
+            },
+            "look": "A white teacup with a pink rim on the well's rim, a real banana stuck in it upside down like an odd houseplant.",
+            "snapper": "a teacup",
+            "lens": "a banana",
+            "react": "Who keeps a banana in a teacup?! ...Fine. It counts."
+          },
+          {
+            "id": "ladybird",
+            "counts": true,
+            "shift": "ImageNet-A (a real banana photo that trips the Snapper)",
+            "where": "back edge of the main path, far left (by the free lane-left anchor)",
+            "at": [
+              -21.6,
+              0,
+              -1.6
+            ],
+            "collider": 0.5,
+            "look": "A clump of five big broad leaves (0.8 tall) with a real yellow banana half hidden among them and a red ladybird (0.12, black spots) sitting on the banana.",
+            "snapper": "a ladybird",
+            "lens": "a banana",
+            "react": "One ladybird and my Snapper forgets bananas exist!"
+          },
+          {
+            "id": "crate",
+            "counts": false,
+            "tie": true,
+            "shift": "none: a plain catalogue banana (ImageNet itself)",
+            "where": "front bank, next to Brine",
+            "at": [
+              30.6,
+              -0.95,
+              8.3
+            ],
+            "collider": 0.5,
+            "look": "A wooden fruit crate (0.8 × 0.5 × 0.5) with a plain bunch of ripe bananas on top and a paper tag 'No. 954'.",
+            "snapper": "a banana",
+            "snapperRight": true,
+            "lens": "a banana",
+            "react": "Both right. A catalogue banana! Still a tie."
+          },
+          {
+            "id": "boomerang",
+            "counts": false,
+            "decoy": true,
+            "where": "terrace, in front of house 1 (by the free terrace-1 anchor)",
+            "at": [
+              -22.6,
+              1.7,
+              -4.9
+            ],
+            "collider": 0.4,
+            "look": "A yellow wooden boomerang (two flat arms at 100°, 0.9 across, brown stripes) leaning on a small rock.",
+            "snapper": "a banana",
+            "lens": "a boomerang",
+            "react": "That's my boomerang! The bet's on BANANAS."
+          },
+          {
+            "id": "moon",
+            "counts": false,
+            "decoy": true,
+            "where": "beside the tiki gate (by the free gate anchor)",
+            "at": [
+              23.0,
+              0,
+              -9.6
+            ],
+            "collider": 0.3,
+            "look": "A flat yellow crescent-moon cut-out with a sleepy face, 0.9 tall, on a 1.2 stake, a little paper star dangling from its tip.",
+            "snapper": "a banana",
+            "lens": "a moon",
+            "react": "That's the moon, Speck. Even I know it's no banana."
+          },
+          {
+            "id": "canoe",
+            "counts": false,
+            "decoy": true,
+            "where": "front bank, left of Old Scribbit",
+            "at": [
+              7.5,
+              -0.95,
+              8.2
+            ],
+            "collider": 0.8,
+            "look": "A small yellow canoe (half-capsule hull, 1.6 long) on the sand, a wooden paddle across it.",
+            "snapper": "a banana",
+            "lens": "a canoe",
+            "react": "A yellow canoe. Not a banana. That's film wasted!"
+          }
+        ],
+        "propsNote": "Positions are [x, y, z] world units (the Speck is 1.9 tall); y is the floor of that layer (main path 0, terrace 1.7, hilltop 3.4, bank -0.95). Each prop faces the camera (+z), is about 1-1.4 units big and gets a circle collider of the given radius (none for the float in the river and the cup on the well, which already has one). Interactable pos = at, unless interact gives pos / radius / promptHeight. Nudge a prop if it clips a tree, house or villager.",
+        "onSnap": [
+          "Flash: a white full-screen div in #ui-root (pointer-events none), opacity 0.9 → 0 over 0.3 s, then removed; w.sfx('pop').",
+          "film -= 1. The prop's interactable gets enabled = false, and a paper flag on a pin pops up 0.4 to its right: green #7bcd5d with ✓ if it counts, grey #9a9aa6 with ✗ if not.",
+          "counts: n += 1, w.sfx('ding'), w.confetti(30). Otherwise w.sfx('buzz').",
+          "w.speak('brine', [verdict, react]) with spec.verdict filled in.",
+          "api.onProgress(spec.progress filled in).",
+          "n ≥ need: api.onSolved() once (the region then plays the success lines and destroys the puzzle).",
+          "Else, film = 0: w.speak('brine', spec.filmOut), then reset: n = 0, film = spec.film, flags removed, every prop snappable again, api.onProgress(...)."
+        ],
+        "filmOut": [
+          "Out of film! Ha! My Snapper knows every plain banana.",
+          "Fresh roll, six shots. We start again."
+        ],
+        "destroy": "Remove every mesh, collider, interactable, flag and the flash div; unsubscribe from w.onUpdate.",
+        "testHooks": "Set it.id = prop.id on each interactable, so tests can find it in window.__etl.ws.interactables (label 'Snap').",
+        "rule": "Section 3.3 and Figure 13: a ResNet-101 trained on ImageNet and zero-shot CLIP both score 76.2% on ImageNet, yet on natural distribution shifts the ResNet collapses (ImageNetV2 64.3, ImageNet-R 37.7, ObjectNet 32.6, ImageNet Sketch 25.2, ImageNet-A 2.7) while CLIP holds (70.1, 88.9, 72.3, 60.2, 77.1). Bananas are the example class of Figure 13. Brine's Snapper is the ImageNet model (1000 fixed stickers learned from his catalogue); the player builds the robustness test out of the island: a sketch, renditions (cartoon painting, toy, sculpture), an odd place (ObjectNet) and a real banana with a distracting ladybird (ImageNet-A). The plain catalogue banana is in distribution: both right, still a tie. The look-alikes show the Snapper's dataset shortcut (yellow and curved = banana), the kind of spurious correlation Section 3.3 blames; the Lens, never fitted to the catalogue, names them correctly. Playing well = choosing the distribution shifts and not wasting film on what is in distribution or not a banana."
+      },
+      "design": "Brine's bet, played on the island itself. Ten props stand around the island (spec.props): six bananas in disguise, one plain catalogue banana and three yellow look-alikes, spread over the hilltop, the terrace, the main path, the river, the bank, the well and the gate. Walk up to one and press E to 📷 Snap it with Brine's Sticker Snapper: a flash, then Brine reads out two verdicts, his Snapper's sticker and the Lens's name. Only a banana the Snapper gets wrong counts. 6 shots of film for 4 bananas: the plain banana (a tie) and the look-alikes (not bananas) waste film. Out of film, Brine gloats and the bet restarts. The HUD shows the goal, then the count and the film left. No prop is labelled.",
+      "paperLink": "§3.3 · Fig. 13",
+      "worldEffect": "Brine's Snapper sulks in its crate. Up on the hill, the Lens twinkles.",
+      "intro": [
+        "Those rafts were rigged. But my Sticker Snapper got 76 of my 100 catalogue photos!",
+        "Your Lens? Also 76. A tie! So: snap 4 bananas my Snapper gets wrong.",
+        "Six shots of film. Bet you can't!"
+      ],
+      "reminder": [
+        "Four bananas my Snapper gets wrong. Mind your film, Speck."
+      ],
+      "success": [
+        "Four bananas, four wrong stickers. My Snapper only knows my catalogue.",
+        "Your Lens knows a banana in any outfit. Fine. FINE. You win the bet."
+      ]
+    },
+    {
+      "id": "q1",
+      "type": "quiz",
+      "title": "Scribbit's Three Questions",
+      "giver": "scribbit",
+      "requires": [
+        "c1"
+      ],
+      "questions": [
+        {
+          "question": "How many photo-and-caption pairs did your Lens learn from?",
+          "options": [
+            "1.28 million",
+            "15 million",
+            "400 million"
+          ],
+          "answer": 2,
+          "right": [
+            "Four hundred MILLION? I've written twelve thousand. In sixty years."
+          ],
+          "wrong": [
+            "Wrong. Section 2.2 counts them. Ribbit."
+          ],
+          "paperLink": "§2.2 (WIT: 400 million pairs; 15 million = filtered YFCC100M; 1.28 million = ImageNet's labelled photos)"
+        },
+        {
+          "question": "One photo a second, nonstop: how long to show it all 32 laps of its training?",
+          "options": [
+            "405 years",
+            "40 years",
+            "4 years"
+          ],
+          "answer": 0,
+          "right": [
+            "405 years of looking. And they call ME slow."
+          ],
+          "wrong": [
+            "Wrong. The Limitations section did that sum."
+          ],
+          "paperLink": "§6 (12.8 billion images over 32 epochs at one per second = 405 years)"
+        },
+        {
+          "question": "Zero-shot, your Lens matched a few-shot classifier on its own features. How many shots?",
+          "kind": "number",
+          "answer": 4,
+          "tolerance": 0,
+          "placeholder": "examples per class",
+          "right": [
+            "Four! Words say what you mean. One photo shows a hundred things."
+          ],
+          "wrong": [
+            "Wrong. Figure 6 drew it. Ribbit."
+          ],
+          "paperLink": "§3.1.5 · Fig. 6 (zero-shot CLIP matches 4-shot logistic regression on the same feature space)"
+        }
+      ],
+      "paperLink": "§2.2 · §6 · §3.1.5 · Fig. 6",
+      "intro": [
+        "Ribbit. So your Lens learns from postcards now? Pah. Let's see what you know.",
+        "Three questions. All right in one go, or come back later."
+      ],
+      "wrong": [
+        "Wrong. Ribbit."
+      ],
+      "success": [
+        "Hmph. You've actually read it. My quill is impressed. Slightly."
+      ],
+      "retry": [
+        "Read the Cursed Book, then come back. I'll be here. Writing. Slowly."
+      ]
+    }
+  ]
+}

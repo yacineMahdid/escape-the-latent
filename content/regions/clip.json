@@ -52,7 +52,7 @@
       "lines": {
         "default": [
           "Mind the puddles. Each one is a photo that lost its words.",
-          "Blink's storm photos never had words at all. He's past the bridge."
+          "Blink's past the bridge. Pop back after, dear."
         ],
         "afterSolved": [
           "Every postcard glued and posted. I may retire. I won't. But I may."
@@ -1150,10 +1150,9 @@
         "Ooh! Biggest score, biggest slice. But every caption still gets a crumb!"
       ],
       "known": [
-        "Your book already knows how the Lens turns scores into chances that add to one?",
-        "Hmph! I wanted to ask that."
+        "Your book knows how scores turn into chances? Hmph! I wanted to ask that."
       ],
-      "record": "Raise e to each score, then divide by the sum of them all. No share is ever zero; together they make one."
+      "record": "Raise e to each score, then divide by the sum of those powers. No share is ever zero; together they make one."
     },
     {
       "id": "f2",
@@ -1174,15 +1173,15 @@
         "tolerance": 0.005
       },
       "wrong": [
-        "Nope. Long arrows aren't extra alike, you know."
+        "Nope. Blurry, like my storm shots."
       ],
       "success": [
-        "0.96! Almost the same way. So that's how it judges a match."
+        "0.96! Almost the same way. Now, about my racks…"
       ],
       "known": [
-        "Snap! Your book already knows how the Lens scores look-alikes. One less question!"
+        "Snap! Your book already knows how the Lens scores look-alikes."
       ],
-      "record": "The dot product divided by both lengths: the cosine of the angle between, from −1 to 1. Length buys no likeness."
+      "record": "The dot product divided by both lengths: the cosine of the angle between them, from −1 to 1. Length buys no likeness."
     },
     {
       "id": "f3",
@@ -1193,8 +1192,8 @@
         "c2"
       ],
       "intro": [
-        "Gran's net stung the Lens after every haul, worst when it doubted the true words.",
-        "Read the sting before it wakes, dear."
+        "Gran's net stung the Lens after every haul. Some stings were whoppers!",
+        "Size one up before you wake it, dear."
       ],
       "check": {
         "kind": "number",
@@ -1462,7 +1461,10 @@
           "doubt",
           "-log",
           "−log",
-          "surprise"
+          "surprise",
+          "cross entropy",
+          "cross-entropy",
+          "entropy"
         ],
         "text": "The sting has a name in Section 2.3. Its size is a logarithm's business."
       },
@@ -1480,6 +1482,32 @@
           "8 x"
         ],
         "text": "Figure 3 writes each shape in brackets. Read what goes in, and what comes out."
+      },
+      {
+        "keywords": [
+          "softmax",
+          "soft",
+          "max",
+          "chance",
+          "chances",
+          "probability",
+          "probabilities",
+          "add to one",
+          "sum to one"
+        ],
+        "text": "Section 3.1.2 turns likeness into chances. Mind the e."
+      },
+      {
+        "keywords": [
+          "arrow",
+          "arrows",
+          "alike",
+          "look-alike",
+          "look-alikes",
+          "cosine similarity",
+          "similarity"
+        ],
+        "text": "Two arrows, one angle. Section 2.3 names the measure."
       }
     ]
   }
