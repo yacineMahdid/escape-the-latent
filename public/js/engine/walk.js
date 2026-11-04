@@ -18,11 +18,15 @@ export function surfaceY(zone, x, z) {
 
 const inside = (zn, x, z) => x >= zn.x0 && x <= zn.x1 && z >= zn.z0 && z <= zn.z1;
 
+// A surface more than OVERHEAD above you is a ceiling (a ruler, a bridge deck), not a wall: you walk under it.
+const OVERHEAD = 2.3;
+
 export function sampleHeight(zones, x, z, currentY) {
   let best = null;
   for (const zn of zones) {
     if (!inside(zn, x, z)) continue;
     const y = surfaceY(zn, x, z);
+    if (y > currentY + OVERHEAD) continue;
     if (y > currentY + STEP) return null; // a wall (cliff face or stairs side)
     if (Math.abs(y - currentY) <= STEP && (best === null || y > best)) best = y;
   }

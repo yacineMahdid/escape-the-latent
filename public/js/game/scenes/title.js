@@ -7,6 +7,7 @@ import { buildDiorama, ANCHORS } from '../../engine/diorama.js';
 import { buildVillager } from '../../engine/villagers.js';
 import { loadHumans, loadScientist, scientistStandIn } from '../player.js';
 import { createRng } from '../../engine/geo.js';
+import { getSave } from '../save.js';
 
 const CAST = [
   { species: 'bunny', colors: { shirt: '#ff7ab8' }, x: -10.6 },
@@ -47,10 +48,13 @@ export async function createTitleScene() {
     });
   });
 
-  // the player in the middle (stand-in until the character module exists)
+  // the player in the middle: your own Speck once you have made one
   const humans = await loadHumans();
   if (humans?.buildHuman) {
-    const hero = humans.buildHuman(humans.DEFAULT_CHARACTER || {});
+    let mine = null; try { mine = getSave().character; } catch { /* no save */ }
+    let hero;
+    try { hero = humans.buildHuman({ ...(humans.DEFAULT_CHARACTER || {}), ...(mine || {}) }); }
+    catch { hero = humans.buildHuman(humans.DEFAULT_CHARACTER || {}); }
     hero.position.set(-4.2, 0, 2.3); scene.add(hero);
     updaters.push((dt) => hero.userData.animate?.(dt, { moving: false, speed: 0, facing: 1 }));
   }

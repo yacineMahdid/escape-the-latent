@@ -1,6 +1,6 @@
 // Becancourt's map of the small worlds behind the little door. At the door (travel: true) it picks where
 // the door leads and resolves to a region id; from the M key (travel: false) it is only for looking.
-import { openModal, closeModal } from '../../ui/modal.js';
+import { openModal, closeModal, topModal } from '../../ui/modal.js';
 import { api } from '../../api.js';
 import { getSave, regionState } from '../save.js';
 import { REGION_ORDER } from './lab.js';
@@ -72,7 +72,10 @@ export async function openMapOverlay(_ctx, { travel = true } = {}) {
 
   let resolveFn;
   const result = new Promise((r) => { resolveFn = r; });
-  function close(v) { closeModal(wrap); wrap.remove(); resolveFn(v); }
+  // M closes the map again (as B closes the book)
+  const onKey = (e) => { if (e.code === 'KeyM' && !e.repeat && topModal() === wrap) { e.preventDefault(); close(null); } };
+  window.addEventListener('keydown', onKey);
+  function close(v) { window.removeEventListener('keydown', onKey); closeModal(wrap); wrap.remove(); resolveFn(v); }
   openModal(wrap, { onEscape: () => close(null) });
   wrap.querySelector('.map-close').onclick = () => close(null);
 
@@ -95,8 +98,8 @@ export async function openMapOverlay(_ctx, { travel = true } = {}) {
     info.appendChild(st);
     const canGo = rs.returned || save.currentTask === id;
     const go = document.createElement('button'); go.className = 'etl-btn primary';
-    if (travel) { go.textContent = canGo ? '🚪 Go' : '🔒 Locked'; go.title = canGo ? `Through the little door to ${rg?.region?.name || id}` : 'Locked'; go.disabled = !canGo || !rg; }
-    else { go.textContent = canGo ? '🚪 Use the little door' : '🔒 Locked'; go.title = canGo ? 'Down the ruler, then the little door in the wall' : 'Locked'; go.disabled = true; }
+    if (travel) { go.textContent = '🚪 Go'; go.title = canGo ? `Through the little door to ${rg?.region?.name || id}` : ''; go.disabled = !canGo || !rg; }
+    else { go.textContent = '🚪 Use the little door'; go.title = canGo ? 'Down the ruler, then the little door in the wall' : ''; go.disabled = true; }
     go.onclick = () => close(id);
     info.appendChild(go);
   }

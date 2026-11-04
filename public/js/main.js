@@ -4,8 +4,9 @@ import { api } from './api.js';
 import { getSave, updateSave, resetSave } from './game/save.js';
 import { mountHud, hideHud } from './game/hud.js';
 import { pageWipe } from './game/fx.js';
-import { say, ask, toast } from './game/dialogue.js';
-import { openModal, closeModal } from './ui/modal.js';
+import { say, ask, toast, dismissDialogue } from './game/dialogue.js';
+import { openModal, closeModal, dismissAllModals, isModalOpen } from './ui/modal.js';
+import { input } from './engine/input.js';
 import { createBackdropScene } from './game/scenes/backdrop.js';
 import { createTitleScene, buildLogo } from './game/scenes/title.js';
 
@@ -14,11 +15,15 @@ engine.start();
 const ui = document.getElementById('ui-root');
 let status = { ai: false };
 let current = null;
+let currentName = 'title';
 
 const ctx = { engine, goto, openBook, pauseMenu, get status() { return status; } };
 
 async function goto(name, param) {
   let next;
+  // no game keys until the new scene starts; nothing from the old scene stays on screen
+  input.setEnabled(false);
+  dismissDialogue(); dismissAllModals();
   document.querySelectorAll('.title-card, .title-status, .ending-card').forEach((el) => el.remove());
   await pageWipe(async () => {
     if (name === 'region') next = await (await import('./game/scenes/region.js')).createRegionScene(ctx, param);
@@ -26,16 +31,19 @@ async function goto(name, param) {
     else if (name === 'ending') next = await createEnding();
     mountHud({ onBook: () => clickAction('book'), onMap: () => clickAction('map'), onMenu: () => clickAction('menu') });
     if (name === 'ending') hideHud();
-    current = next;
+    current = next; currentName = name;
+    dismissDialogue(); dismissAllModals(); // anything the old scene opened during the wipe
     engine.setScene(next);
     await next.onEnter?.();
   });
   updateSave((s) => { s.lastScene = name === 'region' ? `region:${param}` : name; });
+  input.setEnabled(name !== 'ending');
   next.start?.();
 }
 
 // HUD buttons dispatch the same actions as the keys.
 function clickAction(action) {
+  if (isModalOpen() || !input.enabled) return; // a dialogue or menu is up: the HUD buttons wait their turn
   window.dispatchEvent(new KeyboardEvent('keydown', { code: action === 'book' ? 'KeyB' : action === 'map' ? 'KeyM' : 'Escape' }));
   setTimeout(() => window.dispatchEvent(new KeyboardEvent('keyup', { code: action === 'book' ? 'KeyB' : action === 'map' ? 'KeyM' : 'Escape' })), 30);
 }
@@ -54,7 +62,7 @@ async function pauseMenu() {
   const wrap = document.createElement('div');
   wrap.className = 'pause-overlay';
   wrap.innerHTML = `<div class="pause-card etl-panel"><div class="pause-title">Paused</div>
-    <div class="pause-help"><span><kbd>←↑↓→</kbd> move</span><span><kbd>E</kbd> talk / use</span><span><kbd>B</kbd> book</span><span><kbd>M</kbd> map</span></div>
+    <div class="pause-help"><span><kbd>←↑↓→</kbd> move</span><span><kbd>E</kbd> talk / use</span><span><kbd>B</kbd> book</span><span><kbd>M</kbd> ${currentName === 'region' ? 'leave' : 'map'}</span></div>
     <div class="pause-ai"></div>
     <div class="pause-btns"><button class="etl-btn primary" data-a="resume">Resume</button><button class="etl-btn" data-a="title">Title screen</button><button class="etl-btn" data-a="reset">Erase save</button></div></div>`;
   const ai = wrap.querySelector('.pause-ai'); ai.textContent = status.ai ? 'Book: online' : 'Book: offline (no API key)';
@@ -66,7 +74,7 @@ async function pauseMenu() {
   closeModal(wrap); wrap.remove();
   if (choice === 'title') return showTitle();
   if (choice === 'reset') {
-    const sure = await ask('Erase your save?', ['Erase', 'Cancel']);
+    const sure = await ask('Erase your save?', ['Erase', 'Cancel'], { neutral: true });
     if (sure === 0) { resetSave(); location.reload(); }
   }
 }
@@ -109,6 +117,9 @@ async function characterCreation(initial) {
 
 async function showTitle() {
   hideHud();
+  input.setEnabled(false); // title buttons work with Tab + Enter/Space
+  dismissDialogue(); dismissAllModals();
+  currentName = 'title';
   document.querySelectorAll('.title-card, .title-status').forEach((el) => el.remove());
   const bg = await createTitleScene();
   current = bg;
@@ -127,7 +138,7 @@ async function showTitle() {
   const hasSave = !!save.character;
   const go = async (fresh) => {
     card.remove(); statusTag.remove();
-    if (fresh) resetSave();
+    if (fresh) { resetSave(); import('./ui/book.js').then((b) => b.clearBookData?.()).catch(() => {}); }
     const s = getSave();
     if (!s.character) {
       const params = await characterCreation(null);
@@ -138,7 +149,12 @@ async function showTitle() {
   };
   if (hasSave) mk('Continue', true, () => go(false));
   mk(hasSave ? 'New game' : 'Start', !hasSave, async () => {
-    if (hasSave) { const sure = await ask('Erase your save and start over?', ['Start over', 'Cancel']); if (sure !== 0) return; }
+    if (hasSave) {
+      card.inert = true; // the title buttons wait for the answer
+      const sure = await ask('Erase your save and start over?', ['Start over', 'Cancel'], { neutral: true });
+      card.inert = false;
+      if (sure !== 0) return;
+    }
     go(true);
   });
   status = await api.status().catch(() => ({ ai: false }));

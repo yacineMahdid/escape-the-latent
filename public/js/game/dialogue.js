@@ -12,11 +12,17 @@ const STYLES = {
   player: { tag: '#3ec7b5', box: 'npc' },
 };
 
+// A scene change dismisses whatever dialogue is still up (a box from the old scene must not linger over the new one).
+const cancels = new Set();
+let epoch = 0;
+export function dismissDialogue() { epoch++; for (const c of [...cancels]) c(); }
+
 function waitAdvance(box) {
   return new Promise((resolve) => {
     const onKey = (e) => { if (['Space', 'Enter', 'KeyE', 'Escape'].includes(e.code)) { e.preventDefault(); e.stopPropagation(); done(); } };
     const onClick = () => done();
-    function done() { window.removeEventListener('keydown', onKey, true); box.removeEventListener('pointerdown', onClick); resolve(); }
+    function done() { cancels.delete(done); window.removeEventListener('keydown', onKey, true); box.removeEventListener('pointerdown', onClick); resolve(); }
+    cancels.add(done);
     window.addEventListener('keydown', onKey, true);
     box.addEventListener('pointerdown', onClick);
   });
@@ -28,6 +34,7 @@ async function typeLine(textEl, line, box, shaky) {
   let skip = false;
   const onKey = (e) => { if (['Space', 'Enter', 'KeyE', 'Escape'].includes(e.code)) { e.preventDefault(); e.stopPropagation(); skip = true; } };
   const onClick = () => { skip = true; };
+  cancels.add(onClick);
   window.addEventListener('keydown', onKey, true);
   box.addEventListener('pointerdown', onClick);
   const words = line.split(/(\s+)/);
@@ -40,6 +47,7 @@ async function typeLine(textEl, line, box, shaky) {
       if (!skip) await wait(ch === ',' ? 70 : /[.!?]/.test(ch) ? 110 : 16);
     }
   }
+  cancels.delete(onClick);
   window.removeEventListener('keydown', onKey, true);
   box.removeEventListener('pointerdown', onClick);
   await wait(60);
@@ -67,12 +75,14 @@ export async function say(lines, { speaker = null, style = 'npc', onLine } = {})
   const arrow = document.createElement('div'); arrow.className = 'dlg-arrow'; arrow.textContent = '▼'; box.appendChild(arrow);
   root().appendChild(box);
   openModal(box, {});
+  const mine = epoch;
   try {
-    for (let i = 0; i < lines.length; i++) {
+    for (let i = 0; i < lines.length && mine === epoch; i++) {
       onLine?.(i, true);
       arrow.style.visibility = 'hidden';
       await typeLine(text, String(lines[i]), box, style === 'scientist');
       onLine?.(i, false);
+      if (mine !== epoch) break;
       arrow.style.visibility = 'visible';
       await waitAdvance(box);
     }
@@ -97,7 +107,9 @@ export async function ask(question, options, { speaker = null, style = 'npc', ne
   root().appendChild(box);
   try {
     return await new Promise((resolve) => {
-      const finish = (i) => { window.removeEventListener('keydown', onKey, true); resolve(i); };
+      const finish = (i) => { cancels.delete(cancel); window.removeEventListener('keydown', onKey, true); resolve(i); };
+      const cancel = () => finish(options.length - 1);
+      cancels.add(cancel);
       openModal(box, { onEscape: () => finish(options.length - 1) });
       const btns = options.map((o, i) => { const b = document.createElement('button'); b.className = 'etl-btn' + (i === 0 && !neutral ? ' primary' : ''); b.textContent = o; b.onclick = () => finish(i); row.appendChild(b); return b; });
       // quiz questions start with nothing selected so no option looks "recommended"
@@ -169,9 +181,11 @@ export async function askValue(question, { speaker = null, style = 'npc', placeh
   root().appendChild(box);
   try {
     return await new Promise((resolve) => {
-      openModal(box, { onEscape: () => resolve(null) });
-      row.onsubmit = (e) => { e.preventDefault(); const v = inp.value.trim(); if (v) resolve(v); };
-      no.onclick = () => resolve(null);
+      const cancel = () => { cancels.delete(cancel); resolve(null); };
+      cancels.add(cancel);
+      openModal(box, { onEscape: () => cancel() });
+      row.onsubmit = (e) => { e.preventDefault(); const v = inp.value.trim(); if (v) { cancels.delete(cancel); resolve(v); } };
+      no.onclick = () => cancel();
       setTimeout(() => inp.focus(), 30);
     });
   } finally {

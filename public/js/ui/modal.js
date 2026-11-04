@@ -12,6 +12,11 @@ export function closeModal(element) {
   if (i >= 0) stack.splice(i, 1);
 }
 
+// close everything (a scene change): each modal's Escape action, top first; dialogue boxes have their own dismiss
+export function dismissAllModals() {
+  for (const m of [...stack].reverse()) { try { m.onEscape?.(); } catch (e) { console.error(e); } }
+}
+
 export function isModalOpen() {
   return stack.length > 0;
 }

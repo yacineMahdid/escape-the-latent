@@ -1,17 +1,21 @@
 // Ear Jobs (Attendale / Attention Is All You Need, challenge e1): the finale, played in the village itself.
 // The Sentence 'the bunny gave the frog a pie .' stands as eight paper word posts on the main path right
-// of the bridge. Ring a post (E): four coloured strings zip from that word to wherever each of the Bell's
-// four ears listens. Every ear always does one job (pink: one word back, sky: who gave the pie, gold: the
-// full stop, teal: little words find their thing, and it fans out evenly from any other word). Nobody
-// tells the player the jobs: they ring a few posts, read the strings and tag the four ears on Dabble's
-// FAIR PROGRAM board down on the bank. All four right: every ear fires from every post at once, solved.
-// Otherwise Dabble only says how many tags are wrong.
+// of the bridge. Ring a post (E): four tiny ear-trumpets hop onto that word and shoot coloured strings to
+// wherever each of the Bell's four ears listens. Every ear always does one job (pink: one word back, blue:
+// who gave the pie, gold: the full stop, green: little words find their pal, and it fans out evenly from any
+// other word). Nobody tells the player the jobs: they ring a few posts, read the strings and tag the four
+// ears on Dabble's FAIR PROGRAM board on the bank. All four right: the tags fly, every ear fires from every
+// post at once, solved. Otherwise Dabble only says how many tags are wrong.
+// Camera (w.camera): a glance at the row when it pops up; while the Speck is among the posts after a ring,
+// a held shot that frames the whole row and its strings; a close-up of the board while its questions are
+// open (the Speck steps beside it, so the board's trumpets and tags stay in view above the question box).
 // The paper (Section 4, last paragraph; Figures 3-5): attention distributions can be inspected, and
 // individual heads clearly learn different jobs (positional, syntactic, staring at the end of the
 // sentence). The figures draw one word's attention with one colour per head, as the strings do here.
 // Spec: content/extra/attention.json, challenge e1 (positions, weights, string rules, board flow).
 // Test hooks: each post's interactable has it.postIndex = i (two posts are both 'the'); the board's has
-// it.boardOf = 'e1'. The root group is named 'ear-jobs'; its userData holds { query, chosen, weights }.
+// it.boardOf = 'e1'. The root group is named 'ear-jobs'; its userData holds { query, chosen, weights, words,
+// cam } (cam: 'glance' | 'row' | 'board' | 'finale' | null, the shot this puzzle holds).
 const INK = '#2b2233';
 const CREAM = '#fffdf6';
 const FONT = 'Fredoka, "Arial Rounded MT Bold", "Trebuchet MS", Verdana, sans-serif';
@@ -20,22 +24,28 @@ const easeBack = (u) => { const c = 1.9; const v = Math.min(1, Math.max(0, u)) -
 const easeOut = (u) => 1 - (1 - Math.min(1, Math.max(0, u))) ** 3;
 
 // Layout (spec.posts.where, spec.board.where), in world units.
-const POST = { x0: 22.8, dx: 2.1, y: 0, z: 1.0, r: 0.3 };  // the row ends at 37.5: on screen even when the camera stops at x 30
-const CARD = { w: 0.95, h: 0.5, y: 1.35 };
-const TOP = CARD.y + CARD.h / 2;            // card tops: where the strings start and land
+// The row's held shot looks from x 29.1: from there the c2 lantern (x 26, z 2.9) falls in the gap between
+// 'bunny' and 'gave', so it never covers a card.
+const POST = { x0: 22.83, dx: 1.8, y: 0, z: 1.0, r: 0.3 };
+const CARD = { w: 0.95, h: 0.5, y: 2.0 };   // above the Speck's head (1.9): standing at a post never hides its card
+const TOP = CARD.y + CARD.h / 2;            // card tops: where the strings land
 const SLOT = [-0.37, -0.17, 0.17, 0.37];    // each ear's spot along a card's top edge (the bell sits in the middle)
 const LIFT = 0.13;                          // each ear's arcs ride a little higher than the one before
+const HORN = { s: 0.6, h: 0.18, tilt: [0.34, 0.14, -0.14, -0.34] }; // the hop-on ear-trumpets: scale, height, lean
+const D2R = Math.PI / 180;
+const DOWN = 14 * D2R;                      // the shots look down like the follow camera does
 // The board stands at the bank's back edge right of Dabble, where no tall foreground grass hides it.
 const BOARD = { x: 16.9, y: -0.95, z: 7.2, w: 2.0, h: 1.6, faceY: 1.75, head: 0.32 };
+const ASIDE = { x: 18.45, z: 7.7 };         // where the Speck steps while the board's questions are open
 const PX = 400;                             // canvas pixels per world unit on the board
 const PEAK = 0.85;                          // spec.attention: the weight an ear puts on the word it looks for
 const LITTLE = /^(the|a|an)$/i;
 
 const DEFAULT_EARS = [
-  { id: 'pink', color: '#ff7ab8', name: 'Pink ear', job: 'back' },
-  { id: 'sky', color: '#8fd3ff', name: 'Sky ear', job: 'giver' },
-  { id: 'gold', color: '#ffd35a', name: 'Gold ear', job: 'stop' },
-  { id: 'teal', color: '#3ec7b5', name: 'Teal ear', job: 'little' },
+  { id: 'pink', color: '#ff7ab8', name: 'Pink ear', icon: '💗', job: 'back' },
+  { id: 'sky', color: '#8fd3ff', name: 'Blue ear', icon: '💙', job: 'giver' },
+  { id: 'gold', color: '#ffd35a', name: 'Gold ear', icon: '💛', job: 'stop' },
+  { id: 'teal', color: '#3ec7b5', name: 'Green ear', icon: '💚', job: 'little' },
 ];
 
 function roundRect(g, x, y, w, h, r) {
@@ -182,6 +192,19 @@ export default {
     const dotM = earCol.map((c) => M(c, { roughness: 0.5, emissive: c, emissiveIntensity: 0.15 }));
     const dotGeo = new THREE.SphereGeometry(0.052, 12, 8);
     const bellGeo = new THREE.LatheGeometry([[0, 0.205], [0.03, 0.2], [0.05, 0.18], [0.058, 0.13], [0.066, 0.07], [0.085, 0.022], [0.092, 0], [0.078, 0.008]].map(([r, y]) => new THREE.Vector2(r, y)), 18);
+    // a paper ear-trumpet (mouth up, 0.3 tall): the board's four, and the four that hop onto a rung post
+    const hornGeo = new THREE.LatheGeometry([[0.026, 0], [0.028, 0.12], [0.038, 0.19], [0.058, 0.245], [0.092, 0.285], [0.108, 0.3], [0.099, 0.305]].map(([r, y]) => new THREE.Vector2(r, y)), 20);
+    const rimGeo = new THREE.TorusGeometry(0.105, 0.013, 6, 24);
+    const hornM = earCol.map((c) => M(c, { roughness: 0.75, side: THREE.DoubleSide }));
+
+    // ---------- camera shots (w.camera; absent on a page without it) ----------
+    // cam: the shot this puzzle holds; every to() is paired with a back() (zone exit, board done, finale, destroy)
+    let cam = null, camGen = 0;
+    const shotTo = (name, [pos, look], ms) => { cam = name; camGen += 1; return w.camera ? w.camera.to(pos, look, ms) : Promise.resolve(); };
+    const shotBack = (ms = 800) => { if (cam === null) return; cam = null; camGen += 1; w.camera?.back(ms); };
+    // a pose that looks down at `at` (DOWN degrees) from distance d
+    const pose = (at, d) => [[at[0], at[1] + d * Math.sin(DOWN), at[2] + d * Math.cos(DOWN)], at];
+    const aspect = () => Math.max(0.5, (window.innerWidth || 16) / (window.innerHeight || 9));
 
     // ---------- the eight word posts (spec.posts) ----------
     const overlaps = (x, z, r) => w.world.colliders.some((c) => !c.disabled && (c.type === 'circle'
@@ -210,7 +233,7 @@ export default {
       colliders.push(w.addCollider({ type: 'circle', x, z: POST.z, r: POST.r }));
       const it = w.addInteractable({
         label: word === '.' ? 'Ring the full stop' : `Ring '${word}'`, icon: '🔔', postIndex: i,
-        pos: { x, y: POST.y, z: POST.z }, radius: 1.3, promptHeight: 2.2,
+        pos: { x, y: POST.y, z: POST.z }, radius: 1.3, promptHeight: TOP + 0.75,
         onInteract: () => ring(i),
       });
       interactables.push(it);
@@ -218,6 +241,27 @@ export default {
       tween(0.45, (u) => g.scale.setScalar(Math.max(0.001, easeBack(u))), 0.2 + i * 0.09);
       return { i, word, x, g, bell, dots, wig: null, wigDelay: 0 };
     });
+    // the whole row and its tallest arcs, framed for this screen's shape
+    const ROW = { x0: posts[0].x, x1: posts[n - 1].x };
+    const rowShot = () => {
+      const half = (ROW.x1 - ROW.x0) / 2 + 1.6;
+      return pose([(ROW.x0 + ROW.x1) / 2, 2.9, POST.z], Math.max(15, half / (Math.tan(16 * D2R) * aspect())));
+    };
+    // while the row's shot is held, the Speck stays inside it; walking off releases it
+    const amongPosts = (p) => p.x > ROW.x0 - 1.7 && p.x < ROW.x1 + 1.7 && p.z > -2.2 && p.z < 3.4 && Math.abs(p.y - POST.y) < 0.4;
+    loops.add(() => { if (cam === 'row' && !amongPosts(w.player.pos)) shotBack(800); });
+
+    // ---------- the four ear-trumpets that hop onto the rung post (strings start in their mouths) ----------
+    const hop = group(root); hop.visible = false;
+    const horns = ears.map((_, k) => {
+      const piv = group(hop, SLOT[k], TOP - 0.01, 0.03);
+      const h = group(piv); h.rotation.z = HORN.tilt[k]; h.scale.setScalar(HORN.s);
+      mesh(hornGeo, hornM[k], 0, 0, 0, h);
+      mesh(rimGeo, inkM, 0, 0.302, 0, h).rotation.x = Math.PI / 2;
+      h.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+      return piv;
+    });
+    const mouth = (i, k) => new THREE.Vector3(posts[i].x + SLOT[k] - Math.sin(HORN.tilt[k]) * HORN.h, TOP - 0.01 + Math.cos(HORN.tilt[k]) * HORN.h, POST.z + 0.03);
     loops.add((dt) => {
       for (const p of posts) {
         if (p.wig === null) continue;
@@ -230,25 +274,26 @@ export default {
     });
 
     // ---------- strings (spec.strings): one arc per ear and listened-to word ----------
-    function arc(i, j, k) {
+    // from ear k's trumpet mouth on post i (or its spot on the card top: fromHorn false) to its spot on post j
+    function arc(i, j, k, fromHorn = true) {
       const a = posts[i], b = posts[j], y0 = TOP + 0.01, z0 = POST.z, zo = (k - 1.5) * 0.18, lift = LIFT * k;
-      const A = new THREE.Vector3(a.x + SLOT[k], y0, z0);
+      const A = fromHorn ? mouth(i, k) : new THREE.Vector3(a.x + SLOT[k], y0, z0);
       if (i === j) { // a small loop above the post
         const h = 1.0 + lift;
-        return new THREE.CubicBezierCurve3(A, new THREE.Vector3(A.x - 0.7, y0 + h, z0 + 2 * zo), new THREE.Vector3(A.x + 0.7, y0 + h, z0 + 2 * zo), A.clone());
+        return new THREE.CubicBezierCurve3(A, new THREE.Vector3(A.x - 0.7, A.y + h, z0 + 2 * zo), new THREE.Vector3(A.x + 0.7, A.y + h, z0 + 2 * zo), A.clone());
       }
       const B = new THREE.Vector3(b.x + SLOT[k], y0, z0);
       const apex = 0.8 + 0.35 * Math.abs(i - j) + lift;
       return new THREE.QuadraticBezierCurve3(A, new THREE.Vector3((A.x + B.x) / 2, y0 + 2 * apex, z0 + 2 * zo), B);
     }
     // Draws ear k's strings from word i into par; they zip out over `zip` seconds after `delay`.
-    function fire(par, i, k, { zip = 0.3, delay = 0, dots = true } = {}) {
+    function fire(par, i, k, { zip = 0.3, delay = 0, dots = true, fromHorn = true } = {}) {
       const wts = weights(ears[k].job, i), mine = gen;
       wts.forEach((wt, j) => {
         if (wt < 0.1) return;
         const thick = wt >= 0.5;
         const segs = thick ? 40 : 30, radial = thick ? 8 : 5;
-        const geo = new THREE.TubeGeometry(arc(i, j, k), segs, thick ? 0.06 : 0.024, radial, false);
+        const geo = new THREE.TubeGeometry(arc(i, j, k, fromHorn), segs, thick ? 0.06 : 0.024, radial, false);
         const m = mesh(geo, thick ? thickM[k] : thinM[k], 0, 0, 0, par);
         m.renderOrder = thick ? 0 : 2;
         const total = geo.index.count;
@@ -281,9 +326,14 @@ export default {
       ripple.visible = true;
       tween(0.55, (u) => { ripple.scale.setScalar(1 + u * 3.2); ripple.material.opacity = 0.85 * (1 - u); if (u >= 1) ripple.visible = false; });
       tween(0.25, (u) => { const k = Math.sin(u * Math.PI); p.g.scale.set(1 + 0.05 * k, 1 - 0.04 * k, 1 + 0.05 * k); });
+      // the four ears hop onto this word (a little pop each), and listen from here
+      hop.position.set(p.x, 0, POST.z); hop.visible = true;
+      horns.forEach((h, k) => { h.scale.setScalar(0.001); tween(0.22, (u) => h.scale.setScalar(Math.max(0.001, easeBack(u))), k * 0.04); });
       clearStrings();
       strings = group(root);
-      ears.forEach((_, k) => fire(strings, i, k));
+      ears.forEach((_, k) => fire(strings, i, k, { delay: 0.1 }));
+      // frame the whole row and its strings while the Speck stays among the posts
+      if (cam !== 'row') shotTo('row', rowShot(), 800);
     }
 
     // ---------- Dabble's FAIR PROGRAM board (spec.board) ----------
@@ -303,13 +353,11 @@ export default {
     const faceTex = canvasTex(BOARD.w * PX, BOARD.h * PX, drawBoard(BOARD.head * PX, rowY.map((y) => toPx(0, y)[1]), [toPx(hornX + 0.05, 0)[0], toPx(tagX0 - 0.03, 0)[0]]));
     mesh(new THREE.PlaneGeometry(BOARD.w, BOARD.h), M(0xffffff, { map: faceTex.tex, roughness: 0.92, alphaTest: 0.5 }), 0, 0, 0.032, panel);
     // four paper ear-trumpets pinned down the left, each with its blank tag
-    const hornGeo = new THREE.LatheGeometry([[0.026, 0], [0.028, 0.12], [0.038, 0.19], [0.058, 0.245], [0.092, 0.285], [0.108, 0.3], [0.099, 0.305]].map(([r, y]) => new THREE.Vector2(r, y)), 20);
-    const rimGeo = new THREE.TorusGeometry(0.105, 0.013, 6, 24);
     const rows = ears.map((ear, k) => {
       const y = rowY[k];
       const horn = group(panel, hornX, y - 0.04, 0.09);
       horn.rotation.z = Math.PI / 2 - 0.42;
-      mesh(hornGeo, M(earCol[k], { roughness: 0.75, side: THREE.DoubleSide }), 0, 0, 0, horn);
+      mesh(hornGeo, hornM[k], 0, 0, 0, horn);
       mesh(rimGeo, inkM, 0, 0.302, 0, horn).rotation.x = Math.PI / 2;
       mesh(new THREE.SphereGeometry(0.038, 10, 8), brass, hornX, y - 0.04, 0.12, panel); // the pin holding it
       const tagRec = canvasTex(Math.round(tagW * PX), Math.round(tagH * PX), drawTag(ear.color, ''));
@@ -338,15 +386,40 @@ export default {
       tween(0.3, (u) => { const s = Math.sin(u * Math.PI); r.tagPiv.rotation.z = s * 0.08; r.tagPiv.scale.setScalar(1 + 0.08 * s); });
     }
     function wobbleBoard() { tween(0.5, (u) => { panel.rotation.z = Math.sin(u * Math.PI * 5) * 0.035 * (1 - u); }); }
+    // while ear k's question is open, its trumpet waggles and its tag breathes, so the colour asked is plain to see
+    let focusK = -1;
+    loops.add((dt, t) => rows.forEach((r, k) => {
+      if (k === focusK) { r.horn.rotation.x = Math.sin(t * 7) * 0.32; r.tagPiv.scale.setScalar(1 + 0.05 * (1 + Math.sin(t * 7)) / 2); r.focused = true; }
+      else if (r.focused) { r.horn.rotation.x = 0; r.tagPiv.scale.setScalar(1); r.focused = false; }
+    }));
+    // the board's close-up: the board in the top half of the screen (the question box covers the bottom),
+    // the Speck stepped aside to its right so it never stands in front of it
+    const boardShot = () => {
+      const d = Math.max(8, 2.8 / (Math.tan(16 * D2R) * aspect()));
+      return pose([BOARD.x, BOARD.y + BOARD.faceY - 0.07 * d, BOARD.z], d);
+    };
+    function stepAside() {
+      const p = w.player.pos, x0 = p.x, z0 = p.z;
+      if (Math.hypot(x0 - ASIDE.x, z0 - ASIDE.z) < 0.05) return Promise.resolve();
+      return new Promise((resolve) => tween(0.3, (u) => {
+        const e = easeOut(u);
+        w.player.place(x0 + (ASIDE.x - x0) * e, BOARD.y, z0 + (ASIDE.z - z0) * e);
+        if (u >= 1) resolve();
+      }));
+    }
 
     async function useBoard() {
       if (destroyed || solved || boardBusy) return;
       boardBusy = true;
       try {
+        await Promise.all([stepAside(), shotTo('board', boardShot(), 700)]);
+        if (destroyed || solved) return;
         const opts = [...tags.map((t) => t.label), 'Later'];
         const speaker = w.speakerOf(giver);
         for (let k = 0; k < ears.length; k++) {
-          const pick = await w.ask(`${ears[k].name}'s job?`, opts, { speaker, neutral: true });
+          focusK = k;
+          const pick = await w.ask(`${ears[k].icon ? `${ears[k].icon} ` : ''}${ears[k].name}'s job?`, opts, { speaker, neutral: true });
+          focusK = -1;
           if (destroyed || solved) return;
           if (!(pick >= 0 && pick < tags.length)) return; // Later (or Escape): what is set stays set
           setTag(k, tags[pick].id);
@@ -358,17 +431,17 @@ export default {
         const fb = spec.feedback || {};
         const lines = (wrong === 1 ? fb.wrongOne : fb.wrongMany) || ['Quack. {n} wrong.'];
         await w.speak(giver, lines.map((l) => fill(l, { n: wrong })));
-      } finally { boardBusy = false; }
+      } finally {
+        focusK = -1; boardBusy = false;
+        if (cam === 'board') shotBack(700);
+      }
     }
 
-    // All four right: every ear fires from every post at once, the tags flutter off up the hill.
+    // All four right: the tags flutter off the board, up toward the hill; then, over at the posts, every ear
+    // fires from every word at once (the whole Bell listening), and the camera comes back to the Speck.
     async function win() {
-      solved = true;
-      clearStrings();
-      strings = group(root);
-      posts.forEach((p, i) => { p.wig = 0; p.wigDelay = 0.06 * i; ears.forEach((_, k) => fire(strings, i, k, { zip: 0.3, delay: 0.06 * i, dots: false })); });
+      solved = true; focusK = -1;
       w.sfx('win');
-      gameWait(0.3).then(() => { if (!destroyed) w.sfx('ding'); });
       w.confetti(80);
       rows.forEach((r, k) => {
         tween(0.5, (u) => { r.horn.rotation.x = Math.sin(u * Math.PI * 4) * 0.4 * (1 - u); }, k * 0.08);
@@ -380,12 +453,25 @@ export default {
           r.tagPiv.scale.setScalar(Math.max(0.001, 1 - 0.75 * e));
         }, 0.15 + k * 0.07);
       });
-      await gameWait(1.2);
+      await gameWait(1.0);
       if (destroyed) return;
+      await shotTo('finale', rowShot(), 900);
+      if (destroyed) return;
+      hop.visible = false;
+      clearStrings();
+      strings = group(root);
+      posts.forEach((p, i) => { p.wig = 0; p.wigDelay = 0.06 * i; ears.forEach((_, k) => fire(strings, i, k, { zip: 0.3, delay: 0.06 * i, dots: false, fromHorn: false })); });
+      w.sfx('ding');
+      await gameWait(1.8);
+      if (destroyed) return;
+      shotBack(900);
       api.onSolved();
     }
 
-    root.userData = { get query() { return query; }, chosen, weights, words };
+    // a glance at the row as it pops up past the bridge, then back to the Speck (a ring takes the camera over)
+    shotTo('glance', rowShot(), 900).then(() => gameWait(1.6)).then(() => { if (!destroyed && cam === 'glance') shotBack(900); });
+
+    root.userData = { get query() { return query; }, chosen, weights, words, get cam() { return cam; } };
 
     // text made before the Fredoka web font arrives is drawn again once it is there
     try {
@@ -404,8 +490,9 @@ export default {
         pending.clear();
         for (const it of interactables) w.removeInteractable(it);
         for (const c of colliders) w.removeCollider(c);
+        shotBack(500); // never leave the camera held
         w.scene.remove(root);
-        const geos = new Set([dotGeo, bellGeo, hornGeo, rimGeo]), mats = new Set([...thickM, ...thinM, ...dotM]), texs = new Set(textures.map((t) => t.tex));
+        const geos = new Set([dotGeo, bellGeo, hornGeo, rimGeo]), mats = new Set([...thickM, ...thinM, ...dotM, ...hornM]), texs = new Set(textures.map((t) => t.tex));
         root.traverse((o) => {
           if (o.geometry) geos.add(o.geometry);
           for (const m of [o.material].flat()) if (m) { mats.add(m); if (m.map) texs.add(m.map); }

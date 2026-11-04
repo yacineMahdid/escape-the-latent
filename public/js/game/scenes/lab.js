@@ -220,7 +220,7 @@ export async function createLabScene(ctx) {
       // on the desk: a fixed view with him behind it; going down the ruler blends into a follow camera
       place(camera, c) {
         const dx = Math.max(-4, Math.min(4, c.x * 0.4));
-        const t = Math.max(0, Math.min(1, (-c.y - 0.3) / 6)); const k = t * t * (3 - 2 * t);
+        const t = Math.max(0, Math.min(1, Math.max((-c.y - 0.1) / 5, (c.x - 8.5) / 6))); const k = t * t * (3 - 2 * t); // follow sooner past the desk edge
         camera.position.set(dx + (c.x - 1.5 - dx) * k, 6.4 + (c.y + 6.8 - 6.4) * k, 18.5 + (c.z + 15.5 - 18.5) * k);
         camera.lookAt(dx + (c.x + 0.5 - dx) * k, 4.6 + (c.y + 1.3 - 4.6) * k, -6 + (c.z - 4 + 6) * k);
       },

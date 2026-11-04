@@ -8,11 +8,17 @@
 // through a softmax (§3.2.1) to give the weights, which are the pie slices shared by every word at once, and what
 // 'it' turns into is the blend of the values weighted by those slices (§3.2): the bubble, and the colour of the
 // 'it' card when you ring. Playing well = one sharp head on the word 'it' refers to, like Figure 4's heads on 'its'.
+// Controls: ← → turn the ear (holding speeds it up). The mouse over the dial sets where the ear should point and
+// the ear swings there (at most spec.mouseTurn °/s, so the pie sweeps through the words on its way); a press on the
+// dial rings once the ear has arrived. Only presses on the dial ring: a click on the sentence, the pie or Bimble
+// does nothing. Space/Enter ring at once (or on arrival, while the ear is still swinging to the mouse).
 // Spec: content/extra/attention.json, challenge m1. Test hooks on container.__mg.state:
 //   stage ('pre' | 'listen' | 'rung' | 'over'), stageT, fuseLeft, ri (round of this try, 0-based),
 //   rd { words, ask, means, decoy }, theta (ear angle in degrees, 0 = up, clockwise), flags [{ word, phi, color }]
 //   (live key angles, drift included), w (live weights), top (index of the biggest slice), good, muddles,
-//   driftDir (0 | 1 | -1), last { kind: 'good' | 'muddle' | 'wrong' | 'slow', text }, rings [{ round, kind, wMeans, top }].
+//   driftDir (0 | 1 | -1), last { kind: 'good' | 'muddle' | 'wrong' | 'slow', text }, rings [{ round, kind, wMeans, top }],
+//   aim (where the mouse wants the ear, degrees, or null), ringOnArrival (a ring waits for the ear to get there),
+//   geo { dial: { cx, cy, ring, zone, top }, pie, strip: { y, bottom } } (canvas units: where a press counts).
 import { runMinigame, draw } from './kit.js';
 import { sfx as gameSfx } from '../game/sfx.js';
 
@@ -30,6 +36,8 @@ const PIE = { cx: 740, cy: 300, r: 92 };
 const BUB = { x: 740, y: 456, h: 54 };
 const STRIP = { y: 88, size: 24, pad: 12, gap: 8, h: 44, lift: 8 };
 const BIMBLE = { x: 908, y: 478 };
+const STRIP_BOTTOM = STRIP.y + 32; // the sentence strip's ribbon ends here: the dial's pointer zone starts below it
+const FIT = W - 110;        // the strip's cards fit this width, so the ribbon and its folded tails stay on the canvas
 const TAP = 3;              // degrees for a key tap shorter than one frame
 const LITTLE = new Set(['the', 'a', 'an', 'because', 'was', 'is', 'and', 'of', 'to', 'so']);
 
@@ -92,7 +100,7 @@ function config(spec) {
   return {
     toWin: num(spec.toWin, 6), maxMuddles: num(spec.maxMuddles, 3), fuse: num(spec.roundFuse, 8),
     delay: num(spec.nextRoundDelay, 0.8), sharp: num(spec.sharpness, 10), bar: num(spec.threshold, 0.6),
-    turn0: num(ts.start, 70), turn1: num(ts.max, 190), ramp: Math.max(0.01, num(ts.rampSeconds, 0.6)),
+    turn0: num(ts.start, 70), turn1: num(ts.max, 190), ramp: Math.max(0.01, num(ts.rampSeconds, 0.6)), mouseTurn: Math.max(30, num(spec.mouseTurn, 360)),
     spinFrom: num(spin.fromRound, 4), spinSpeed: num(spin.degPerSec, 10), decoyGap: num(spec.keyLayout?.decoyOffset, 45),
     feedback: { ...DEF_FEEDBACK, ...(spec.feedback || {}) },
     colors: { ...DEF_COLORS, ...(spec.colors || {}) },
@@ -282,7 +290,7 @@ function makeGame(ctx) {
     const words = S.rd.words;
     const widths = (sz) => words.map((t) => textW(t, sz) + STRIP.pad * 2);
     let size = STRIP.size;
-    while (size > 15 && span(widths(size)) > W - 60) size -= 1;
+    while (size > 15 && span(widths(size)) > FIT) size -= 1;
     S.cardSize = size; S.cardFont = FK;
     S.cards = cardRow(widths(size));
     if (S.last) layoutResult(S);
@@ -291,7 +299,7 @@ function makeGame(ctx) {
     const ws = S.cards.map((c) => c.w), ask = S.rd.ask;
     let size = S.cardSize;
     const others = span(ws) - ws[ask];
-    while (size > 14 && others + textW(S.last.text, size) + STRIP.pad * 2 > W - 60) size -= 1;
+    while (size > 14 && others + textW(S.last.text, size) + STRIP.pad * 2 > FIT) size -= 1;
     ws[ask] = textW(S.last.text, size) + STRIP.pad * 2;
     S.resSize = size;
     S.cards2 = cardRow(ws);
@@ -337,6 +345,7 @@ function makeGame(ctx) {
 
   function startRound(S) {
     S.stage = 'listen'; S.stageT = 0; S.last = null; S.lastTick = Infinity; S.pressing = false; S.holdT = 0;
+    S.aim = null; S.ringOnArrival = false;
     S.earKick = 1;
     sfx('paper');
     if (S.driftDir && S.ri === S.C.spinFrom - 1) { // the first windy round of the try
@@ -381,29 +390,38 @@ function makeGame(ctx) {
     S.delay = C.delay + (kind === 'good' ? 0 : 0.3);
   }
 
-  function inZone(p) { const d = Math.hypot(p.x - DIAL.cx, p.y - DIAL.cy); return d >= DIAL.dead && d <= DIAL.zone; }
+  // the dial's pointer zone: around the dial, never the sentence strip above it (nor the pie, the bubble, Bimble)
+  function inZone(p) { const d = Math.hypot(p.x - DIAL.cx, p.y - DIAL.cy); return d >= DIAL.dead && d <= DIAL.zone && p.y > STRIP_BOTTOM; }
   const pointerAngle = (p) => norm(Math.atan2(p.x - DIAL.cx, -(p.y - DIAL.cy)) / D2R);
+  const turnTo = (from, to) => ((((to - from) % 360) + 540) % 360) - 180; // the shortest signed turn, degrees
 
   function stepListen(S, dt, input) {
     const C = S.C;
-    // ← → turn the ear; holding ramps the speed up
+    // ← → turn the ear; holding ramps the speed up (keys take over from the mouse)
     const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
+    const tap = (input.pressed.has('left') && !input.left ? -TAP : 0) + (input.pressed.has('right') && !input.right ? TAP : 0);
+    if (dir || tap) { S.aim = null; S.ringOnArrival = false; }
     if (dir) {
       if (S.holdDir !== dir) S.holdT = 0;
       S.holdT += dt;
       S.theta += dir * (C.turn0 + (C.turn1 - C.turn0) * clamp01(S.holdT / C.ramp)) * dt;
     } else S.holdT = 0;
     S.holdDir = dir;
-    if (input.pressed.has('left') && !input.left) S.theta -= TAP; // a tap that came and went between two frames
-    if (input.pressed.has('right') && !input.right) S.theta += TAP;
-    // the mouse aims while it moves over the dial; a press aims at its point, its release rings
+    S.theta += tap; // a tap that came and went between two frames
+    // the mouse over the dial sets where the ear should point; a press starts only on the dial, and its release
+    // rings once the ear has got there
     const p = input.pointer;
     const moved = S.pLast && (Math.abs(p.x - S.pLast.x) > 0.3 || Math.abs(p.y - S.pLast.y) > 0.3);
-    let rang = input.pressed.has('action');
-    if (p.clicked) S.pressing = true;
-    if ((moved || p.clicked || (S.pressing && p.down)) && inZone(p)) S.theta = pointerAngle(p);
-    if (S.pressing && !p.down) { S.pressing = false; rang = true; }
+    if (p.clicked && inZone(p)) S.pressing = true;
+    if ((moved || (S.pressing && (p.clicked || p.down))) && inZone(p)) S.aim = pointerAngle(p);
+    if (S.pressing && !p.down) { S.pressing = false; S.ringOnArrival = true; }
+    // the ear swings toward the aim at a capped speed: the pie and the cards sweep through the words on the way
+    if (S.aim !== null) { const d = turnTo(S.theta, S.aim), step = C.mouseTurn * dt; S.theta += Math.abs(d) <= step ? d : Math.sign(d) * step; }
     S.theta = norm(S.theta);
+    const arrived = S.aim === null || Math.abs(turnTo(S.theta, S.aim)) < 0.5;
+    let rang = false;
+    if (input.pressed.has('action')) { if (arrived) rang = true; else S.ringOnArrival = true; }
+    if (S.ringOnArrival && arrived) { S.ringOnArrival = false; rang = true; }
     // the Fair wind turns the whole ring of keys
     if (S.driftDir) S.drift += S.driftDir * C.spinSpeed * dt;
     for (let j = 0; j < S.flags.length; j++) S.flags[j].phi = norm(S.base[j] + S.drift);
@@ -694,7 +712,8 @@ function makeGame(ctx) {
       S.windFirst = rnd(S) < 0.5 ? -1 : 1;
       Object.assign(S, { stage: 'pre', stageT: 0, ri: 0, good: 0, muddles: 0, result: null, rings: [], fx: [], leaves: [],
         shake: 0, holdT: 0, holdDir: 0, pressing: false, pLast: null, last: null, delay: 0, bubW: 0, earKick: 0, focusKick: 0,
-        geo: { dial: { cx: DIAL.cx, cy: DIAL.cy, ring: DIAL.ring, zone: DIAL.zone }, pie: { cx: PIE.cx, cy: PIE.cy, r: PIE.r } } });
+        aim: null, ringOnArrival: false,
+        geo: { dial: { cx: DIAL.cx, cy: DIAL.cy, ring: DIAL.ring, zone: DIAL.zone, top: STRIP_BOTTOM }, pie: { cx: PIE.cx, cy: PIE.cy, r: PIE.r }, strip: { y: STRIP.y, bottom: STRIP_BOTTOM } } });
       layoutRound(S); // round 1, shown face down behind the rules card and the countdown
     },
     update(S, dt, input) {
