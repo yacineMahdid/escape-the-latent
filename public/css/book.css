@@ -565,7 +565,7 @@
   100% { letter-spacing: .05em; }
 }
 
-/* ---------------- smaller screens (down to 900x600) ---------------- */
+/* ---------------- smaller screens (900x600, and phone sizes stay usable) ---------------- */
 
 @media (max-height: 720px) {
   .bk-col { padding-top: 38px; }

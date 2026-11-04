@@ -7,8 +7,9 @@
 // Pyodide worker (js/workers/pyodide-worker.js); a run longer than 20 s is killed and the worker
 // respawned. Drafts autosave to localStorage `etl-code-<regionId>-<challengeId>`. All tests passing ->
 // a "Solved!" stamp and paper confetti -> the draft is deleted -> resolves { solved: true, code }.
-// Esc closes with solved: false. The console: a status line while Python loads or runs, then
-// "n / N tests pass" (one pip per test) and each failing test's own message, identical ones once.
+// Esc closes with solved: false. The console: a status line while Python loads or runs (or the
+// offline line as soon as it fails to load), then "n / N tests pass" (one pip per test), what the code
+// printed, and each failing test's own message, said once for tests that fail the same way.
 import { openModal, closeModal, topModal } from './modal.js';
 
 const CSS_HREF = '/css/terminal.css';
@@ -715,6 +716,9 @@ function paperConfetti(host, count = 80) {
 
 const pretty = (name) => (name === 'tests' ? '' : String(name).replace(/^test_?/, '').replace(/_+/g, ' ').trim());
 const norm = (s) => String(s ?? '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+// "ValueError: matmul: … (size 2 is different from 9)" -> "ValueError"; a message that does not start
+// with an error type (an assertion's own words) stays whole
+const errorType = (m) => /^[A-Za-z_][\w.]*(?=:|$)/.exec(m)?.[0] ?? m;
 
 export async function open({ challenge = {}, regionId = 'local' } = {}) {
   await ensureCss();
@@ -742,9 +746,10 @@ export async function open({ challenge = {}, regionId = 'local' } = {}) {
     const key_ = (act, ico, words, tip, cls = '') =>
       h('button', { class: `term-key ${cls}`.trim(), type: 'button', title: tip, 'data-act': act }, icon(ico), words);
     const RUN_TIP = 'Run your code · Ctrl+Shift+Enter';
+    const RESET_TIP = 'Back to the starter code';
     const runKey = key_('run', 'run', keyText('Run', 'Stop'), RUN_TIP);
     const testKey = key_('test', 'test', keyText('Run tests'), 'Check your code · Ctrl+Enter', 'go');
-    const resetKey = key_('reset', 'reset', keyText('Reset code'), 'Back to the starter code');
+    const resetKey = key_('reset', 'reset', keyText('Reset code', 'Sure?'), RESET_TIP);
     const closeKey = key_('close', 'close', keyText('Close'), 'Esc · your code is kept', 'term-close');
 
     // ---- editor + console (a status line while Python loads or runs, then the results)
@@ -774,13 +779,22 @@ export async function open({ challenge = {}, regionId = 'local' } = {}) {
       out.classList.toggle('has-status', !!text);
       statusText.textContent = text;
     };
+    // Python failing to load says so at once (a blank console would look ready); the next run tries again
+    const row = (cls, ...kids) => h('div', { class: `term-row ${cls}` }, ...kids);
+    const msg = (text) => h('span', { class: 'term-msg', text });
+    const offlineRow = () => row('bad', icon('offline', 'term-ic'), msg("Python didn't load (offline?). Try again."));
+    let pyDown = null;
     const unsubscribe = runner.subscribe((state) => {
       panel.dataset.py = state;
+      if (state !== 'failed' && pyDown) { pyDown.remove(); pyDown = null; }
       if (state === 'loading') setStatus(runner.loadedOnce ? 'Restarting Python…' : 'Loading Python…');
       else if (state === 'running') {
         setStatus('');
         statusTimer = setTimeout(() => setStatus('Running…'), 300);
-      } else setStatus('');
+      } else {
+        setStatus('');
+        if (state === 'failed' && !busy && !log.contains(pyDown)) log.append((pyDown = offlineRow()));   // a run in flight says it itself
+      }
     });
 
     function setBusy(on) {
@@ -793,17 +807,17 @@ export async function open({ challenge = {}, regionId = 'local' } = {}) {
     }
 
     // ---- console rendering
-    const row = (cls, ...kids) => h('div', { class: `term-row ${cls}` }, ...kids);
     const mark = (text) => h('span', { class: 'term-mark', text });
-    const msg = (text) => h('span', { class: 'term-msg', text });
     const lineBtn = (line) => h('button', {
       class: 'term-lnk', type: 'button', title: `Go to line ${line}`,
       onclick: (e) => { e.stopPropagation(); editor.goTo(line); },
     }, `line ${line}`);
 
-    // Tests: "n / N tests pass", one pip per test (its name in the tooltip), then each failing test's
-    // own message: ✗ message [k tests] [line 7]. Tests that fail the same way share one row. The
-    // selected row's line is marked in the editor; click a row or a red pip to pick another.
+    // Tests: "n / N tests pass", one pip per test (its name and message in the tooltip), what the code
+    // printed, then each failing test's own message: ✗ message [k tests] [line 7]. Tests that fail the
+    // same way share one row: the same assertion message, or a crash on the same line of the player's
+    // code with the same error type (numpy says the same error with other shapes). A crash's line is
+    // marked in the editor; with crashes on several lines, click a row or a red pip to pick which.
     function showTests(results, prints) {
       const n = results.length;
       const pass = results.filter((t) => t.passed).length;
@@ -812,11 +826,14 @@ export async function open({ challenge = {}, regionId = 'local' } = {}) {
         if (t.passed) return null;
         const text = t.message || pretty(t.name) || 'failed';
         const line = t.line || null;
-        let g = groups.find((x) => x.text === text && x.line === line);
-        if (!g) groups.push((g = { text, line, tests: [] }));
+        const key = line ? `${line} ${errorType(text)}` : text;
+        let g = groups.find((x) => x.key === key);
+        if (!g) groups.push((g = { key, text, line, tests: [] }));
         g.tests.push(t);
         return g;
       });
+      const lined = groups.filter((g) => g.line);
+      const pick = lined.length > 1;       // only then is there a choice of line to mark
       const pips = h('span', { class: 'term-pips' });
       const select = (g, scroll) => {
         for (const x of groups) x.row.classList.toggle('sel', x === g);
@@ -825,22 +842,27 @@ export async function open({ challenge = {}, regionId = 'local' } = {}) {
         if (scroll) g.row.scrollIntoView({ block: 'nearest' });
       };
       results.forEach((t, i) => {
-        const pip = h('i', { class: t.passed ? 'ok' : 'bad', title: [pretty(t.name), t.passed ? 'passes' : t.message].filter(Boolean).join('\n') });
-        if (!t.passed) pip.addEventListener('click', () => select(groupOf[i], true));
+        const g = groupOf[i];
+        const pip = h('i', { class: t.passed ? 'ok' : `bad${pick && g.line ? ' pick' : ''}`, title: [pretty(t.name), t.passed ? 'passes' : t.message].filter(Boolean).join('\n') });
+        if (pick && g?.line) pip.addEventListener('click', () => select(g, true));
         pips.append(pip);
       });
       const summary = n === 1 ? (pass ? 'The test passes' : 'The test fails') : `${pass} / ${n} tests pass`;
-      log.append(h('div', { class: `term-sum ${pass === n ? 'ok' : 'bad'}` }, h('b', { text: summary }), pips));
+      // what the code printed goes right under the summary, where a player debugging with print() looks
+      log.append(h('div', { class: `term-sum ${pass === n ? 'ok' : 'bad'}` }, h('b', { text: summary }), pips), ...prints);
       for (const g of groups) {
         const k = g.tests.length;
-        g.row = row(`bad term-fail${groups.length > 1 ? ' pickable' : ''}`, mark('✗'), msg(g.text),
+        const same = g.tests.every((t) => t.message === g.tests[0].message);
+        g.row = row(`bad term-fail${pick && g.line ? ' pickable' : ''}`, mark('✗'), msg(g.text),
           k > 1 ? h('span', { class: 'term-count', text: `${k} tests` }) : null, g.line ? lineBtn(g.line) : null);
-        g.row.title = [...g.tests.map((t) => pretty(t.name)), g.tests[0].trace].filter(Boolean).join('\n');
-        g.row.addEventListener('click', () => select(g));
+        // the tests (each with its own message when they differ), then where it crashed
+        g.row.title = [...g.tests.map((t) => (same ? pretty(t.name) : [pretty(t.name), t.message].filter(Boolean).join(' — '))), g.tests[0].trace]
+          .filter(Boolean).join('\n');
+        if (pick && g.line) g.row.addEventListener('click', () => select(g));
         log.append(g.row);
       }
-      log.append(...prints);
-      if (groups.length) select(groups[0]);
+      if (pick) select(lined[0]);
+      else if (lined.length) editor.mark(lined[0].line);
     }
 
     function show(res, mode) {
@@ -848,7 +870,7 @@ export async function open({ challenge = {}, regionId = 'local' } = {}) {
       editor.mark(null);
       if (res.timeout) { log.append(row('warn', icon('timer', 'term-ic'), msg(`Stopped after ${RUN_TIMEOUT_MS / 1000} s. Endless loop?`))); return; }
       if (res.cancelled) { log.append(row('muted', icon('stop', 'term-ic'), msg('Stopped'))); return; }
-      if (res.offline) { log.append(row('bad', icon('offline', 'term-ic'), msg("Python didn't load (offline?). Try again."))); return; }
+      if (res.offline) { log.append(offlineRow()); return; }
       const prints = [
         res.stdout ? h('pre', { class: 'term-stdout', text: res.stdout.replace(/\n$/, '') }) : null,
         res.stderr ? h('pre', { class: 'term-stderr', text: res.stderr.replace(/\n$/, '') }) : null,
@@ -905,14 +927,15 @@ export async function open({ challenge = {}, regionId = 'local' } = {}) {
       finish(true);
     }
 
-    // ↺ asks first: one click arms it ("Click again to reset"), a second click within a few seconds resets
+    // ↺ asks first: one press arms it ("Sure?", in the label's own spot, so the key keeps its width), a
+    // second press within a few seconds resets
     let resetArmed = 0;
-    const resetWords = (text) => resetKey.querySelector('.term-key-txt').replaceWith(keyText(text));
     function reset() {
       if (busy || solved) return;
       if (!resetArmed) {
         resetKey.classList.add('armed');
-        resetWords('Click again to reset');
+        showLabel(resetKey, 'Sure?');
+        resetKey.title = 'Click again to reset';
         resetArmed = setTimeout(disarm, 3200);
         return;
       }
@@ -927,7 +950,8 @@ export async function open({ challenge = {}, regionId = 'local' } = {}) {
       if (!resetArmed) return;
       resetArmed = 0;
       resetKey.classList.remove('armed');
-      resetWords('Reset code');
+      showLabel(resetKey, 'Reset code');
+      resetKey.title = RESET_TIP;
     }
 
     function finish(isSolved) {

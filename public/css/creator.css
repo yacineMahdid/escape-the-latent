@@ -94,7 +94,7 @@
 .cr-again-ic { flex: none; }
 .cr-again-ic svg { display: block; width: 20px; height: 20px; }
 .cr-photo.has-img:not(.cam):not([data-state="busy"]) .cr-again { display: flex; }
-.cr-photo:hover .cr-again, .cr-frame:focus-visible .cr-again { background: #fff3c4; transform: translateX(-50%) rotate(-2deg) scale(1.06); }
+.cr-photo:hover .cr-again, .cr-photo.drag .cr-again, .cr-frame:focus-visible .cr-again { background: #fff3c4; transform: translateX(-50%) rotate(-2deg) scale(1.06); }
 
 /* paper pinwheel while Claude looks */
 .cr-spin {

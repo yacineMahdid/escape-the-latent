@@ -6,7 +6,8 @@
 // No API key needed: every /api/status and /api/avatar answer that matters is mocked (so a server that has a key
 // is never asked to look at a photo). Needs WebGL (SwiftShader). Screenshots land in test-output/creator-*.png.
 // Text follows docs/ARCHITECTURE.md "Concise text": the words a first-time player needs are on the surface
-// (title, tab and row labels, worded buttons, the photo path and its status lines), all short, no paragraphs.
+// (title, tab and row labels, worded buttons, the photo path and its status lines), all short, no paragraphs;
+// the photo frame always says what a click does, and nothing on the polaroid repeats or outlives the status line.
 const { chromium } = require('playwright');
 const { spawn } = require('node:child_process');
 const path = require('node:path');
@@ -110,6 +111,14 @@ async function cardVars(page) {
   return page.$eval('.cr-card', (el) => ['--sk', '--hc', '--ec', '--tc', '--bc', '--fc'].map((k) => el.style.getPropertyValue(k)).join(' '));
 }
 const rect = (page, sel) => page.$eval(sel, (el) => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
+// resolves once the page has drawn n more frames and at least ms have passed: a busy machine can take
+// seconds per frame on the game page, so a plain sleep may screenshot a half-updated card
+const settle = (page, n = 5, ms = 600) => page.evaluate(({ n, ms }) => new Promise((done) => {
+  const t0 = performance.now();
+  let i = 0;
+  const tick = () => (++i >= n && performance.now() - t0 >= ms ? done() : requestAnimationFrame(tick));
+  requestAnimationFrame(tick);
+}), { n, ms });
 const statusLine = (page) => page.$eval('.cr-status', (el) => el.textContent);
 const waitStatus = (page, line) => page.waitForFunction((l) => document.querySelector('.cr-status')?.textContent === l, line);
 
@@ -118,7 +127,7 @@ const TAB_WORDS = ['Face', 'Hair', 'Clothes', 'Extras'];
 const ROW_LABELS = {
   face: ['Skin', 'Eyes', 'Facial hair', 'Freckles'],
   hair: ['Style', 'Colour'],
-  clothes: ['Top', 'Top colour', 'Bottom', 'Shoes'],
+  clothes: ['Top', 'Top colour', 'Bottoms', 'Shoes'],
   extras: ['Glasses', 'Accessory'],
 };
 const PHOTO_WORDS = ['From a photo', 'Choose or drop one', 'Take one', 'We make a look-alike.', 'The photo isn’t kept.'];
@@ -127,6 +136,11 @@ const SAID = {
   unreadable: '✕ Couldn’t read that photo', busy: '✕ Busy. Try again.', failed: '✕ That didn’t work. Try again.',
 };
 const words = (s) => (s.match(/[A-Za-z’'-]+/g) || []).length;
+const shownIn = (els) => els.filter((e) => e.getClientRects().length && getComputedStyle(e).visibility === 'visible').map((e) => e.textContent.trim());
+// what the photo frame says a click does: the empty frame's hint, or the label on a photo
+const frameWords = (page) => page.$$eval('.cr-frame .cr-pick-text > span, .cr-frame .cr-again', shownIn);
+const noteShown = (page) => page.$eval('.cr-note', (n) => getComputedStyle(n).visibility === 'visible');
+const photoHeight = (page) => page.$eval('.cr-photo', (el) => el.offsetHeight);
 // every visible line of text on the card (icons included; whitespace squeezed)
 const visibleLines = (page) => page.$eval('.cr-card', (card) => {
   const out = [];
@@ -148,7 +162,7 @@ async function checkConciseText(page, { photo }) {
   if (photo !== null) for (const w of PHOTO_WORDS) assert.equal(lines.includes(w), photo, `"${w}" ${photo ? 'shown' : 'hidden'}: ${text}`);
   const long = lines.filter((l) => l.length > 60 || words(l) > 8);
   assert.deepEqual(long, [], 'no line over 60 characters or 8 words');
-  const labels = await page.$$eval('.cr-title, .cr-tab-word, .cr-row-label, .cr-photo-head, .cr-act, .cr-pill', (els) => els.filter((e) => e.getClientRects().length).map((e) => e.textContent.replace(/[^A-Za-z’' -]/g, '').trim()));
+  const labels = await page.$$eval('.cr-title, .cr-tab-word, .cr-row-label, .cr-photo-head, .cr-act, .cr-pill, .cr-again', (els) => els.filter((e) => e.getClientRects().length).map((e) => e.textContent.replace(/[^A-Za-z’' -]/g, '').trim()));
   const wordy = labels.filter((l) => !l || words(l) > 3);
   assert.deepEqual(wordy, [], 'labels and buttons: 1-3 words each');
   const tips = await page.$$eval('.cr-card [title]', (els) => els.map((e) => e.title));
@@ -162,7 +176,7 @@ async function checkFit(page) {
   const r = await page.evaluate(() => {
     const box = (s) => document.querySelector(s).getBoundingClientRect();
     const dice = box('.cr-dice'), ok = box('.cr-ok'), stage = box('.cr-stage'), title = box('.cr-title');
-    const cut = [...document.querySelectorAll('.cr-title, .cr-tab-word, .cr-row-label, .cr-photo-head, .cr-pick-text, .cr-pill, .cr-act, .cr-note')]
+    const cut = [...document.querySelectorAll('.cr-title, .cr-tab-word, .cr-row-label, .cr-photo-head, .cr-pick-text, .cr-again, .cr-pill, .cr-act, .cr-note')]
       .filter((el) => el.getClientRects().length && getComputedStyle(el).visibility === 'visible' && el.scrollWidth > el.clientWidth + 1)
       .map((el) => el.textContent);
     return {
@@ -405,6 +419,8 @@ const liveTracks = (page) => page.evaluate(() => window.__streams.flatMap((s) =>
       assert.equal(await page.getAttribute('.cr-frame', 'role'), 'button');
       assert.equal(await page.getAttribute('.cr-frame', 'aria-label'), 'Choose a photo');
       assert.equal(await page.$('.cr-photo[role="button"], [role="button"] button'), null, 'no buttons inside a button');
+      assert.deepEqual(await frameWords(page), ['Choose or drop one'], 'the empty frame says what a click (or a drop) does');
+      const idleHeight = await photoHeight(page);
       await sleep(700);
       await page.screenshot({ path: path.join(OUT, 'creator-photo-idle.png') });
       await page.setInputFiles('.cr-file', { name: 'me.png', mimeType: 'image/png', buffer: await makePhoto(page) });
@@ -412,6 +428,8 @@ const liveTracks = (page) => page.evaluate(() => window.__streams.flatMap((s) =>
       await page.waitForFunction(() => document.querySelector('.cr-photo-img')?.complete);
       // while Claude looks: a working line and a worded Cancel; 🎲 and ✓ wait; the swatches stay live and win
       assert.equal(await statusLine(page), SAID.working);
+      assert.equal(await noteShown(page), false, 'the working line says it: the note steps back');
+      assert.equal(await photoHeight(page), idleHeight, 'the polaroid keeps its height');
       assert.equal(await page.isVisible('.cr-cancel'), true, 'Cancel shown while Claude looks');
       assert.equal(await page.isVisible('.cr-cam'), false, 'no camera while Claude looks');
       assert.equal(await page.isDisabled('.cr-ok'), true, '✓ waits for the photo');
@@ -431,6 +449,10 @@ const liveTracks = (page) => page.evaluate(() => window.__streams.flatMap((s) =>
       assert.equal(await statusLine(page), SAID.done);
       assert.equal(await page.isVisible('.cr-cancel'), false);
       assert.equal(await page.isDisabled('.cr-ok'), false);
+      // the photo stays, and says what a click does now; the note does not repeat the ready line
+      assert.deepEqual(await frameWords(page), ['Choose another'], 'a word on the photo: how to pick another');
+      assert.equal(await noteShown(page), false);
+      assert.equal(await photoHeight(page), idleHeight, 'the polaroid keeps its height');
       await sleep(250);
       await page.screenshot({ path: path.join(OUT, 'creator-photo-poof.png') });
       await sleep(1500);
@@ -471,6 +493,10 @@ const liveTracks = (page) => page.evaluate(() => window.__streams.flatMap((s) =>
       await page.waitForSelector('.cr-photo[data-state="error"] .cr-status', { state: 'visible' });
       assert.equal(await statusLine(page), SAID.unreadable);
       assert.equal(await page.getAttribute('.cr-status', 'role'), 'status');
+      // "Try again" points somewhere: the failed photo is put away and the frame's words show above the line
+      assert.equal(await page.$eval('.cr-photo', (el) => el.classList.contains('has-img')), false, 'the failed photo is put away');
+      assert.deepEqual(await frameWords(page), ['Choose or drop one']);
+      assert.equal(await noteShown(page), false, 'the status line speaks: no note');
       // a non-image is refused locally
       await page.setInputFiles('.cr-file', { name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('hello') });
       await waitStatus(page, SAID.notPhoto);
@@ -516,6 +542,15 @@ const liveTracks = (page) => page.evaluate(() => window.__streams.flatMap((s) =>
       assert.equal(await page.getAttribute('.cr-photo', 'data-state'), 'idle', 'a cancelled answer is ignored');
       assert.equal(await cardVars(page), look);
       assert.equal(await page.$eval('.cr-card', (el) => el.classList.contains('no-photo')), false, 'a retryable failure keeps the photo on offer');
+      // a look-alike, then 🎲: "✓ Look-alike ready" goes (it is no longer true); the photo stays and still says what a click does
+      await send();
+      await page.waitForSelector('.cr-photo[data-state="done"]');
+      assert.equal(await statusLine(page), SAID.done);
+      await page.click('.cr-dice');
+      await page.waitForSelector('.cr-photo[data-state="idle"]');
+      assert.equal(await statusLine(page), '', 'no stale "ready" line after 🎲');
+      assert.deepEqual(await frameWords(page), ['Choose another']);
+      assert.equal(await noteShown(page), true, 'idle again: the note is back');
       await page.click('.cr-tab[data-tab="hair"]');
       await page.click('.cr-chip[data-field="hairStyle"][data-value="bun"]');
       await page.click('.cr-ok');
@@ -601,7 +636,7 @@ const liveTracks = (page) => page.evaluate(() => window.__streams.flatMap((s) =>
     });
 
     // ------------------------------------------------------------------ layouts
-    await step('layouts: tablet, phone landscape, slow /api/status (no jumps, the words fit, stage in view)', async () => {
+    await step('layouts: tablet, phone landscape and portrait, slow /api/status (no jumps, the words fit, stage in view)', async () => {
       const ctx = await browser.newContext({ viewport: { width: 1024, height: 768 } });
       const page = await ctx.newPage();
       const errors = watch(page);
@@ -623,6 +658,27 @@ const liveTracks = (page) => page.evaluate(() => window.__streams.flatMap((s) =>
       await checkFit(page);
       await page.screenshot({ path: path.join(OUT, 'creator-phone-land.png') });
       await ctx.close();
+      // phones in portrait (touch), the photo path on: ✓ Done and the tab row in the first screen; nothing to drop there
+      for (const [w, hgt] of [[360, 740], [390, 844]]) {
+        const ctxP = await browser.newContext({ viewport: { width: w, height: hgt }, hasTouch: true, isMobile: true });
+        const pageP = await ctxP.newPage();
+        const errorsP = watch(pageP);
+        await aiOn(pageP);
+        await pageP.goto(`${BASE}/dev/creator.html`);
+        await pageP.waitForSelector('.cr-card:not(.checking):not(.no-photo)');
+        await sleep(900);
+        const fold = await pageP.evaluate(() => ({
+          done: document.querySelector('.cr-ok').getBoundingClientRect().bottom,
+          tabs: Math.max(...[...document.querySelectorAll('.cr-tab')].map((t) => t.getBoundingClientRect().bottom)),
+        }));
+        assert.ok(fold.done <= hgt && fold.tabs <= hgt, `${w}x${hgt}: ✓ Done and the tabs in the first screen: ${JSON.stringify(fold)}`);
+        assert.deepEqual(await frameWords(pageP), ['Choose one'], 'a touch screen: nothing to drop');
+        assert.equal(await pageP.evaluate(() => document.documentElement.scrollWidth), w, 'no sideways scroll');
+        await checkFit(pageP);
+        if (w === 390) await pageP.screenshot({ path: path.join(OUT, 'creator-phone-port.png') });
+        assert.deepEqual(errorsP, []);
+        await ctxP.close();
+      }
       // a slow /api/status: the stage keeps its width when the polaroid shows up
       const ctx2 = await browser.newContext({ viewport: { width: 1280, height: 800 } });
       const page2 = await ctx2.newPage();
@@ -672,14 +728,16 @@ const liveTracks = (page) => page.evaluate(() => window.__streams.flatMap((s) =>
       await page.click('.cr-dice');
       await page.click('.cr-tab[data-tab="hair"]');
       await page.click('.cr-chip[data-field="hairStyle"][data-value="ponytail"]');
-      await sleep(1500);
+      // the picked chip and the rebuilt preview must be drawn before the shot (not a frame mid-update)
+      await settle(page, 5, 1500);
+      assert.equal(await page.getAttribute('.cr-chip[data-field="hairStyle"][data-value="ponytail"]', 'aria-pressed'), 'true');
       await page.screenshot({ path: path.join(OUT, 'creator-in-game.png'), timeout: 120000 });
       await page.click('.cr-ok');
       await page.waitForFunction(() => !document.querySelector('.cr-overlay'));
       const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('etl-save-v1') || '{}').character);
       assert.equal(saved?.hairStyle, 'ponytail');
       await page.waitForSelector('.dlg', { timeout: 60000 });
-      await sleep(1500);
+      await settle(page, 5, 1500);
       await page.screenshot({ path: path.join(OUT, 'creator-lab.png'), timeout: 120000 });
       assert.deepEqual(errors, []);
       await ctx.close();

@@ -99,7 +99,9 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
 
 /* ---------------- editor (right, top) ---------------- */
 
-.term-right { min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto minmax(110px, 25%); }
+/* one explicit minmax(0, 1fr) column (not the implicit auto one, which grows to the key row's
+   min-content width) and min-width: 0, so a wide key row never pushes the editor or console out */
+.term-right { min-height: 0; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto minmax(110px, 25%); }
 .term-stage { position: relative; min-height: 0; display: flex; }
 .term-editor {
   --lh: 22px; --pad-y: 12px;
@@ -148,7 +150,8 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
 
 /* ---------------- typewriter keys: an icon and a word or two ---------------- */
 
-.term-keys { display: flex; align-items: center; gap: 14px; padding: 14px 4px 14px; }
+/* the keys fit on one row at every size (see the phone rules); wrapping is only a last resort */
+.term-keys { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 14px 4px 14px; }
 .term-key {
   --key: var(--paper);
   position: relative; flex: none;
@@ -221,8 +224,8 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
 .term-row.muted { color: rgba(243, 236, 220, .55); }
 .term-row[title]:not([title=""]) { cursor: help; }
 .term-msg { flex: 0 1 auto; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-/* failing tests: one row each (identical ones share a row); with several, a click picks the one
-   whose line is marked in the editor */
+/* failing tests: one row each (tests that fail the same way share a row); only with crashes on
+   several lines do rows (and red pips) pick which line the editor marks */
 .term-fail { margin: 0 -8px 3px; padding: 3px 8px; border-radius: 8px; }
 .term-row.term-fail.pickable { cursor: pointer; }
 .term-fail.pickable:hover { background: rgba(255, 253, 246, .06); }
@@ -249,8 +252,9 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
 .term-pips { display: flex; flex-wrap: wrap; gap: 5px; }
 .term-pips i { width: 13px; height: 13px; border-radius: 50%; border: 2px solid #fffdf6; cursor: help; }
 .term-pips i.ok { background: var(--teal); }
-.term-pips i.bad { background: var(--pink); cursor: pointer; }
-.term-pips i.bad:hover { transform: scale(1.2); }
+.term-pips i.bad { background: var(--pink); }
+.term-pips i.pick { cursor: pointer; }
+.term-pips i.pick:hover { transform: scale(1.2); }
 .term-pips i.sel { box-shadow: 0 0 0 2px #2b2233, 0 0 0 4px var(--pink); }
 .term-stdout, .term-stderr {
   margin: 0 0 8px; padding: 0 0 6px; font: inherit; white-space: pre-wrap; overflow-wrap: anywhere;
@@ -307,10 +311,14 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
 }
 
 /* narrow phones: the words stay, the key icons go, so all three keys fit on one row */
-@media (max-width: 400px) {
+@media (max-width: 440px) {
   .term-keys { gap: 8px; }
   .term-key { padding: 0 13px; font-size: 14px; border-width: 3px; }
   .term-keys .term-key .etl-ico { display: none; }
+}
+@media (max-width: 340px) {
+  .term-keys { gap: 6px; padding-left: 0; padding-right: 0; }
+  .term-key { padding: 0 11px; }
 }
 
 /* phone landscape: too short to stack, so keep the task beside the editor */
@@ -333,6 +341,11 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
   .term-tag { top: -18px; font-size: 14px; padding: 1px 12px 2px; border-width: 3px; }
   .term-stamp { width: 124px; height: 124px; margin: -62px 0 0 -62px; font-size: 54px; border-width: 5px; gap: 2px; }
   .term-stamp b { font-size: 17px; letter-spacing: 1px; }
+}
+/* the smallest landscape phones (568 x 320): the key icons go too, so the keys keep one row */
+@media (max-width: 620px) and (max-height: 500px) {
+  .term-key { padding: 0 12px; }
+  .term-keys .term-key .etl-ico { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -375,7 +388,8 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
   background: var(--pink); color: #fff; font-weight: 700; font-size: 19px;
   box-shadow: 3px 3px 0 rgba(43, 34, 51, .28); transform: rotate(-1.5deg);
 }
-.ex-q { font-size: 21px; line-height: 1.45; overflow-wrap: anywhere; }
+/* the question never gives way to the reply below it (it only scrolls past its max-height) */
+.ex-q { flex-shrink: 0; font-size: 21px; line-height: 1.45; overflow-wrap: anywhere; }
 .ex-q .md-code, .ex-reply .md-code { font-size: .82em; }
 /* long questions and replies scroll inside themselves, so the answer card never gets squeezed */
 .ex-q, .ex-reply {
@@ -473,7 +487,9 @@ ol.md-list > li::marker { color: var(--ink-soft); font-weight: 700; }
   .ex-overlay { padding: 34px 8px 18px; }
   .ex-bubble { padding: 26px 14px 14px; gap: 10px; }
   .ex-q { font-size: 18px; }
-  .ex-reply { font-size: 16px; }
+  /* the verdict (and meter) on the first line, the villager's words full width below */
+  .ex-reply { font-size: 16px; flex-wrap: wrap; gap: 2px 10px; }
+  .ex-reply-text { order: 1; flex: 1 0 100%; }
   .ex-ta { font-size: 16px; min-height: min(130px, 30vh); }
   .ex-key { height: 42px; padding: 0 16px; font-size: 16px; }
   .ex-key.has-ico { padding-left: 13px; }
