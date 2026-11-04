@@ -50,6 +50,21 @@ const SOLVERS = {
     await submit(p);
     await p.waitForTimeout(2800);
   },
+  'selective-gulp-knobs': async (p, spec) => {
+    await submit(p); await submit(p); // run and skip to the end: the chained start can't win
+    const want = spec.solution?.example || {};
+    const st = await state(p);
+    if (st.chained) await p.click('.sg-chain');
+    const opts = (spec.knobs?.delta?.options) || [0.001, 0.01, 0.1, 1, 10];
+    for (const [kind, kn] of Object.entries(want)) {
+      if (kind === 'chained') continue;
+      const cur = (await state(p)).knobs[kind];
+      const from = opts.indexOf(cur.delta); const to = opts.indexOf(kn.delta);
+      for (let i = 0; i < Math.abs(to - from); i++) await p.click(`.sg-dial[data-kind="${kind}"] button:${to < from ? 'first-child' : 'last-child'}`);
+      for (const key of ['B', 'C']) if (cur[key] !== kn[key]) await p.click(`.sg-toggle[data-kind="${kind}"][data-knob="${key}"]`);
+    }
+    await submit(p); await submit(p);
+  },
   'name-racks': async (p) => {
     const plan = { dock: 'machine', lagoon: 'bird', boxer: 'pet', pug: 'pet' };
     for (const [rack, tag] of Object.entries(plan)) await drag(p, `.nr-tag[data-tag="${tag}"]`, `.nr-slot[data-rack="${rack}"]`);
