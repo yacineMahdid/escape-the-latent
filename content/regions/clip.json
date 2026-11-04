@@ -51,7 +51,8 @@
       "role": "Giver of c1 (the Pairing Net). Postmistress of the Stilt Post (house 2); her storm-unglued postcards are the Lens's training pairs.",
       "lines": {
         "default": [
-          "Mind the puddles. Each one is a photo that lost its words."
+          "Mind the puddles. Each one is a photo that lost its words.",
+          "Blink's storm photos never had words at all. He's past the bridge."
         ],
         "afterSolved": [
           "Every postcard glued and posted. I may retire. I won't. But I may."
@@ -127,7 +128,7 @@
         "shirt": "#ff9f43"
       },
       "anchor": "bridge",
-      "role": "Flavour: a curious kitten full of 'why?'. Room for later fundamentals checks (cosine similarity, softmax, cross-entropy...).",
+      "role": "Flavour: a curious kitten full of 'why?'. Gives f1 (softmax: usually already in the book, so she pouts) and f4 (matrix shapes: the grid in the Lens's gear slots, after c2).",
       "lines": {
         "default": [
           "Why do photos need words? Why is the sea wet? Why are YOU so small?",
@@ -419,7 +420,8 @@
       "title": "The Name Racks",
       "giver": "blink",
       "requires": [
-        "c1"
+        "c1",
+        "f2"
       ],
       "puzzle": "name-racks",
       "spec": {
@@ -968,7 +970,10 @@
       "giver": "lens",
       "requires": [
         "c1",
-        "c2"
+        "c2",
+        "f1",
+        "f3",
+        "f4"
       ],
       "prompt": "Two numpy functions, `float64`.\n\n### 1. `clip_loss(I_f, T_f, W_i, W_t, t)` → `float`\nThe pairing gear: **exactly Figure 3**, plus the pin from **Section 2.5**.\n- `I_f` `(n, d_i)`, `T_f` `(n, d_t)`: photo and word features; row `k` of both is postcard `k`\n- `W_i` `(d_i, d_e)`, `W_t` `(d_t, d_e)`: the linear projections\n- `t`: Figure 3's learned temperature parameter, a float\n- returns the mean loss, one float; finite even for a huge `t`\n\n### 2. `zero_shot(image_emb, prompt_emb, scale=100.0)` → `(m, C)`\nThe naming gear: **Section 3.1.2**, prompts ensembled as in **Section 3.1.4**.\n- `image_emb` `(m, d)`: photo embeddings, not unit-length\n- `prompt_emb` `(C, K, d)`: `K` prompt embeddings per class, not unit-length; L2-normalise each prompt before ensembling\n- `scale`: the logit scale\n- returns probabilities: row `i` sums to 1 over the `C` classes\n",
       "starterCode": "import numpy as np\n\n\ndef clip_loss(I_f, T_f, W_i, W_t, t):\n    \"\"\"THE PAIRING GEAR (Figure 3, with the pin from Section 2.5).\n\n    I_f: (n, d_i) photo features   T_f: (n, d_t) word features   (row k = postcard k)\n    W_i: (d_i, d_e)   W_t: (d_t, d_e)   t: float, Figure 3's learned temperature parameter\n    returns: the mean loss, one float\n    \"\"\"\n    I_f = np.asarray(I_f, dtype=np.float64)\n    T_f = np.asarray(T_f, dtype=np.float64)\n    # TODO: the Lens has never seen a postcard.\n    return 0.0\n\n\ndef zero_shot(image_emb, prompt_emb, scale=100.0):\n    \"\"\"THE NAMING GEAR (Section 3.1.2, ensembled as in Section 3.1.4).\n\n    image_emb: (m, d) photos   prompt_emb: (C, K, d) K prompts for each of C classes\n    returns: (m, C) probabilities, each row sums to 1\n    \"\"\"\n    image_emb = np.asarray(image_emb, dtype=np.float64)\n    prompt_emb = np.asarray(prompt_emb, dtype=np.float64)\n    # TODO: the Lens shrugs at every photo.\n    m, C = image_emb.shape[0], prompt_emb.shape[0]\n    return np.full((m, C), 1.0 / C)\n",
@@ -1116,6 +1121,133 @@
       ]
     }
   ],
+  "fundamentals": [
+    {
+      "id": "f1",
+      "concept": "softmax",
+      "title": "Softmax",
+      "giver": "kiwi",
+      "requires": [],
+      "intro": [
+        "The Lens scored three captions for a photo. Then it said 'chances'!",
+        "Scores aren't chances! ...Are they?"
+      ],
+      "check": {
+        "kind": "choice",
+        "question": "Scores 1, 2, 3 go through a softmax. Which chances come out?",
+        "options": [
+          "0.17 · 0.33 · 0.50",
+          "0 · 0 · 1",
+          "0.09 · 0.24 · 0.67",
+          "0.33 · 0.33 · 0.33"
+        ],
+        "answer": 2
+      },
+      "wrong": [
+        "Nope! My whiskers say no."
+      ],
+      "success": [
+        "Ooh! Biggest score, biggest slice. But every caption still gets a crumb!"
+      ],
+      "known": [
+        "Your book already knows how the Lens turns scores into chances that add to one?",
+        "Hmph! I wanted to ask that."
+      ],
+      "record": "Raise e to each score, then divide by the sum of them all. No share is ever zero; together they make one."
+    },
+    {
+      "id": "f2",
+      "concept": "cosine-similarity",
+      "title": "Cosine similarity",
+      "giver": "blink",
+      "requires": [
+        "c1"
+      ],
+      "intro": [
+        "Mrs. Pomelo's net worked! Next the Lens sorts my storm photos.",
+        "It turns photos and sign words into arrows, then scores how alike they are."
+      ],
+      "check": {
+        "kind": "number",
+        "question": "Photo arrow [3, 4], word arrow [8, 6]. Their cosine similarity, as a decimal?",
+        "answer": 0.96,
+        "tolerance": 0.005
+      },
+      "wrong": [
+        "Nope. Long arrows aren't extra alike, you know."
+      ],
+      "success": [
+        "0.96! Almost the same way. So that's how it judges a match."
+      ],
+      "known": [
+        "Snap! Your book already knows how the Lens scores look-alikes. One less question!"
+      ],
+      "record": "The dot product divided by both lengths: the cosine of the angle between, from −1 to 1. Length buys no likeness."
+    },
+    {
+      "id": "f3",
+      "concept": "cross-entropy",
+      "title": "Cross-entropy",
+      "giver": "pomelo",
+      "requires": [
+        "c2"
+      ],
+      "intro": [
+        "Gran's net stung the Lens after every haul, worst when it doubted the true words.",
+        "Read the sting before it wakes, dear."
+      ],
+      "check": {
+        "kind": "number",
+        "question": "The turtle's true caption got a 0.25 chance. Its cross-entropy? Natural log, 2 decimals.",
+        "answer": 1.386,
+        "tolerance": 0.01
+      },
+      "wrong": [
+        "Not quite. Gran's net would tut."
+      ],
+      "success": [
+        "That's it! A shy guess stings a lot. A sure, right guess barely stings."
+      ],
+      "known": [
+        "Your book already knows how a poor guess stings? Good. Fewer tears."
+      ],
+      "record": "Minus the log of the chance given to the truth. Sure and right costs almost nothing; doubt the truth and the cost has no bound."
+    },
+    {
+      "id": "f4",
+      "concept": "matrix-shapes",
+      "title": "Matrix shapes",
+      "giver": "kiwi",
+      "requires": [
+        "c2"
+      ],
+      "intro": [
+        "Not busy now? Good! I peeked in the Lens's empty gear slots.",
+        "A grid in there squishes photo numbers!"
+      ],
+      "check": {
+        "kind": "choice",
+        "question": "8 photos of 2048 numbers (8 × 2048), times a 2048 × 512 grid. What shape pops out?",
+        "options": [
+          "2048 × 512",
+          "8 × 512",
+          "512 × 8",
+          "8 × 2048"
+        ],
+        "answer": 1
+      },
+      "wrong": [
+        "Nope! My tail says no. Peek again?"
+      ],
+      "success": [
+        "8 × 512! Eight photos in, eight out. Each one squished to 512."
+      ],
+      "known": [
+        "Your book knows what shape pops out of a grid? No fair!"
+      ],
+      "record": "An n × d stack times a d × k grid leaves n × k. The inner sizes must agree, and are consumed."
+    }
+  ],
   "artefact": {
     "id": "twin-lens",
     "name": "The Twin Lens",
@@ -1132,7 +1264,9 @@
       "Do not say how prompt ensembles are combined (normalised text embeddings averaged in embedding space and normalised again, not probabilities or logits averaged) or why (one cached embedding per class, the cost of a single classifier).",
       "Do not explain why the contrastive objective beats predicting the caption: nothing about the exact words being hard to predict, predicting only which text as a whole is paired, the N² − N wrong pairings, or Figure 2's 3x and 4x efficiency gaps.",
       "Do not state CLIP's limitation that it only chooses among the concepts it is given and cannot generate new captions like a captioning model, nor the suggested joint contrastive and generative training.",
-      "Never confirm, grade or correct the player's proposed answer to any puzzle, code task or explanation in this region."
+      "Never confirm, grade or correct the player's proposed answer to any puzzle, code task or explanation in this region.",
+      "Do not give, hint at or confirm the answers to the villagers' concept checks: softmax of scores 1, 2, 3 → 0.09, 0.24, 0.67; cosine similarity of [3, 4] and [8, 6] → 0.96 (not the dot product 48); natural-log cross-entropy when the true caption gets a 0.25 chance → 1.386 (not log10's 0.60 or log2's 2); an 8 × 2048 stack times a 2048 × 512 grid → 8 × 512.",
+      "Do not compute any softmax, cosine similarity, logarithm, cross-entropy or matrix-product shape for numbers the player brings, and never say which option of a villager's question is right. A general definition of such a concept is allowed if no other rule here forbids it."
     ],
     "offlineHints": [
       {
@@ -1318,6 +1452,34 @@
           "flexible"
         ],
         "text": "What the Lens cannot do, it confesses in Section 6. Look for the captioner."
+      },
+      {
+        "keywords": [
+          "sting",
+          "stings",
+          "natural log",
+          "0.25",
+          "doubt",
+          "-log",
+          "−log",
+          "surprise"
+        ],
+        "text": "The sting has a name in Section 2.3. Its size is a logarithm's business."
+      },
+      {
+        "keywords": [
+          "shape",
+          "shapes",
+          "grid",
+          "squish",
+          "2048",
+          "512",
+          "matrix",
+          "gear slot",
+          "8 ×",
+          "8 x"
+        ],
+        "text": "Figure 3 writes each shape in brackets. Read what goes in, and what comes out."
       }
     ]
   }

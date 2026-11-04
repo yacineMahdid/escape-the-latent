@@ -30,9 +30,8 @@ const INKS = ['#b48cff', '#ff8fcf', '#6fe3d2', '#ffd36b'];
 const ZOOMS = [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.15, 1.3, 1.5, 1.75, 2, 2.5, 3];
 const MAX_FIT_WIDTH = 1000;      // css px; fit-width never makes a page wider than this
 const MAX_CANVAS_PX = 12e6;      // device pixels per page canvas
-const RENDER_KEEP = 8;           // rendered pages kept at most, and at most this many canvas pixels
-const RENDER_BUDGET_PX = 32e6;   // (~128 MB); pages near the view always stay
-
+const RENDER_KEEP = 8;           // drawn pages kept at most...
+const RENDER_BUDGET_PX = 32e6;   // ...and canvas pixels (~128 MB); pages near the view always stay
 const CHAT_KEEP = 20;
 const HISTORY_SEND = 6;
 const HEX = /^#[0-9a-f]{6}$/i;

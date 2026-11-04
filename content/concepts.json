@@ -1,0 +1,52 @@
+[
+  {
+    "id": "embedding",
+    "title": "Embeddings",
+    "summary": "A learned lookup table turns each token into a vector of numbers; the same token always gets the same vector, wherever it stands."
+  },
+  {
+    "id": "softmax",
+    "title": "Softmax",
+    "summary": "Turns a list of scores into positive weights that sum to 1: softmax(s)_i = e^(s_i) / Σ_j e^(s_j), so bigger scores get bigger shares."
+  },
+  {
+    "id": "dot-product",
+    "title": "Dot product",
+    "summary": "Multiply two vectors entry by entry and add up the products, a · b = Σ_i a_i b_i; it grows when the two point the same way."
+  },
+  {
+    "id": "hidden-state",
+    "title": "Hidden state",
+    "summary": "A recurrent model's fixed-size memory, rewritten at every step from the previous state and the current input: h_t = f(h_(t-1), x_t)."
+  },
+  {
+    "id": "cosine-similarity",
+    "title": "Cosine similarity",
+    "summary": "The dot product of two vectors divided by both their lengths: the cosine of the angle between them, from -1 to 1; stretching either vector does not change it."
+  },
+  {
+    "id": "cross-entropy",
+    "title": "Cross-entropy",
+    "summary": "The classification loss -log p, where p is the probability the model gave the correct answer (averaged over examples): near 0 when confident and right, large when the right answer got little probability."
+  },
+  {
+    "id": "matrix-shapes",
+    "title": "Matrix shapes",
+    "summary": "An (n × d) matrix times a (d × k) matrix gives an (n × k) matrix: the inner sizes must match, and each entry is the dot product of a row with a column."
+  },
+  {
+    "id": "exponential-decay",
+    "title": "Exponential decay",
+    "summary": "Multiplying by the same factor a (0 < a < 1) at every step leaves a^t after t steps; a factor of e^(-k) per step leaves e^(-kt)."
+  },
+  {
+    "id": "big-o",
+    "title": "Big-O cost",
+    "summary": "How work grows with input size n: O(n) doubles when n doubles, while comparing every item with every other is O(n²) and quadruples."
+  },
+  {
+    "id": "convolution",
+    "title": "Convolution",
+    "summary": "Slide one fixed set of weights (a kernel) along a sequence: each output is a weighted sum of nearby inputs, with the same weights at every position."
+  }
+]

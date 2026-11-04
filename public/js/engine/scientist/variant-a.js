@@ -3,7 +3,7 @@
 // bushy black beard down onto the chest; huge shaggy black brows; tired, deep-set eyes with bags; a big nose;
 // a chunky olive cable-knit sweater with a rolled neck, old corduroy trousers and felt slippers.
 // Same toy style as humans.js: primitives, lathes and tubes only.
-//   buildScientist() -> THREE.Group, feet at y = 0, faces +z, ~9.9 units tall, head centre at y ~8.3
+//   buildScientist() -> THREE.Group, feet at y = 0, faces +z, ~10.1 units tall, head centre at y ~8.3
 import * as THREE from 'three';
 import { materials, add, grp, ellipsoid, shellGeo, profile, revolveGeo, taperTubeGeo, surfaceArc, rng, curve, mix, clamp, smooth, finishShadows, PI, TAU, DS } from '../toyparts.js';
 
@@ -139,7 +139,8 @@ export function buildScientist() {
 
   const root = new THREE.Group();
   root.name = 'jean-lafontaine';
-  const body = grp(root);
+  const legs = grp(root); // feet stay planted
+  const body = grp(root); // breathes and bobs
 
   // ---- legs: old corduroy trousers, felt slippers with a fleece cuff
   const legPts = profile([[0, 0.36], [0.46, 0.38], [0.56, 0.52], [0.58, 1.2], [0.57, 2.2], [0.54, 2.85], [0.3, 3.05], [0, 3.1]], 14);
@@ -147,9 +148,9 @@ export function buildScientist() {
   const cordM = M.std(C.cord, { r: 0.95 });
   const cuffSlipper = ribTorusGeo(0.46, 0.14, { ribs: 16, amp: 0.16, segU: 40, segV: 8 });
   for (const sx of [-1, 1]) {
-    add(body, legGeo, cordM, sx * 0.66, 0, 0).name = 'leg';
-    const sl = grp(body, sx * 0.68, 0, 0.3);
-    add(sl, new THREE.SphereGeometry(0.62, 24, 16), M.std(C.slipper, { r: 0.9 }), 0, 0.3, 0.06).scale.set(0.95, 0.52, 1.45);
+    add(legs, legGeo, cordM, sx * 0.66, 0, 0).name = 'leg';
+    const sl = grp(legs, sx * 0.68, 0, 0.3);
+    add(sl, new THREE.SphereGeometry(0.62, 24, 16), M.std(C.slipper, { r: 0.9 }), 0, 0.325, 0.06).scale.set(0.95, 0.52, 1.45);
     add(sl, new THREE.CylinderGeometry(0.6, 0.6, 0.12, 24), M.std(C.sole, { r: 0.8 }), 0, 0.06, 0.06).scale.set(0.97, 1, 1.47);
     add(sl, cuffSlipper, M.std(C.fleece, { r: 1 }), -sx * 0.02, 0.53, -0.28);
   }
@@ -278,7 +279,7 @@ export function buildScientist() {
     lid.scale.set(1.32, 0.62, 0.32);
     lid.userData.sx = sx;
     lids.push(lid);
-    // puffy bag + two tired lines under the eye
+    // puffy bag + a tired line under the eye
     F.put(add(head, new THREE.SphereGeometry(0.17, 16, 10), M.std(mix(C.skin, C.socket, 0.18))), sx * EYE.x, EYE.y - 0.2, -0.025).scale.set(1.3, 0.55, 0.35);
     const lineAt = (x, y, r, arc, roll) => { const o = new THREE.Object3D(); F.put(o, x, y, 0.004, roll); o.updateMatrix(); wrinkles.push({ geo: new THREE.TorusGeometry(r, 0.022, 5, 14, arc), m: o.matrix.clone() }); };
     lineAt(sx * EYE.x, EYE.y - 0.15, 0.14, PI * 0.62, PI * 1.19);
@@ -362,8 +363,11 @@ export function buildScientist() {
   add(head, new THREE.SphereGeometry(1, 22, 14), beardM, FILL.c.x, FILL.c.y, FILL.c.z).scale.set(...FILL.r);
   // under the jaw at the sides (closes the gap between the jaw and the side locks seen from above)
   const JAW = [V(-0.75, -1.3, 0.6), V(0.75, -1.3, 0.6)], JR = [0.42, 0.38, 0.42];
-  for (const c of JAW) add(head, new THREE.SphereGeometry(1, 14, 10), beardM, c.x, c.y, c.z).scale.set(...JR);
-  head.children.slice(-2).forEach((o) => { o.name = 'beard'; });
+  for (const c of JAW) {
+    const j = add(head, new THREE.SphereGeometry(1, 14, 10), beardM, c.x, c.y, c.z);
+    j.scale.set(...JR);
+    j.name = 'beard';
+  }
   const beardLocks = [
     [[[0, -1.3, 1.0], [0, -1.6, 1.22], [0, -2.0, 1.27], [0, -2.4, 1.22], [0, -2.72, 1.1]], 0.46, 0.18],
     [[[0.48, -1.22, 0.95], [0.55, -1.52, 1.16], [0.55, -1.95, 1.2], [0.48, -2.32, 1.16], [0.38, -2.58, 1.08]], 0.44, 0.18],
@@ -439,11 +443,11 @@ export function buildScientist() {
     hairLock([[pe, 0.05], [pe, 0.22], [pe, 0.38], [pe, 0.5]], { k: 1.15, yEnd, w: 0.4, t: 0.14, pull: 0.2, mat });
   }
   // a few stray hairs: unkempt, not frizzy
-  for (const [phi, th, side] of [[2.5, 0.14, 1]]) {
+  for (const [phi, th, side, droop] of [[2.5, 0.14, 1, 0], [1.78, 0.36, -1, 1]]) {
     const p0 = F.at(phi, th * PI, 1.16), n = F.normal(phi, th * PI);
     const sd = V(Math.cos(phi), 0, -Math.sin(phi)).multiplyScalar(side);
-    const p1 = p0.clone().addScaledVector(n, 0.22).addScaledVector(sd, 0.08).add(V(0, 0.06, 0));
-    const p2 = p1.clone().addScaledVector(n, 0.12).addScaledVector(sd, 0.18).add(V(0, -0.04, 0));
+    const p1 = p0.clone().addScaledVector(n, 0.22).addScaledVector(sd, 0.08).add(V(0, 0.06 - 0.16 * droop, 0));
+    const p2 = p1.clone().addScaledVector(n, 0.12 - 0.06 * droop).addScaledVector(sd, 0.18).add(V(0, -0.04 - 0.22 * droop, 0));
     add(head, taperTubeGeo(new THREE.CatmullRomCurve3([p0, p1, p2]), (u) => 0.045 * (1 - u) + 0.008, 14, 6), hairM).name = 'hair-stray';
   }
 

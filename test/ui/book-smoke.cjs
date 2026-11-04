@@ -1,4 +1,4 @@
-// Smoke test for the Umbral Book (public/js/ui/book.js) through its harness, public/dev/book.html.
+// Smoke test for the Cursed Book of Dimensionality (public/js/ui/book.js) through its harness, public/dev/book.html.
 //
 //   node test/ui/book-smoke.cjs
 //
@@ -213,6 +213,70 @@ async function main() {
       await page.waitForSelector('.bk-pop', { state: 'detached' });
     });
 
+    await step('zoomed past fit, the note popover and the 🖍✎? menu stay in view, pointing at the text', async () => {
+      for (let i = 0; i < 12; i++) await page.keyboard.press('+');
+      await page.waitForFunction(() => document.querySelector('.bk-rbar').dataset.zoom === '3');
+      // put the noted title's centre 60px inside the left edge of the view, then open its note
+      const noteId = (await storage(page, NOTES_KEY)).find((n) => n.text.includes('Attention Is All You Need')).id;
+      const placeAt = (id, inset) => page.evaluate(({ id, inset }) => {
+        const sc = document.querySelector('.bk-scroll');
+        const hl = [...document.querySelectorAll(`.bk-hl[data-id="${id}"]`)].pop();
+        const s = sc.getBoundingClientRect(), r = hl.getBoundingClientRect();
+        sc.scrollLeft += r.left + r.width / 2 - (s.left + inset);
+        sc.scrollTop += r.top - (s.top + sc.clientHeight * 0.3);
+        const q = hl.getBoundingClientRect();
+        return { x: q.left + q.width / 2, y: q.top + q.height / 2, left: s.left, right: s.left + sc.clientWidth };
+      }, { id, inset });
+      const view = await placeAt(noteId, 60);
+      await page.mouse.click(view.x + 12, view.y);
+      await page.waitForSelector('.bk-pop textarea');
+      const pop = await page.$eval('.bk-pop', (e) => { const r = e.getBoundingClientRect(); return { l: r.left, r: r.right, mid: r.left + r.width / 2, ax: parseFloat(getComputedStyle(e).getPropertyValue('--ax')) || 0 }; });
+      assert.ok(pop.l >= view.left && pop.r <= view.right, `popover inside the view (${JSON.stringify(pop)} in ${view.left}..${view.right})`);
+      assert.ok(Math.abs(pop.mid + pop.ax - view.x) < 2, `its arrow points at the highlight (${pop.mid + pop.ax} vs ${view.x})`);
+      await shot(page, 'zoom3-note');
+      await page.keyboard.press('Escape');
+      await page.waitForSelector('.bk-pop', { state: 'detached' });
+      // the selection menu: select the title itself, its centre 30px inside the left edge
+      await page.waitForSelector('.bk-pg[data-page="1"][data-rendered="1"] .textLayer span', { timeout: 30000 });
+      const v2 = await placeAt(noteId, 30);
+      assert.ok(await page.evaluate(() => {
+        const span = [...document.querySelectorAll('.bk-pg[data-page="1"] .textLayer span')].find((s) => s.firstChild?.nodeType === 3 && s.textContent.includes('Attention Is All You Need'));
+        if (!span) return false;
+        const range = document.createRange();
+        range.selectNodeContents(span.firstChild);
+        getSelection().removeAllRanges();
+        getSelection().addRange(range);
+        return true;
+      }), 'found the title span');
+      await page.waitForSelector('.bk-selmenu:not([hidden])');
+      const menu = await page.$eval('.bk-selmenu', (e) => { const r = e.getBoundingClientRect(); return { l: r.left, r: r.right }; });
+      assert.ok(menu.l >= v2.left && menu.r <= v2.right, `menu inside the view (${JSON.stringify(menu)} in ${v2.left}..${v2.right})`);
+      await page.keyboard.press('Escape');
+      await page.waitForSelector('.bk-selmenu[hidden]', { state: 'attached' });
+      await page.keyboard.press('0');
+      await page.waitForFunction(() => document.querySelector('.bk-rbar').dataset.zoom === '1');
+    });
+
+    await step('a fast fling keeps at most 8 drawn pages (the farthest are let go)', async () => {
+      await page.evaluate(async () => {
+        const sc = document.querySelector('.bk-scroll');
+        for (const pg of document.querySelectorAll('.bk-pg')) { sc.scrollTop = pg.offsetTop; await new Promise((r) => setTimeout(r, 70)); }
+      });
+      await page.waitForFunction(() => {
+        const near = [...document.querySelectorAll('.bk-pg.near')];
+        return near.length > 0 && near.every((pg) => pg.dataset.rendered);
+      }, null, { timeout: 30000 });
+      await sleep(400);
+      const r = await page.evaluate(() => ({
+        n: document.querySelectorAll('.bk-pg canvas').length,
+        near: document.querySelectorAll('.bk-pg.near').length,
+        far: [...document.querySelectorAll('.bk-pg:not(.near) canvas')].map((c) => c.closest('.bk-pg').dataset.page),
+      }));
+      assert.ok(r.n <= Math.max(8, r.near), `${r.n} canvases kept, ${r.near} pages near (far: ${r.far})`);
+      await page.evaluate(() => { document.querySelector('.bk-scroll').scrollTop = 0; });
+      await page.waitForSelector('.bk-pg[data-page="1"][data-rendered="1"] .textLayer span', { timeout: 30000 });
+    });
+
     console.log('notes');
     await step('✎ Notes lists every annotation, grouped by page, editable', async () => {
       await page.click('.bk-tab[data-tab="notes"]');
@@ -254,7 +318,8 @@ async function main() {
       await page.click('.bk-note[data-id="tmp"] .bk-del');
       assert.ok(await page.$('.bk-note[data-id="tmp"] .bk-del.armed'), 'armed after one press');
       assert.equal((await storage(page, NOTES_KEY)).length, 3, 'nothing erased yet');
-      await page.click('.bk-note[data-id="tmp"] .bk-del');
+      // force: the armed button trembles; don't wait for it to hold still (the armed window is 2.6s)
+      await page.click('.bk-note[data-id="tmp"] .bk-del', { force: true });
       await page.waitForSelector('.bk-note[data-id="tmp"]', { state: 'detached' });
       await page.waitForSelector('.bk-ng[data-page="2"]', { state: 'detached' });
       assert.equal((await storage(page, NOTES_KEY)).length, 2);
@@ -305,6 +370,8 @@ async function main() {
       await page.waitForSelector('.bk-ask.on .bk-chip:not([hidden])');
       assert.equal(await page.$eval('.bk-chip', (e) => e.title), t.replace(/\s+/g, ' ').trim());
       assert.equal(await page.evaluate(() => document.activeElement?.className), 'bk-qin');
+      await sleep(100);
+      assert.ok(await page.$eval('.bk-chatwrap', (w) => w.scrollHeight - w.scrollTop - w.clientHeight < 2), 'the chip does not hide the last answer');
       await page.keyboard.press('Enter'); // empty question + a passage: ask about the passage
       await waitAnswer(page, 2);
       const chat = await storage(page, CHAT_KEY);
@@ -313,28 +380,69 @@ async function main() {
       assert.ok(await page.$('.bk-chip[hidden]'), 'chip consumed');
     });
 
-    await step('a failed ask says "…the pages refuse." and is not kept', async () => {
-      await page.route('**/api/book', (route) => route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"boom"}' }));
+    await step('a failed ask: a cracked sigil + ↻ (no refusal box), the question and passage come back; ↻ asks again', async () => {
+      const n = await page.$$eval('.bk-ex', (els) => els.length);
+      const kept = (await storage(page, CHAT_KEY)).length;
+      await page.click('.bk-tab[data-tab="read"]');
+      const t = (await selectSpan(page, 3, 'query')).replace(/\s+/g, ' ').trim();
+      await page.waitForSelector('.bk-selmenu:not([hidden])');
+      await page.click('.bk-selmenu button[title="Ask"]');
+      await page.waitForSelector('.bk-ask.on .bk-chip:not([hidden])');
+      await page.route('**/api/book', (route) => route.fulfill({ status: 504, contentType: 'application/json', body: '{"error":"timeout","retryable":true}' }));
       await page.fill('.bk-qin', 'anything');
       await page.press('.bk-qin', 'Enter');
-      await waitAnswer(page, 3);
-      assert.equal(await page.$eval('.bk-ex:last-child .bk-a', (e) => e.textContent), '…the pages refuse.');
-      assert.equal((await storage(page, CHAT_KEY)).length, 2);
+      await page.waitForSelector('.bk-ex.failed .bk-again[title="Again"]');
+      const f = await page.$eval('.bk-ex.failed .bk-a', (e) => ({ text: e.textContent.trim(), cls: e.className, bg: getComputedStyle(e).backgroundImage }));
+      assert.ok(!/[a-z]/i.test(f.text), `no words (${f.text})`);
+      assert.ok(!f.cls.includes('refused') && f.bg === 'none', 'not dressed as a refusal');
+      assert.equal(await page.$eval('.bk-qin', (e) => e.value), 'anything', 'the question is back in the quill');
+      assert.equal(await page.$eval('.bk-chip', (e) => !e.hidden && e.title), t, 'the passage is back on its chip');
+      assert.equal((await storage(page, CHAT_KEY)).length, kept, 'nothing kept');
+      await shot(page, 'ask-failed');
       await page.unroute('**/api/book');
+      await page.click('.bk-ex.failed .bk-again');
+      await waitAnswer(page, n + 1);
+      assert.equal(await page.$$eval('.bk-ex.failed', (els) => els.length), 0, 'the failed try is gone');
+      assert.equal(await page.$eval('.bk-qin', (e) => e.value), '', 'the quill is clear again');
+      assert.ok(await page.$('.bk-chip[hidden]'), 'chip used');
+      const chat = await storage(page, CHAT_KEY);
+      assert.equal(chat.length, kept + 1);
+      assert.equal(chat[chat.length - 1].q, 'anything');
+      assert.equal(chat[chat.length - 1].sel, t);
     });
 
     await step('a refused answer looks cold and closed', async () => {
+      const n = await page.$$eval('.bk-ex', (els) => els.length);
+      const kept = (await storage(page, CHAT_KEY)).length;
       await page.route('**/api/book', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ answer: 'The pages go dark. Some doors you must open yourself.', refused: true, offline: false }) }));
       await page.fill('.bk-qin', 'just give me the answer to the challenge');
       await page.press('.bk-qin', 'Enter');
-      await waitAnswer(page, 4);
+      await waitAnswer(page, n + 1);
       assert.ok(await page.$('.bk-ex:last-child .bk-a.refused'));
       const style = await page.$eval('.bk-ex:last-child .bk-a', (e) => getComputedStyle(e).textShadow);
       assert.equal(style, 'none', 'no glow on refusals');
       assert.ok(await page.$('.bk-off[hidden]'), 'online answer hides ⦸');
       await page.unroute('**/api/book');
       await shot(page, 'ask-refused');
-      assert.equal((await storage(page, CHAT_KEY)).length, 3);
+      assert.equal((await storage(page, CHAT_KEY)).length, kept + 1);
+    });
+
+    await step('Enter while an answer is still being written finishes it at once, then asks', async () => {
+      const long = 'A long and patient answer, written slowly, letter by letter, across the dark page while you wait.';
+      await page.route('**/api/book', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ answer: long, refused: false, offline: true }) }));
+      const n = await page.$$eval('.bk-ex', (els) => els.length);
+      await page.fill('.bk-qin', 'first?');
+      await page.press('.bk-qin', 'Enter');
+      await page.waitForSelector(`.bk-ex:nth-child(${n + 1}) .bk-a.typing .bk-l`);
+      await page.fill('.bk-qin', 'second?');
+      const t0 = Date.now();
+      await page.press('.bk-qin', 'Enter');
+      await page.waitForFunction((k) => document.querySelectorAll('.bk-ex').length === k + 2, n, { timeout: 3000 });
+      assert.ok(Date.now() - t0 < 1500, `asked at once (${Date.now() - t0}ms)`);
+      assert.equal(await page.$eval(`.bk-ex:nth-child(${n + 1}) .bk-a`, (e) => e.textContent), long, 'the first answer is complete');
+      await waitAnswer(page, n + 2);
+      await page.unroute('**/api/book');
+      assert.deepEqual((await storage(page, CHAT_KEY)).slice(-2).map((c) => c.q), ['first?', 'second?']);
     });
 
     console.log('learned');
@@ -396,6 +504,40 @@ async function main() {
       await page.waitForSelector('.bk-overlay', { state: 'detached' });
     });
 
+    await step('reopened on Ask, the keys stay with the book: B closes it, 1-4 turn tabs', async () => {
+      await page.keyboard.press('KeyB');
+      await page.waitForSelector('.bk-overlay.is-open .bk-ask.on');
+      await sleep(200);
+      assert.notEqual(await page.evaluate(() => document.activeElement?.className), 'bk-qin', 'the quill does not grab the keys');
+      await page.keyboard.press('KeyB');
+      await page.waitForSelector('.bk-overlay', { state: 'detached' });
+      await page.keyboard.press('KeyB');
+      await page.waitForSelector('.bk-overlay.is-open .bk-ask.on');
+      await sleep(200);
+      await page.keyboard.press('Digit2');
+      await page.waitForSelector('.bk-notes.on');
+      assert.equal(await page.$eval('.bk-qin', (e) => e.value), '', 'nothing typed into the quill');
+      await page.keyboard.press('KeyB');
+      await page.waitForSelector('.bk-overlay', { state: 'detached' });
+    });
+
+    await step('a half-typed question waits in the quill after the book closes', async () => {
+      await page.keyboard.press('KeyB');
+      await page.waitForSelector('.bk-overlay.is-open .bk-notes.on');
+      await page.click('.bk-tab[data-tab="ask"]');
+      await page.waitForSelector('.bk-ask.on');
+      await page.click('.bk-qin');
+      await page.keyboard.type('half a thou');
+      await page.keyboard.press('Escape');
+      await page.waitForSelector('.bk-overlay', { state: 'detached' });
+      await page.keyboard.press('KeyB');
+      await page.waitForSelector('.bk-overlay.is-open .bk-ask.on');
+      assert.equal(await page.$eval('.bk-qin', (e) => e.value), 'half a thou');
+      await page.fill('.bk-qin', '');
+      await page.keyboard.press('Escape');
+      await page.waitForSelector('.bk-overlay', { state: 'detached' });
+    });
+
     await step('empty Learned pages show one faint glyph, no words', async () => {
       await seedLearned(page, {});
       await page.goto(`${BASE}/dev/book.html?tab=learned`);
@@ -419,14 +561,80 @@ async function main() {
       await page.waitForSelector('.bk-overlay', { state: 'detached' });
     });
 
-    await step('a paper that will not load: one eerie line + ↗ arXiv', async () => {
+    await step('a paper that will not load: a cracked sigil, ↻ and ↗ arXiv, no words', async () => {
       await page.goto(`${BASE}/dev/book.html?tab=read&arxiv=nope`);
       await page.waitForSelector('.bk-read[data-state="error"] .bk-fail', { timeout: 20000 });
-      assert.equal(await page.$eval('.bk-fail-line', (e) => e.textContent), 'The ink will not settle.');
+      const text = await page.$eval('.bk-fail', (e) => e.innerText.replace(/\s+/g, ''));
+      assert.ok(!/[a-z]/i.test(text), `no words (${text})`);
+      assert.equal(await page.$eval('.bk-fail .bk-again', (e) => e.title), 'Again');
       assert.equal(await page.$eval('.bk-fail-link', (e) => e.href), 'https://arxiv.org/abs/nope');
       await shot(page, 'pdf-fail');
       await page.keyboard.press('Escape');
       await page.waitForSelector('.bk-overlay', { state: 'detached' });
+    });
+
+    await step('↻ tries the paper again', async () => {
+      let fails = 1;
+      await page.route('**/api/paper/*/pdf', (route) => (fails-- > 0 ? route.abort() : route.continue()));
+      await page.goto(`${BASE}/dev/book.html?tab=read`);
+      await page.waitForSelector('.bk-read[data-state="error"] .bk-again', { timeout: 20000 });
+      await page.click('.bk-again');
+      await page.waitForSelector('.bk-read[data-state="ready"]', { timeout: 30000 });
+      await page.waitForSelector('.bk-pg[data-rendered="1"]', { timeout: 30000 });
+      await page.unroute('**/api/paper/*/pdf');
+    });
+
+    await step('everything that loops moves by transform / opacity only (compositor, no repaint)', async () => {
+      await seedLearned(page, { softmax: { title: 'Softmax', record: 'Every score raised and shared.', region: 'Attendale', at: new Date().toISOString() } });
+      await page.evaluate(() => localStorage.removeItem('etl-book-learned-seen'));
+      await page.goto(`${BASE}/dev/book.html?tab=read`);
+      await page.waitForSelector('.bk-pg[data-rendered="1"]', { timeout: 30000 });
+      await page.waitForSelector('.bk-tab.bk-new');
+      const r = await page.evaluate(() => {
+        const ok = new Set(['offset', 'computedOffset', 'easing', 'composite', 'transform', 'opacity', 'rotate', 'scale', 'translate']);
+        const loops = document.getAnimations().filter((a) => a.playState === 'running' && a.effect?.getTiming().iterations === Infinity);
+        const bad = loops.flatMap((a) => a.effect.getKeyframes().flatMap((k) => Object.keys(k)).filter((p) => !ok.has(p)).map((p) => `${a.animationName || 'waapi'}:${p}`));
+        return { n: loops.length, bad: [...new Set(bad)] };
+      });
+      assert.deepEqual(r.bad, [], 'loops that repaint');
+      assert.ok(r.n > 30, `motes, sparks and glow are alive (${r.n} loops)`);
+    });
+
+    await step('reduced motion: nothing loops', async () => {
+      const rm = await browser.newContext({ viewport: { width: 1280, height: 800 }, reducedMotion: 'reduce' });
+      const p = await rm.newPage();
+      p.on('pageerror', (e) => errors.push(e.message));
+      await p.goto(`${BASE}/dev/book.html?auto=0`);
+      await seedLearned(p, { softmax: { title: 'Softmax', record: 'Every score raised and shared.', region: 'Attendale', at: new Date().toISOString() } });
+      await p.goto(`${BASE}/dev/book.html?tab=ask`);
+      await p.waitForSelector('.bk-tab.bk-new');
+      await p.route('**/api/book', async (route) => { await sleep(1500); await route.continue().catch(() => {}); });
+      await p.click('.bk-qin');
+      await p.keyboard.type('still?');
+      await p.keyboard.press('Enter');
+      await p.waitForSelector('.bk-dots');
+      const loops = () => p.evaluate(() => document.getAnimations()
+        .filter((a) => a.playState === 'running' && a.effect?.getTiming().iterations === Infinity)
+        .map((a) => a.animationName || a.effect?.target?.className || 'waapi'));
+      assert.deepEqual(await loops(), [], 'thinking, ember');
+      await p.click('.bk-tab[data-tab="read"]');
+      await p.waitForSelector('.bk-pg[data-rendered="1"]', { timeout: 30000 });
+      assert.deepEqual(await loops(), [], 'reading');
+      await rm.close();
+    });
+
+    await step('clearBookData() forgets notes, chat, pages and preferences; the save stays', async () => {
+      await page.goto(`${BASE}/dev/book.html?tab=notes`);
+      await page.waitForSelector('.bk-overlay.is-open');
+      const left = await page.evaluate(async () => {
+        localStorage.setItem('etl-notes-1234.56789', '[]');
+        const m = await import('/js/ui/book.js');
+        m.clearBookData();
+        return Object.keys(localStorage);
+      });
+      assert.ok(!left.some((k) => /^etl-(notes|book)-/.test(k)), left.join(', '));
+      assert.ok(left.includes('etl-save-v1'), 'the save is not the book\'s to erase');
+      await page.waitForSelector('.bk-overlay', { state: 'detached' }); // an open book closes first
     });
 
     await step('almost no words: every control is an icon (≤ 2 chars) with a tooltip', async () => {

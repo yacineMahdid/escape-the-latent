@@ -48,7 +48,7 @@
         "shirt": "#3ec7b5"
       },
       "anchor": "terrace-1",
-      "role": "Giver of c1 (the Wave Loom). The Sentence's bunny, furious that the order-blind Bell swaps who gave whom the pie. Her default only shows if a later item of hers is locked, so it is timeless.",
+      "role": "Giver of f1 (embeddings, her first talk) and c1 (the Wave Loom). The Sentence's bunny, furious that the order-blind Bell swaps who gave whom the pie. Her default only shows if a later item of hers is locked, so it is timeless.",
       "lines": {
         "default": [
           "I baked that pie myself. For a FROG."
@@ -88,14 +88,14 @@
         "shirt": "#e0703a"
       },
       "anchor": "lane-mid",
-      "role": "Flavour and pointer: the tinkerer who built the Bell's shell but not its gearbox (c3, at the bell). Room for a later 'sums' check. Non-giver: default shows until the artefact is picked up, so it must stay true all region long. afterSolved assumes the Bell works: rewrite it if a later pass gives her a check.",
+      "role": "Giver of f3 (dot product, after c2), at lane-mid on the way from Reply Row to the hilltop Bell, whose lock line is generic. The tinkerer who built the Bell's shell but not its gearbox (c3). Default shows until c2 is solved and points back to her; afterSolved shows from f3 on, before and after the Bell works, so it must stay timeless.",
       "lines": {
         "default": [
-          "I built the Bell! Well. The shiny outside.",
-          "Its gearbox is up the hill. The book's sums muddle my paws."
+          "I built the Bell! Well. The shiny outside. Its gearbox is up the hill.",
+          "Its sums muddle my paws. Help me once Reply Row's sorted?"
         ],
         "afterSolved": [
-          "It hums! Eight little ears, all turning at once! I'm crying."
+          "Multiply, add. Multiply, add. My paws can do sums now!"
         ]
       }
     },
@@ -129,7 +129,7 @@
         "shirt": "#8fd3ff"
       },
       "anchor": "lane-right",
-      "role": "Giver of c2 (the Peeking Fence). Strict, fond teacher of the five Reply Row writers, who copy the Sentence into Otherish. Her default only shows before c1 is solved.",
+      "role": "Giver of f2 (softmax, her first talk after c1) and c2 (the Peeking Fence). Strict, fond teacher of the five Reply Row writers, who copy the Sentence into Otherish. Her default only shows before c1 is solved.",
       "lines": {
         "default": [
           "Bonjour. My writers copy the Sentence into Otherish for the Fair.",
@@ -149,7 +149,7 @@
         "shirt": "#d84f4f"
       },
       "anchor": "bank-left",
-      "role": "Giver of c4 (explain). The postduck who carries notes house by house, in order, in one small satchel: recurrence in a red jacket.",
+      "role": "Giver of f4 (hidden state, his first talk after c3) and c4 (explain). The postduck who carries notes house by house, in order, in one small satchel: recurrence in a red jacket.",
       "lines": {
         "default": [
           "Quack. Post's late. Every house, in order. By the last, the first note's crumpled.",
@@ -193,7 +193,9 @@
       "type": "puzzle",
       "title": "The Wave Loom",
       "giver": "tansy",
-      "requires": [],
+      "requires": [
+        "f1"
+      ],
       "puzzle": "positional-wave-loom",
       "spec": {
         "title": "The Wave Loom",
@@ -425,7 +427,8 @@
       "title": "The Peeking Fence",
       "giver": "nib",
       "requires": [
-        "c1"
+        "c1",
+        "f2"
       ],
       "puzzle": "decoder-peeking-fence",
       "spec": {
@@ -878,7 +881,8 @@
       "giver": "bell",
       "requires": [
         "c1",
-        "c2"
+        "c2",
+        "f3"
       ],
       "prompt": "Two numpy functions, `float64`. Loops over heads are fine.\n\n### 1. `attention(Q, K, V, causal=False)` → `(n_q, d_v)`\nONE EAR: Scaled Dot-Product Attention, **Eq. (1)**, Section 3.2.1.\n- `Q` `(n_q, d_k)`, `K` `(n_k, d_k)`, `V` `(n_k, d_v)`; row `j` of `V` belongs to row `j` of `K`\n- each query's weights are ≥ 0 and sum to 1 over the keys\n- `causal=True` (only when `n_q == n_k`): for query `i`, every key `j > i` gets weight **exactly 0**, done as in **Section 3.2.3**\n- finite even for dot products near `1e4` (a softmax ignores a constant added to a whole row)\n\n### 2. `multi_head_attention(x_q, x_kv, W_q, W_k, W_v, W_o, h, causal=False)` → `(n_q, d_model)`\nMANY EARS: **MultiHead**, Section 3.2.2.\n- `x_q` `(n_q, d_model)`: the queries come from it; `x_kv` `(n_k, d_model)`: the keys **and** values do\n- `W_q`, `W_k` `(d_model, h*d_k)`; `W_v` `(d_model, h*d_v)`; `W_o` `(h*d_v, d_model)`\n- `d_k = W_q.shape[1] // h`, `d_v = W_v.shape[1] // h` (they may differ)\n- head `i` (0-based) uses columns `i*d_k:(i+1)*d_k` of `W_q` and `W_k`, and `i*d_v:(i+1)*d_v` of `W_v`\n- concatenate the heads in order (head 0 first), then apply `W_o`; every head uses the same `causal`\n",
       "starterCode": "import numpy as np\n\n\ndef attention(Q, K, V, causal=False):\n    \"\"\"THE ONE EAR: Scaled Dot-Product Attention (Section 3.2.1, Eq. 1).\n\n    Q: (n_q, d_k)   K: (n_k, d_k)   V: (n_k, d_v)   ->   returns (n_q, d_v)\n    causal=True: query i may only use keys j <= i (only used when n_q == n_k).\n    \"\"\"\n    Q = np.asarray(Q, dtype=np.float64)\n    K = np.asarray(K, dtype=np.float64)\n    V = np.asarray(V, dtype=np.float64)\n    # TODO: the gearbox is empty. The Bell hums nothing at all.\n    return np.zeros((Q.shape[0], V.shape[1]))\n\n\ndef multi_head_attention(x_q, x_kv, W_q, W_k, W_v, W_o, h, causal=False):\n    \"\"\"THE MANY EARS: Multi-Head Attention (Section 3.2.2).\n\n    x_q: (n_q, d_model)   x_kv: (n_k, d_model)\n    W_q, W_k: (d_model, h*d_k)   W_v: (d_model, h*d_v)   W_o: (h*d_v, d_model)\n    returns (n_q, d_model)\n    \"\"\"\n    x_q = np.asarray(x_q, dtype=np.float64)\n    W_o = np.asarray(W_o, dtype=np.float64)\n    # TODO: eight little ears, all deaf.\n    return np.zeros((x_q.shape[0], W_o.shape[1]))\n",
@@ -900,7 +904,8 @@
       "requires": [
         "c1",
         "c2",
-        "c3"
+        "c3",
+        "f4"
       ],
       "question": "Why does a Bell beat a duck? Two real reasons. And on what lane would I still win?",
       "rubric": [
@@ -961,6 +966,133 @@
       ]
     }
   ],
+  "fundamentals": [
+    {
+      "id": "f1",
+      "concept": "embedding",
+      "title": "Embeddings",
+      "giver": "tansy",
+      "requires": [],
+      "intro": [
+        "We all wear coats of numbers. Two of us are 'the': house 0 and house 3."
+      ],
+      "check": {
+        "kind": "choice",
+        "question": "Those two 'the' coats are…",
+        "options": [
+          "Different",
+          "Opposite",
+          "Identical",
+          "All zeros"
+        ],
+        "answer": 2
+      },
+      "wrong": [
+        "No! And I'd know. I'm WEARING one."
+      ],
+      "success": [
+        "Identical! Same word, same coat. And THAT's my problem."
+      ],
+      "known": [
+        "Your book knows our coats already? Good. Saves a speech."
+      ],
+      "record": "Embedding: a learned table hands each token its coat of numbers, a vector. Same word, same coat, wherever it stands."
+    },
+    {
+      "id": "f2",
+      "concept": "softmax",
+      "title": "Softmax",
+      "giver": "nib",
+      "requires": [
+        "c1"
+      ],
+      "intro": [
+        "Bon. Each writer shares one whole look among the windows, a slice each."
+      ],
+      "check": {
+        "kind": "choice",
+        "question": "Three windows score 1, 2 and 3. The softmax slices are…",
+        "options": [
+          "0.17 · 0.33 · 0.50",
+          "0.09 · 0.24 · 0.67",
+          "0 · 0 · 1",
+          "0.33 · 0.33 · 0.33"
+        ],
+        "answer": 1
+      },
+      "wrong": [
+        "Non, non, non. See me after class."
+      ],
+      "success": [
+        "Exactement! Now, about their peeking…"
+      ],
+      "known": [
+        "Your book knows how a look is sliced? Bon. No quiz, then."
+      ],
+      "record": "Softmax: raise e to each score and divide by their sum, e^(s_i) / Σ_j e^(s_j). The slices make one whole; the loudest take the most."
+    },
+    {
+      "id": "f3",
+      "concept": "dot-product",
+      "title": "Dot product",
+      "giver": "bimble",
+      "requires": [
+        "c2"
+      ],
+      "intro": [
+        "Psst! The gearbox scores how well a question matches a key. My paws can't!"
+      ],
+      "check": {
+        "kind": "number",
+        "question": "Dot product of question [1, 2, 0, 3] and key [2, 1, 5, 1]?",
+        "answer": 7,
+        "tolerance": 0
+      },
+      "wrong": [
+        "That's what MY paws got. My paws are always wrong."
+      ],
+      "success": [
+        "Seven! Easy as cheese. Up to the gearbox!"
+      ],
+      "known": [
+        "Your creepy book already knows my sums? Never mind, then!"
+      ],
+      "record": "Dot product: multiply matching entries and add them up, a · b = Σ_i a_i b_i. It swells when two vectors point the same way, sinks below zero when they oppose."
+    },
+    {
+      "id": "f4",
+      "concept": "hidden-state",
+      "title": "Hidden state",
+      "giver": "dabble",
+      "requires": [
+        "c3"
+      ],
+      "intro": [
+        "Quack. One small satchel, house to house. Bet you don't know how it works."
+      ],
+      "check": {
+        "kind": "choice",
+        "question": "At house 5, my satchel is made from…",
+        "options": [
+          "Note 5 alone",
+          "Every note, kept whole",
+          "An empty satchel",
+          "House 4's satchel + note 5"
+        ],
+        "answer": 3
+      },
+      "wrong": [
+        "Quack! Wrong. Have you ever even MET a satchel?"
+      ],
+      "success": [
+        "Quack. Old satchel, new note, squish. Fine, you know ducks."
+      ],
+      "known": [
+        "That spooky book of yours knows my satchel already? Hmph. Show-off."
+      ],
+      "record": "Hidden state: a recurrent model's one small satchel of memory. Each step remakes it from the last satchel and the new input, h_t = f(h_(t-1), x_t); it never grows."
+    }
+  ],
   "artefact": {
     "id": "listening-bell",
     "name": "The Listening Bell",
@@ -979,7 +1111,11 @@
       "Never write attention or multi-head attention code, and never say which line of the player's code is wrong.",
       "Do not mention the numerically stable softmax trick (subtracting each row's maximum).",
       "Do not explain why self-attention beats recurrence: no entries of Table 1 (complexity per layer, sequential operations, maximum path length), no n < d condition, no restricted attention with neighbourhood r, and nothing on how multi-head attention counteracts averaging.",
-      "Never confirm, grade or correct the player's proposed answer to any puzzle, code task or explanation in this region."
+      "Never confirm, grade or correct the player's proposed answer to any puzzle, code task or explanation in this region.",
+      "Do not say whether two copies of one word (the 'the' at house 0 and the 'the' at house 3) get identical embeddings before any positional encoding, and never pick or confirm a coat option.",
+      "Do not compute or confirm a softmax of the player's numbers (scores 1, 2, 3 give 0.09, 0.24, 0.67), and never pick or confirm a slice option.",
+      "Do not compute or confirm any dot product for the player (question [1, 2, 0, 3] · key [2, 1, 5, 1] = 7).",
+      "Do not say what a recurrent hidden state h_t is made from (the previous state h_(t-1) and the input x_t, Section 1), and never pick or confirm a satchel option."
     ],
     "offlineHints": [
       {
@@ -1141,6 +1277,40 @@
           "long lane"
         ],
         "text": "Nothing is free. Section 4 and Table 1 keep the accounts."
+      },
+      {
+        "keywords": [
+          "embeddings",
+          "embedding",
+          "lookup",
+          "look-up",
+          "token",
+          "same word",
+          "twin",
+          "identical",
+          "coats",
+          "slice",
+          "softmax"
+        ],
+        "text": "Coats and slices: one section bears both names. The counting is yours alone."
+      },
+      {
+        "keywords": [
+          "hidden state",
+          "hidden",
+          "h_t",
+          "h_(t",
+          "previous",
+          "made from",
+          "memory",
+          "remember",
+          "satchel",
+          "dot product",
+          "dot-product",
+          "multiply",
+          "bimble"
+        ],
+        "text": "The satchel: the very first section. The Bell's sum: a footnote, spelled out."
       }
     ]
   }

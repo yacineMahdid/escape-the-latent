@@ -1,8 +1,8 @@
-// Character creator: the game's first screen. Almost no text: icons, swatches and tooltips.
-//   open({ initial }) -> Promise<params>   character params (docs/ARCHITECTURE.md), plus `name` if one was typed
+// Character creator: the game's first screen. No words on the surface: icons, swatches, tooltips.
+//   open({ initial }) -> Promise<params>   character params (docs/ARCHITECTURE.md); an existing `name` is kept
 // Left: a photo zone (drop, click, paste or webcam) that asks Claude for a character (api.avatar),
-// shown only when /api/status says the AI is on. Right: a live 3D turntable, swatches and icon chips,
-// 🎲 random, ✓ done. The photo is downscaled in the browser and sent once; nothing is stored.
+// offered only when /api/status says the AI is on. Middle: a live 3D turntable, 🎲 random, ✓ done.
+// Right: folder tabs of swatches and icon chips. The photo is downscaled in the browser and sent once.
 import * as THREE from 'three';
 import { openModal, closeModal } from './modal.js';
 import { api } from '../api.js';
@@ -16,15 +16,23 @@ const CSS_HREF = '/css/creator.css';
 const MAX_SIDE = 768;
 const JPEG_Q = 0.85;
 const TIP = {
-  photo: 'Photo → you (sent to Claude once, never saved)',
-  offline: 'Photo → you needs Claude (no API key on this server)',
+  photo: 'Photo → you · never saved',
   cam: 'Webcam',
   snap: 'Snap',
   cancel: 'Cancel',
   dice: 'Random',
   ok: 'Done',
-  name: 'Name (optional)',
   any: 'Any colour',
+};
+// what the ⦸ badge says (tooltip): a symbol and a word or two, like the server's own errors
+const SAY = {
+  offline: '✕ offline',
+  notPhoto: '✕ not a photo',
+  camBlocked: '✕ camera blocked',
+  noCam: '✕ no camera',
+  tooBig: '✕ too big',
+  noNet: '✕ no connection',
+  cloudy: '✕ cloudy',
 };
 
 // ---------------------------------------------------------------------------------------------
@@ -200,14 +208,19 @@ async function fileToDataUrl(file) {
   }
 }
 
+// Claude cannot be used on this server at all (no key, or a key that is turned away): stop offering
+// the photo. A retryable failure (e.g. "✕ unreachable") keeps the photo zone.
+const claudeAsleep = (e) => !!(e?.body && (e.body.offline === true || e.body.code === 'offline') && !e.body.retryable);
+
 function errorTip(e) {
-  if (e?.code === 'type') return 'Not a photo';
-  if (e?.code === 'cam') return e.denied ? 'Camera blocked' : 'No camera';
-  if (e?.status === 503 || e?.body?.offline) return TIP.offline;
-  if (e?.status === 413) return 'Too big';
-  if (typeof e?.body?.error === 'string' && e.body.error) return e.body.error;
-  if (e instanceof TypeError) return 'No connection';
-  return 'The mirror is cloudy. Try another photo.';
+  if (e?.code === 'type') return SAY.notPhoto;
+  if (e?.code === 'cam') return e.denied ? SAY.camBlocked : SAY.noCam;
+  if (claudeAsleep(e)) return SAY.offline;
+  if (e?.status === 413) return SAY.tooBig;
+  const said = typeof e?.body?.error === 'string' ? e.body.error.trim() : '';
+  if (said) return said.slice(0, 32); // the server already answers in a word or two ("✕ busy", "✕ clouded")
+  if (e instanceof TypeError) return SAY.noNet;
+  return SAY.cloudy;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -252,17 +265,27 @@ function createPreview(canvas) {
   const camera = new THREE.PerspectiveCamera(26, 1, 0.1, 50);
   let model = null, swap = null, alive = true, raf = 0, last = performance.now();
   let yaw = 0.45, vel = 0, dragging = false, moved = 0, lastX = 0, idle = 2, w = 0, hgt = 0, present = null;
+  // the camera frames the pedestal and the model's top (with room for a hop); it eases between looks
+  let fitTop = 2.35, viewTop = 0;
+  const LOW = -0.42; // under the pedestal's front rim
 
-  function frameCamera() {
+  function frameCamera(dt) {
     const cw = canvas.clientWidth || 1, ch = canvas.clientHeight || 1;
-    if (cw === w && ch === hgt) return;
-    w = cw; hgt = ch;
-    renderer.setSize(cw, ch, false);
-    camera.aspect = cw / ch;
+    const resized = cw !== w || ch !== hgt;
+    if (resized) {
+      w = cw; hgt = ch;
+      renderer.setSize(cw, ch, false);
+      camera.aspect = cw / ch;
+    }
+    if (!resized && viewTop === fitTop) return;
+    viewTop = viewTop ? viewTop + (fitTop - viewTop) * Math.min(1, dt * 5) : fitTop;
+    if (Math.abs(fitTop - viewTop) < 0.002) viewTop = fitTop;
     const t = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-    const dist = Math.max(1.45 / t, 1.3 / (t * camera.aspect));
-    camera.position.set(0, 1.28, dist);
-    camera.lookAt(0, 0.93, 0);
+    const half = (viewTop - LOW) / 2;
+    const lookY = (viewTop + LOW) / 2;
+    const dist = Math.max(half / t, 1.3 / (t * camera.aspect));
+    camera.position.set(0, lookY + 0.36, dist);
+    camera.lookAt(0, lookY, 0);
     camera.updateProjectionMatrix();
   }
 
@@ -277,6 +300,10 @@ function createPreview(canvas) {
   function setModel(params, { poof = false } = {}) {
     finishSwap();
     const next = buildHuman(params);
+    // room for the hop (body up 0.22, stretched ~5%) and the poof's ~10% overshoot
+    const y = new THREE.Box3().setFromObject(next).max.y;
+    const h = Number.isFinite(y) && y > 0 ? y : 2;
+    fitTop = Math.max(2.1, h * 1.05 + 0.22, h * 1.1) + 0.06;
     table.add(next);
     if (model && poof && !reducedMotion()) {
       next.scale.setScalar(0.001);
@@ -293,7 +320,7 @@ function createPreview(canvas) {
     if (!alive) return;
     const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
     last = now;
-    frameCamera();
+    frameCamera(dt);
     if (!dragging) {
       idle += dt;
       if (present !== null) {
@@ -407,13 +434,19 @@ export function open({ initial } = {}) {
   return current;
 }
 
+const isImage = (f) => /^image\//.test(f?.type || '');
+const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes('Files');
+
 async function run(initial, resolve) {
   await ensureCss();
   const host = document.getElementById('ui-root') || document.body;
   let params = normalizeCharacter(initial || DEFAULT_CHARACTER);
-  const initialName = params.name || '';
+  const name = params.name || ''; // no name field (nothing shows a name yet); an existing one is kept
   delete params.name;
-  let tab = 'face', closed = false, photoToken = 0, stream = null;
+  let tab = 'face', closed = false, photoToken = 0, stream = null, camToken = 0, camPending = false;
+  let photoMode = 'checking'; // 'checking' until /api/status answers, then 'on' | 'off'
+  let touched = null; // fields the player changed while a photo is with Claude (kept over its answer)
+  const openedAt = performance.now();
 
   // ---- DOM
   const fileInput = h('input', { type: 'file', accept: 'image/*', class: 'cr-file', hidden: true, tabindex: -1 });
@@ -423,28 +456,36 @@ async function run(initial, resolve) {
   const camBtn = h('button', { type: 'button', class: 'cr-mini cr-cam', title: TIP.cam, 'aria-label': TIP.cam, html: svg(`<rect x="3" y="9" width="19" height="15" rx="4" fill="#8fd3ff" ${S}/><path d="M22 14 L29 10 L29 23 L22 19 Z" fill="#8fd3ff" ${S}/><circle cx="12.5" cy="16.5" r="3.4" fill="#fffdf6" ${S}/>`) });
   const snapBtn = h('button', { type: 'button', class: 'cr-snap', title: TIP.snap, 'aria-label': TIP.snap });
   const camX = h('button', { type: 'button', class: 'cr-mini cr-camx', title: TIP.cancel, 'aria-label': TIP.cancel, text: '✕' });
-  const photo = h('div', { class: 'cr-photo', role: 'button', tabindex: 0, title: TIP.photo, 'aria-label': TIP.photo },
+  // the frame is the one "pick a photo" button; the camera buttons sit beside it, not inside it
+  const frame = h('div', { class: 'cr-frame', role: 'button', tabindex: 0 }, h('div', { class: 'cr-photo-icon', text: '📷' }), photoImg, video, h('div', { class: 'cr-spin' }));
+  const photo = h('div', { class: 'cr-photo' },
     h('div', { class: 'cr-tape' }),
-    h('div', { class: 'cr-frame' }, h('div', { class: 'cr-photo-icon', text: '📷' }), photoImg, video, h('div', { class: 'cr-spin' }), snapBtn),
+    h('div', { class: 'cr-shot' }, frame, snapBtn),
     h('div', { class: 'cr-photo-foot' }, camBtn, camX),
     badge, fileInput);
-  const offChip = h('div', { class: 'cr-offline', title: TIP.offline, 'aria-label': TIP.offline, role: 'img' }, h('span', { text: '📷' }), h('i', { text: '⦸' }));
   const canvas = h('canvas', { class: 'cr-canvas' });
   const poofLayer = h('div', { class: 'cr-poof' });
-  const nameInput = h('input', { class: 'cr-name', type: 'text', placeholder: 'name', maxlength: 16, title: TIP.name, 'aria-label': TIP.name, autocomplete: 'off', spellcheck: 'false', value: initialName });
   const diceBtn = h('button', { type: 'button', class: 'cr-round cr-dice', title: TIP.dice, 'aria-label': TIP.dice, text: '🎲' });
   const okBtn = h('button', { type: 'button', class: 'cr-round cr-ok', title: TIP.ok, 'aria-label': TIP.ok, text: '✓' });
-  const stage = h('div', { class: 'cr-stage' }, canvas, poofLayer, offChip, h('div', { class: 'cr-actions' }, diceBtn, nameInput, okBtn));
+  const stage = h('div', { class: 'cr-stage' }, canvas, poofLayer, h('div', { class: 'cr-actions' }, diceBtn, okBtn));
   const tabsEl = h('div', { class: 'cr-tabs', role: 'tablist' });
   const panel = h('div', { class: 'cr-panel', role: 'tabpanel' });
   const controls = h('div', { class: 'cr-controls' }, tabsEl, panel);
-  const card = h('div', { class: 'cr-card etl-panel no-photo checking' }, photo, stage, controls);
+  const card = h('div', { class: 'cr-card etl-panel checking', tabindex: -1 }, photo, stage, controls);
   const overlay = h('div', { class: 'cr-overlay' }, card);
-  nameInput.value = initialName;
-  host.appendChild(overlay);
-  openModal(overlay, { onEscape: () => { if (stream) stopCam(); } });
   let preview = null;
-  teardown = () => { closed = true; stopCam(); preview?.dispose(); closeModal(overlay); overlay.remove(); window.removeEventListener('paste', onPaste); };
+  teardown = () => {
+    closed = true;
+    overlay.remove();
+    closeModal(overlay);
+    stopCam();
+    preview?.dispose();
+    window.removeEventListener('paste', onPaste);
+    window.removeEventListener('keydown', onKey);
+  };
+  host.appendChild(overlay);
+  openModal(overlay, { onEscape: () => { if (stream || camPending) stopCam(); else cancelPhoto(); } });
+  try { card.focus({ preventScroll: true }); } catch { /* ignore */ }
 
   // ---- preview
   preview = createPreview(canvas);
@@ -494,6 +535,7 @@ async function run(initial, resolve) {
     if (params[field] === value) return;
     params = normalizeCharacter({ ...params, [field]: value });
     delete params.name;
+    touched?.add(field);
     sync();
     rebuild();
   }
@@ -506,7 +548,7 @@ async function run(initial, resolve) {
         for (const c of row.palette) {
           opts.append(h('button', { type: 'button', class: 'cr-sw', style: `--c:${c}`, 'data-field': row.field, 'data-value': c, 'aria-label': `${row.tip} ${c}`, onclick: () => set(row.field, c) }));
         }
-        const input = h('input', { type: 'color', tabindex: -1, 'aria-label': `${row.tip}: ${TIP.any}` });
+        const input = h('input', { type: 'color', 'aria-label': `${row.tip}: ${TIP.any}` });
         input.addEventListener('input', () => set(row.field, input.value));
         opts.append(h('label', { class: 'cr-sw cr-any', title: TIP.any, 'data-field': row.field }, input));
         panel.append(h('div', { class: 'cr-row', title: row.tip }, h('div', { class: 'cr-row-icon', html: row.icon }), opts));
@@ -527,6 +569,7 @@ async function run(initial, resolve) {
   rebuild();
 
   diceBtn.addEventListener('click', () => {
+    if (photo.dataset.state === 'busy') return;
     params = normalizeCharacter(randomCharacter());
     delete params.name;
     diceBtn.classList.remove('roll');
@@ -538,17 +581,27 @@ async function run(initial, resolve) {
   });
 
   // ---- photo -> Claude
-  const setPhoto = (state, tip = '') => {
+  // While Claude looks: 🎲 and ✓ wait, the swatches stay live (those choices win over the answer),
+  // and the frame (or Esc) cancels.
+  function setPhoto(state, tip = '') {
+    const busy = state === 'busy';
     photo.dataset.state = state;
+    card.classList.toggle('busy', busy);
+    diceBtn.disabled = busy;
+    okBtn.disabled = busy;
     badge.textContent = state === 'error' ? '⦸' : state === 'done' ? '✓' : '';
     badge.title = tip;
     badge.setAttribute('aria-label', tip || state);
-    photo.title = state === 'error' && tip ? `${tip}\n${TIP.photo}` : TIP.photo;
-  };
+    frame.title = busy ? TIP.cancel : tip || TIP.photo;
+    frame.setAttribute('aria-label', frame.title);
+  }
   setPhoto('idle');
+
   async function sendPhoto(getDataUrl) {
-    if (closed || card.classList.contains('no-photo')) return;
+    if (closed || photoMode !== 'on') return;
+    stopCam(); // a dropped or pasted photo replaces the live camera
     const token = ++photoToken;
+    touched = new Set();
     setPhoto('busy');
     try {
       const dataUrl = await getDataUrl();
@@ -557,46 +610,90 @@ async function run(initial, resolve) {
       photo.classList.add('has-img');
       const res = await api.avatar(dataUrl);
       if (token !== photoToken || closed) return;
-      params = normalizeCharacter(res?.params || {});
+      if (!res || typeof res.params !== 'object' || !res.params || Array.isArray(res.params)) {
+        throw Object.assign(new Error('no params in the answer'), { status: 502 });
+      }
+      const keep = Object.fromEntries([...touched].map((f) => [f, params[f]]));
+      params = normalizeCharacter({ ...res.params, ...keep });
       delete params.name;
+      touched = null;
       sync();
       rebuild(true);
       poof(poofLayer, true);
       setPhoto('done');
     } catch (e) {
       if (token !== photoToken || closed) return;
+      touched = null;
       console.warn('creator: avatar failed', e);
       setPhoto('error', errorTip(e));
+      if (claudeAsleep(e)) setTimeout(() => { if (!closed && photo.dataset.state === 'error') hidePhoto(true); }, 1400);
     }
   }
-  const pickFile = () => { if (!photo.dataset.state || photo.dataset.state === 'busy' || stream) return; fileInput.value = ''; fileInput.click(); };
-  photo.addEventListener('click', (e) => { if (e.target.closest('button')) return; pickFile(); });
-  photo.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === photo) { e.preventDefault(); pickFile(); } });
+  function cancelPhoto() {
+    if (photo.dataset.state !== 'busy') return;
+    photoToken++;
+    touched = null;
+    photo.classList.remove('has-img');
+    photoImg.removeAttribute('src');
+    setPhoto('idle');
+  }
+  // no Claude here: the polaroid folds away and the stage takes its place
+  function hidePhoto(animate) {
+    photoMode = 'off';
+    stopCam();
+    cancelPhoto();
+    if (!animate || reducedMotion()) card.classList.add('no-anim');
+    card.classList.add('no-photo');
+    card.classList.remove('checking');
+    requestAnimationFrame(() => requestAnimationFrame(() => card.classList.remove('no-anim')));
+  }
+  function onFrame() {
+    if (photoMode !== 'on' || stream || camPending) return;
+    if (photo.dataset.state === 'busy') { cancelPhoto(); return; }
+    fileInput.value = '';
+    fileInput.click();
+  }
+  photo.addEventListener('click', (e) => { if (e.target !== fileInput && !e.target.closest('button')) onFrame(); });
+  frame.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) { e.preventDefault(); onFrame(); } });
   fileInput.addEventListener('change', () => { const f = fileInput.files?.[0]; if (f) sendPhoto(() => fileToDataUrl(f)); });
-  // drag & drop anywhere on the card
+  // drag & drop: the whole overlay takes the drop, so a near miss never opens the file in the tab
   let dragDepth = 0;
-  const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes('Files');
-  card.addEventListener('dragenter', (e) => { if (!hasFiles(e)) return; e.preventDefault(); dragDepth++; photo.classList.add('drag'); });
-  card.addEventListener('dragover', (e) => { if (!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = card.classList.contains('no-photo') ? 'none' : 'copy'; });
-  card.addEventListener('dragleave', () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) photo.classList.remove('drag'); });
-  card.addEventListener('drop', (e) => {
+  overlay.addEventListener('dragenter', (e) => {
+    e.preventDefault();
+    if (!hasFiles(e)) return;
+    dragDepth++;
+    photo.classList.toggle('drag', photoMode === 'on');
+  });
+  overlay.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = hasFiles(e) && photoMode === 'on' ? 'copy' : 'none';
+  });
+  overlay.addEventListener('dragleave', (e) => {
+    if (!hasFiles(e)) return;
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (!dragDepth) photo.classList.remove('drag');
+  });
+  overlay.addEventListener('drop', (e) => {
     e.preventDefault();
     dragDepth = 0;
     photo.classList.remove('drag');
-    const f = [...(e.dataTransfer?.files || [])].find((x) => /^image\//.test(x.type)) || e.dataTransfer?.files?.[0];
+    if (photoMode !== 'on') return;
+    const files = [...(e.dataTransfer?.files || [])];
+    const f = files.find(isImage) || files[0];
     if (f) sendPhoto(() => fileToDataUrl(f));
   });
-  const onPaste = (e) => {
-    if (closed) return;
-    const f = [...(e.clipboardData?.files || [])].find((x) => /^image\//.test(x.type));
+  function onPaste(e) {
+    if (closed || photoMode !== 'on') return;
+    const f = [...(e.clipboardData?.files || [])].find(isImage);
     if (f) { e.preventDefault(); sendPhoto(() => fileToDataUrl(f)); }
-  };
+  }
   window.addEventListener('paste', onPaste);
 
   // ---- webcam (optional)
-  const canCam = !!navigator.mediaDevices?.getUserMedia;
-  camBtn.hidden = !canCam;
+  camBtn.hidden = !navigator.mediaDevices?.getUserMedia;
+  // stopCam also cancels a camera that is still opening (camToken), so no stream is ever left running
   function stopCam() {
+    camToken++;
     if (stream) stream.getTracks().forEach((tr) => tr.stop());
     stream = null;
     video.srcObject = null;
@@ -604,17 +701,25 @@ async function run(initial, resolve) {
   }
   camBtn.addEventListener('click', async (e) => {
     e.stopPropagation();
-    if (stream || photo.dataset.state === 'busy') return;
+    if (closed || stream || camPending || photoMode !== 'on' || photo.dataset.state === 'busy') return;
+    camPending = true;
+    camBtn.classList.add('wait');
+    const mine = ++camToken;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 } }, audio: false });
-      if (closed) { stopCam(); return; }
-      video.srcObject = stream;
+      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 } }, audio: false });
+      if (mine !== camToken || closed || stream) { s.getTracks().forEach((tr) => tr.stop()); return; }
+      stream = s;
+      video.srcObject = s;
       photo.classList.add('cam');
       setPhoto('idle');
       await video.play().catch(() => {});
     } catch (err) {
+      if (mine !== camToken || closed) return;
       stopCam();
       setPhoto('error', errorTip({ code: 'cam', denied: err?.name === 'NotAllowedError' || err?.name === 'SecurityError' }));
+    } finally {
+      camPending = false;
+      camBtn.classList.remove('wait');
     }
   });
   camX.addEventListener('click', (e) => { e.stopPropagation(); stopCam(); });
@@ -622,23 +727,36 @@ async function run(initial, resolve) {
     e.stopPropagation();
     if (!stream || !video.videoWidth) return;
     const dataUrl = toJpegDataUrl(video, video.videoWidth, video.videoHeight);
-    stopCam();
     sendPhoto(async () => dataUrl);
   });
 
-  // ---- is Claude here? (the photo path is only offered when it is)
-  api.status().then((s) => {
-    if (!closed && s?.ai) card.classList.remove('no-photo');
-  }).catch(() => { /* offline: manual only */ }).finally(() => card.classList.remove('checking'));
+  // ---- is Claude here? The photo column is kept while we ask, so the stage does not jump.
+  api.status().then((s) => !!s?.ai).catch(() => false).then((on) => {
+    if (closed) return;
+    if (on) { photoMode = 'on'; card.classList.remove('checking'); } else hidePhoto(performance.now() - openedAt > 450);
+  });
 
-  // ---- done
-  return new Promise((done) => {
-    const finish = () => {
-      if (closed) return;
+  // ---- done (✓, or Enter anywhere that is not a control)
+  function onKey(e) {
+    if (e.key !== 'Enter' || e.repeat || e.isComposing || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    if (closed || performance.now() - openedAt < 400) return;
+    const t = e.target;
+    const here = t === document.body || t === document.documentElement || (t instanceof Node && overlay.contains(t));
+    if (!here || (t instanceof Element && t.closest('button, input, select, textarea, a, label, [role="button"], [contenteditable]'))) return;
+    e.preventDefault();
+    finish();
+  }
+  window.addEventListener('keydown', onKey);
+
+  let finish = () => {};
+  await new Promise((done) => {
+    finish = () => {
+      if (closed || photo.dataset.state === 'busy') return;
       closed = true;
-      const out = normalizeCharacter({ ...params, name: nameInput.value });
+      const out = normalizeCharacter({ ...params, name });
       stopCam();
       window.removeEventListener('paste', onPaste);
+      window.removeEventListener('keydown', onKey);
       overlay.classList.add('out');
       setTimeout(() => {
         preview?.dispose();
@@ -648,8 +766,7 @@ async function run(initial, resolve) {
         done();
       }, reducedMotion() ? 0 : 220);
     };
-    okBtn.addEventListener('click', finish);
-    nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); finish(); } });
+    okBtn.addEventListener('click', () => finish());
   });
 }
 

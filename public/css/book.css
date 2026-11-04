@@ -329,11 +329,14 @@
 .bk-fail { display: flex; flex-direction: column; align-items: center; gap: 16px; pointer-events: auto; }
 .bk-fail-row { display: flex; gap: 14px; }
 .bk-fail .bk-ib { width: 42px; height: 42px; font-size: 20px; border: 1px solid rgba(155, 107, 255, .4); }
-.bk-sigil.bk-dead { position: relative; animation: none; color: rgba(190, 160, 255, .22); text-shadow: 0 0 18px rgba(155, 107, 255, .3); }
-.bk-sigil.bk-dead::after {                 /* the crack */
-  content: ''; position: absolute; left: 50%; top: 4%; bottom: 4%; width: .07em; margin-left: -.035em;
-  background: var(--void, #0b0912); transform: rotate(22deg); box-shadow: 0 0 .06em var(--void, #0b0912);
+/* the sigil split in two along a jagged crack, the halves drifting apart */
+.bk-sigil.bk-dead { position: relative; animation: none; color: transparent; text-shadow: none; }
+.bk-sigil.bk-dead::before, .bk-sigil.bk-dead::after {
+  content: '✦'; position: absolute; inset: 0;
+  color: rgba(190, 160, 255, .3); text-shadow: 0 0 18px rgba(155, 107, 255, .35);
 }
+.bk-sigil.bk-dead::before { clip-path: polygon(0 0, 54% 0, 45% 33%, 56% 51%, 46% 73%, 52% 100%, 0 100%); transform: translate(-.05em, .03em) rotate(-6deg); }
+.bk-sigil.bk-dead::after { clip-path: polygon(54% 0, 100% 0, 100% 100%, 52% 100%, 46% 73%, 56% 51%, 45% 33%); transform: translate(.05em, -.02em) rotate(5deg); }
 
 /* selection menu: 🖍 ✎ ? */
 .bk-selmenu {
@@ -448,7 +451,8 @@
 /* nothing came back (network, server): not a refusal, so no cold box. A small cracked sigil and ↻ */
 .bk-ex.failed .bk-q { opacity: .6; }
 .bk-ex.failed .bk-a { display: flex; align-items: center; gap: 12px; min-height: 0; text-shadow: none; }
-.bk-ex.failed .bk-sigil { font-size: 26px; line-height: 1; }
+.bk-ex.failed .bk-sigil { font-size: 28px; line-height: 1; }
+.bk-ex.failed .bk-sigil::before, .bk-ex.failed .bk-sigil::after { color: rgba(190, 160, 255, .45); }
 .bk-again { border: 1px solid rgba(155, 107, 255, .35); }
 
 .bk-dots { display: inline-flex; gap: 7px; padding: 10px 0 4px; }
