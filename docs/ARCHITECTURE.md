@@ -422,12 +422,15 @@ open({ paper: { arxivId, title }, regionId })        // regionId may be null in 
 open({ initial }) -> Promise<characterParams>
 // js/ui/terminal.js
 open({ challenge, regionId }) -> Promise<{ solved: boolean, code: string }>
-// js/ui/explain.js
-open({ challenge, regionId, speaker: { name } }) -> Promise<{ pass: boolean, feedback: string }>
+// js/ui/explain.js   (speaker.color tints the name tag; feedback is '' if the player backed out before any grade)
+open({ challenge, regionId, speaker: { name, color? } }) -> Promise<{ pass: boolean, feedback: string }>
 ```
 
 Annotations (highlights + notes) live in `localStorage` under
-`etl-notes-<arxivId>`, owned by book.js.
+`etl-notes-<arxivId>`, owned by book.js. Unfinished work lives under
+`etl-code-<regionId>-<challengeId>` (terminal.js: the code draft, deleted once the
+tests pass) and `etl-explain-<regionId>-<challengeId>` (explain.js: the answer
+draft, deleted once it passes). Both are only drafts, so New Game may clear them.
 
 ## Look and feel
 
