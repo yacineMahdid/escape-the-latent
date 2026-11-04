@@ -9,7 +9,8 @@
     "dev": "node --watch server/index.js",
     "test": "node server/test/run.mjs",
     "test:puzzles": "node test/puzzles/solve.cjs",
-    "test:play": "node test/play/puzzles-ingame.cjs"
+    "test:play": "node test/play/puzzles-ingame.cjs",
+    "test:extras": "node test/play/extras-ingame.cjs"
   },
   "engines": {
     "node": ">=18.17"
