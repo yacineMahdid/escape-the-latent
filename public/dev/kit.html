@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Puzzle kit demo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="/css/game.css">
+<link rel="stylesheet" href="/css/puzzles.css">
+<style>
+  body { background: linear-gradient(#bfe6ff, #8fd47a); }
+  .demo-row { display: flex; gap: 14px; flex-wrap: wrap; margin: 10px 0 18px; }
+  .demo-slot { width: 120px; height: 64px; display: flex; align-items: center; justify-content: center; }
+  .demo-card { font-size: 20px; min-width: 90px; text-align: center; }
+  #log { position: fixed; left: 8px; bottom: 8px; z-index: 100; background: #2b2233; color: #fffdf6; padding: 6px 10px; border-radius: 8px; font: 13px monospace; }
+</style>
+</head><body>
+<div id="game"></div><div id="ui-root"></div><div id="log">loading…</div>
+<script type="module">
+// Dev-only: exercises public/js/puzzles/kit.js (board chrome, drag/click-to-place, fail/hint/solve).
+// ?theme=cork|sea|sand
+import { createBoard, createDnd, h } from '/js/puzzles/kit.js';
+import { openModal } from '/js/ui/modal.js';
+const theme = new URLSearchParams(location.search).get('theme') || 'cork';
+const log = (m) => { document.getElementById('log').textContent = m; };
+window.__kit = { solved: false, closed: false, events: [] };
+const spec = {
+  title: 'Sort the Snacks',
+  controlsHint: 'Drag each snack onto its plate (or click it, then a plate), then check.',
+  feedback: { empty: 'Some plates are still empty.', wrong: 'Plate {n} has the wrong snack.' },
+  hintAfterFailures: { after: 2, text: 'Hint: pies go on the round plate.' },
+  successText: 'Every plate is happy!',
+};
+const host = h('div', { class: 'puzzle-host' }); document.getElementById('ui-root').append(host);
+openModal(host, { onEscape: () => { window.__kit.closed = true; log('closed (Esc)'); } });
+const board = createBoard(host, spec, {
+  onSolved: () => { window.__kit.solved = true; log('SOLVED'); },
+  onClose: () => { window.__kit.closed = true; log('closed'); },
+  sfx: (n) => window.__kit.events.push(n),
+}, { theme });
+const want = ['🥧', '🍩', '🧁'];
+const placed = [null, null, null];
+const tray = h('div', { class: 'demo-row tray' });
+const plates = h('div', { class: 'demo-row plates' });
+board.body.append(h('div', { class: 'pz-label', text: 'Snacks' }), tray, h('div', { class: 'pz-label', text: 'Plates' }), plates);
+const dnd = createDnd(board.root, {
+  sfx: board.sfx,
+  onDrop(item, target, itemEl, targetEl) {
+    if (target.plate == null) { tray.append(itemEl); placed.forEach((p, i) => { if (p === item.snack) placed[i] = null; }); return; }
+    const prev = targetEl.querySelector('.demo-card');
+    placed.forEach((p, i) => { if (p === item.snack) placed[i] = null; });
+    if (prev && prev !== itemEl) { const from = itemEl.parentElement; (from === tray || !from.dataset.plate ? tray : from).append(prev); if (from.dataset.plate) placed[+from.dataset.plate] = prev.textContent; }
+    targetEl.append(itemEl); placed[target.plate] = item.snack;
+  },
+});
+dnd.target(tray, { plate: null });
+['🍩', '🧁', '🥧'].forEach((snack) => tray.append(dnd.item(h('div', { class: 'pz-card demo-card', text: snack, 'data-snack': snack }), { snack })));
+for (let i = 0; i < 3; i++) plates.append(dnd.target(h('div', { class: 'pz-slot demo-slot', 'data-plate': String(i), title: `Plate ${i + 1}` }), { plate: i }));
+board.button('Check', () => {
+  if (placed.some((p) => !p)) return board.fail('empty');
+  const bad = placed.findIndex((p, i) => p !== want[i]);
+  if (bad >= 0) return board.fail('wrong', { n: bad + 1 });
+  board.solve();
+}, { primary: true });
+window.__kit.ready = true;
+log('ready');
+</script></body></html>

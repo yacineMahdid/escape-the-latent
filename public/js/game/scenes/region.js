@@ -9,6 +9,7 @@ import { buildArtefact, theName } from '../artefacts.js';
 import { getSave, updateSave, regionState, isLearned, learn } from '../save.js';
 import { say, ask, askValue, banner, toast, itemGet } from '../dialogue.js';
 import { confetti } from '../fx.js';
+import { sfx } from '../sfx.js';
 import { setHud, pulseHud } from '../hud.js';
 import { openModal, closeModal } from '../../ui/modal.js';
 import { api } from '../../api.js';
@@ -202,7 +203,7 @@ export async function createRegionScene(ctx, regionId) {
       const finish = (v) => { if (!done) { done = true; resolve(v); } };
       openModal(host, { onEscape: () => finish(false) });
       try {
-        handle = (mod.default || mod).mount(host, c.spec || {}, { onSolved: () => finish(true), onClose: () => finish(false), sfx: () => {} });
+        handle = (mod.default || mod).mount(host, c.spec || {}, { onSolved: () => finish(true), onClose: () => finish(false), sfx });
       } catch (e) { console.error(e); finish(false); }
     });
     try { handle?.destroy?.(); } catch (e) { console.error(e); }

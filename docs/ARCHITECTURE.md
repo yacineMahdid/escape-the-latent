@@ -298,6 +298,24 @@ Puzzles are paper-craft boards drawn with DOM/SVG/canvas over the 3D scene
 (cut-paper cards, string, pins, stamps). They must be fully playable with the
 mouse, explain their controls in one line, and never reveal the answer.
 
+Build them on `public/js/puzzles/kit.js` (styles in `public/css/puzzles.css`):
+
+```js
+import { createBoard, createDnd, h, s } from './kit.js';
+const board = createBoard(container, spec, api, { theme: 'cork' | 'sea' | 'sand' });
+board.body;                                   // your board content goes here
+board.button('Ring the Bell', check, { primary: true });
+board.fail('peeking', { desk: 3 });           // spec.feedback.peeking with {desk} filled in;
+                                              // after spec.hintAfterFailures.after fails, shows its text
+board.solve();                                // stamp + spec.successText, then api.onSolved() once
+const dnd = createDnd(board.root, { sfx: board.sfx, onDrop(item, target, itemEl, targetEl) {}, canDrop });
+dnd.item(el, data); dnd.target(el, data);     // drag, or click an item then click where it goes
+```
+
+`spec.feedback` values may be strings or `{ badge, title }`. Sounds: `api.sfx(name)`
+with `paper | pin | tick | pop | stamp | buzz | ding | win` (public/js/game/sfx.js).
+Dev pages: `/dev/kit.html` (kit demo) and `/dev/puzzle.html?region=<id>&challenge=<cid>`.
+
 ## Shared front-end modules (owner: core)
 
 ```js

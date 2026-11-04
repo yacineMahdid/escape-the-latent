@@ -1,7 +1,9 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>Puzzle harness</title>
 <script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js" } }</script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap">
 <link rel="stylesheet" href="/css/game.css">
+<link rel="stylesheet" href="/css/puzzles.css">
 <style>body{background:linear-gradient(#bfe6ff,#8fd47a)} #log{position:fixed;left:8px;bottom:8px;z-index:100;background:#2b2233;color:#fffdf6;padding:6px 10px;border-radius:8px;font:13px monospace}</style>
 </head><body>
 <div id="game"></div><div id="ui-root"></div><div id="log">loading…</div>
@@ -9,6 +11,7 @@
 // /dev/puzzle.html?region=attention&challenge=c1  mounts that challenge's puzzle module with its spec.
 // window.__puzzle exposes { solved, closed, events } for automated tests.
 import { openModal, closeModal } from '/js/ui/modal.js';
+import { sfx } from '/js/game/sfx.js';
 const q = new URLSearchParams(location.search);
 const regionId = q.get('region') || 'attention';
 const challengeId = q.get('challenge') || 'c1';
@@ -24,7 +27,7 @@ openModal(host, { onEscape: () => { window.__puzzle.closed = true; log('closed (
 const handle = (mod.default || mod).mount(host, ch.spec || {}, {
   onSolved: () => { window.__puzzle.solved = true; window.__puzzle.events.push('solved'); log('SOLVED ✓'); },
   onClose: () => { window.__puzzle.closed = true; window.__puzzle.events.push('closed'); log('closed'); },
-  sfx: (n) => window.__puzzle.events.push('sfx:' + n),
+  sfx: (n) => { window.__puzzle.events.push('sfx:' + n); sfx(n); },
 });
 window.__puzzle.handle = handle;
 window.__puzzle.ready = true;
