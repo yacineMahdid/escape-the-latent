@@ -65,6 +65,16 @@ const SOLVERS = {
     }
     await submit(p); await submit(p);
   },
+  'mamba-vertebra-jig': async (p, spec) => {
+    await submit(p); // wrong: empty jig
+    const sol = spec.solution;
+    for (const sl of spec.slots) await drag(p, `.vj-tray [data-tile="${sol[sl.id]}"]`, `[data-slot="${sl.id}"]`);
+    const opts = spec.expansion?.options || [1, 2, 3, 4];
+    const cur = (await state(p)).E;
+    const from = opts.indexOf(cur); const to = opts.indexOf(sol.E);
+    for (let i = 0; i < Math.abs(to - from); i++) await p.click(`.vj-e button:${to < from ? 'first-child' : 'last-child'}`);
+    await submit(p);
+  },
   'name-racks': async (p) => {
     const plan = { dock: 'machine', lagoon: 'bird', boxer: 'pet', pug: 'pet' };
     for (const [rack, tag] of Object.entries(plan)) await drag(p, `.nr-tag[data-tag="${tag}"]`, `.nr-slot[data-rack="${rack}"]`);

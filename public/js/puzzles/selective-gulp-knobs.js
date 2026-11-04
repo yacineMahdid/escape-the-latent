@@ -3,7 +3,7 @@
 // in), C (let it out). The belly is a tiny state space: h = exp(-Δ)·h + (1-exp(-Δ))·B·x,
 // voice y = C·h. Tune the knobs so at every bell the snake says the latest bead and
 // says nothing anywhere else. Paper: Mamba, §3.5.2 (interpretation of Δ, B, C).
-import { createBoard, h, injectCss } from './kit.js';
+import { createBoard, h, injectCss, withPhrases } from './kit.js';
 
 const CSS = `
 .sg { display: flex; flex-direction: column; gap: 14px; }
@@ -12,7 +12,9 @@ const CSS = `
 .sg-head { position: relative; flex: none; width: 54px; height: 40px; display: flex; align-items: center; gap: 4px; }
 .sg-snake { width: 26px; height: 22px; border-radius: 50% 60% 50% 50%; background: #5bbf5a; border: 3px solid var(--ink); position: relative; }
 .sg-snake::after { content: ''; position: absolute; width: 5px; height: 5px; border-radius: 50%; background: var(--ink); right: 4px; top: 4px; }
-.sg-belly { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--ink); background: #000; }
+.sg-belly { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--ink); }
+.sg-belly-wrap { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--ink); background: #fffdf6; display: flex; align-items: center; justify-content: center; }
+.sg-belly-wrap .sg-belly { width: 20px; height: 20px; border: 0; }
 .sg-tiles { position: relative; display: flex; gap: 2px; padding-top: 22px; }
 .sg-tile { position: relative; width: 18px; height: 24px; display: flex; align-items: center; justify-content: center; }
 .sg-gem { width: 13px; height: 13px; transform: rotate(45deg); border: 2px solid var(--ink); border-radius: 2px; }
@@ -20,6 +22,9 @@ const CSS = `
 .sg-bell { font-size: 14px; line-height: 1; filter: grayscale(1) brightness(.4); }
 .sg-ribbon { position: absolute; left: 0; right: 0; bottom: -6px; height: 5px; border-radius: 2px; }
 .sg-voice { position: absolute; top: -20px; left: 1px; width: 16px; height: 14px; border-radius: 8px 8px 8px 2px; border: 2px solid var(--ink); }
+.sg-ring { position: absolute; top: -24px; left: -3px; width: 24px; height: 22px; border-radius: 50%; border: 3px dotted var(--ring, #888); opacity: .85; }
+.sg-ring + .sg-voice, .sg-tile.is-bell .sg-voice { top: -20px; left: 2px; width: 14px; height: 14px; border-radius: 50%; }
+.sg-chainbar { grid-column: 2 / span 3; text-align: center; letter-spacing: 6px; font-size: 14px; color: #7a5a3a; height: 16px; line-height: 16px; overflow: hidden; white-space: nowrap; }
 .sg-tag { position: absolute; top: 31px; left: 50%; transform: translateX(-50%); z-index: 2; font-size: 10px; font-weight: 700; padding: 0 4px; border-radius: 6px; white-space: nowrap; border: 2px solid var(--ink); background: #fff; }
 .sg-tag.ok { background: #c8f2dc; }
 .sg-tag.low { top: 47px; z-index: 3; }
@@ -42,11 +47,18 @@ const CSS = `
 `;
 
 const rgb = (v) => `rgb(${v.map((c) => Math.round(255 * Math.max(0, Math.min(1, c)))).join(',')})`;
+// a colour vector v is drawn as rgb(v / max(v)) at opacity min(1, max(v)); blank when max(v) = 0
+function paint(el, v) {
+  const m = Math.max(...v);
+  if (!(m > 0)) { el.style.background = 'transparent'; el.style.opacity = '1'; return; }
+  el.style.background = rgb(v.map((c) => c / m)); el.style.opacity = String(Math.min(1, m));
+}
 const maxAbs = (v) => Math.max(...v.map((c) => Math.abs(c)));
 
 export default {
-  mount(container, spec = {}, api = {}) {
+  mount(container, rawSpec = {}, api = {}) {
     injectCss('pz-selective-gulp', CSS);
+    const spec = withPhrases(rawSpec, { miss: 'not yet: read the tags on the road', silent: 'silent at a bell', faded: 'a bell says a faded bead', mush: 'a bell says mush', chatty: 'talks off the bells' });
     const board = createBoard(container, spec, api, { theme: 'sand' });
     const A = spec.A ?? -1;
     const tokens = spec.tokens || {};
@@ -64,26 +76,30 @@ export default {
     // ---------- roads ----------
     const roadEls = roads.map((road) => {
       const belly = h('div', { class: 'sg-belly', title: `A = ${A}` });
+      let lastBead = null;
       const tiles = road.map((tok) => {
         const t = tokens[tok] || {};
+        if (t.kind === 'bead') lastBead = t.color;
         const inner = t.kind === 'bead' ? h('div', { class: 'sg-gem', style: { background: rgb(t.color || [1, 1, 1]) } })
           : t.kind === 'bell' ? h('div', { class: 'sg-bell', text: '🔔' }) : h('div', { class: 'sg-sand' });
         const ribbon = h('div', { class: 'sg-ribbon' });
         const voice = h('div', { class: 'sg-voice' }); voice.style.display = 'none';
         const tag = h('div', { class: 'sg-tag' }); tag.style.display = 'none';
-        const el = h('div', { class: 'sg-tile', title: tok }, [inner, ribbon, voice, tag]);
+        const ring = t.kind === 'bell' && lastBead ? h('div', { class: 'sg-ring', style: { '--ring': rgb(lastBead) } }) : null;
+        const el = h('div', { class: `sg-tile${t.kind === 'bell' ? ' is-bell' : ''}`, title: tok }, [inner, ribbon, ...(ring ? [ring] : []), voice, tag]);
         return { el, ribbon, voice, tag, tok, kind: t.kind };
       });
       const mover = h('div', { class: 'sg-mover' }); mover.style.display = 'none';
       const strip = h('div', { class: 'sg-tiles' }, [...tiles.map((t) => t.el), mover]);
-      const el = h('div', { class: 'sg-road' }, [h('div', { class: 'sg-head' }, [h('div', { class: 'sg-snake' }), belly]), strip]);
+      const el = h('div', { class: 'sg-road' }, [h('div', { class: 'sg-head' }, [h('div', { class: 'sg-snake' }), h('div', { class: 'sg-belly-wrap', title: `A = ${A}` }, [belly])]), strip]);
       return { el, belly, tiles, mover };
     });
     const roadsBox = h('div', { class: 'sg-roads' }, roadEls.map((r) => r.el));
 
     // ---------- knob panel ----------
     const grid = h('div', { class: 'sg-knobs' });
-    grid.append(h('div'));
+    const chainBar = h('div', { class: 'sg-chainbar', text: '⛓'.repeat(14) });
+    grid.append(h('div'), chainBar, h('div'));
     kinds.forEach((k) => grid.append(h('div', { class: 'sg-kind', title: k.tip || k.id, text: `${k.icon} ${k.tip || k.id}` })));
     const views = { delta: {}, B: {}, C: {} };
     const rowLabel = (key, fallbackTip) => h('div', { class: 'sg-rowlab', title: K[key]?.tip || fallbackTip }, [K[key]?.label || key, ' ', h('small', { text: K[key]?.tip || fallbackTip })]);
@@ -116,6 +132,7 @@ export default {
       if (running) return;
       chained = !chained;
       if (chained) { const src = knobs[lastChanged]; kinds.forEach((k) => { knobs[k.id] = { ...src }; }); }
+      else lastChanged = kinds[0]?.id; // re-chaining copies the bead column if nothing changed since
       board.sfx('pin'); changed();
     });
     board.body.append(h('div', { class: 'sg' }, [roadsBox, h('div', { class: 'sg-panel' }, [chain, grid])]));
@@ -124,7 +141,7 @@ export default {
       if (running) return;
       lastChanged = kind;
       for (const k of chained ? kinds.map((x) => x.id) : [kind]) knobs[k][key] = value;
-      board.sfx(key === 'delta' ? 'tick' : 'pin');
+      board.sfx(key === 'delta' ? 'tick' : 'pop');
       changed();
     }
     const fmtDelta = (d) => (d >= 1 ? String(d) : String(d));
@@ -138,6 +155,7 @@ export default {
         }
       });
       chain.classList.toggle('on', chained);
+      chainBar.style.visibility = chained ? 'visible' : 'hidden';
       chain.textContent = chained ? '⛓ linked' : '⛓ unlinked';
       clearRun();
     }
@@ -156,19 +174,20 @@ export default {
     function clearRun() {
       if (running) return;
       roadEls.forEach((r) => {
-        r.belly.style.background = '#000';
+        paint(r.belly, [0, 0, 0]);
         r.mover.style.display = 'none';
-        r.tiles.forEach((t) => { t.ribbon.style.background = 'transparent'; t.voice.style.display = 'none'; t.tag.style.display = 'none'; });
+        r.tiles.forEach((t) => { paint(t.ribbon, [0, 0, 0]); t.voice.style.display = 'none'; t.tag.style.display = 'none'; });
       });
       board.root.classList.remove('sg-win');
     }
     function showStep(r, traj, i) {
       const t = r.tiles[i]; const s = traj[i];
-      t.ribbon.style.background = rgb(s.h);
-      r.belly.style.background = rgb(s.h);
-      if (maxAbs(s.y) > tol) { t.voice.style.display = ''; t.voice.style.background = rgb(s.y); }
+      paint(t.ribbon, s.h);
+      paint(r.belly, s.h);
+      if (Math.max(...s.y) > tol) { t.voice.style.display = ''; paint(t.voice, s.y); }
       r.mover.style.display = ''; r.mover.style.left = `${t.el.offsetLeft - 2}px`;
     }
+    const tagText = (k) => { const f = rawSpec.feedback?.[k]; return typeof f === 'string' ? f : f?.badge || (k === 'ok' ? '✓' : k); };
     function judge(trajs) {
       const problems = new Set();
       roadEls.forEach((r, ri) => {
@@ -191,11 +210,11 @@ export default {
             }
             if (verdict !== 'ok') problems.add(verdict);
             t.tag.style.display = ''; t.tag.className = `sg-tag ${verdict === 'ok' ? 'ok' : 'bad'}`;
-            t.tag.textContent = spec.feedback?.[verdict] || (verdict === 'ok' ? '✓' : verdict);
+            t.tag.textContent = tagText(verdict);
             place(t, i);
           } else if (!chattyShown && maxAbs(y) > tol) {
             chattyShown = true; problems.add('chatty');
-            t.tag.style.display = ''; t.tag.className = 'sg-tag bad'; t.tag.textContent = spec.feedback?.chatty || 'chatty';
+            t.tag.style.display = ''; t.tag.className = 'sg-tag bad'; t.tag.textContent = tagText('chatty');
             place(t, i);
           }
         });
@@ -210,7 +229,7 @@ export default {
       running = null;
       const problems = judge(trajs);
       if (!problems.size) { board.root.classList.add('sg-win'); board.sfx('ding'); board.solve(); return; }
-      board.fail(['silent', 'faded', 'mush', 'chatty'].filter((k) => problems.has(k)));
+      board.fail(rawSpec.feedback?.miss != null ? 'miss' : ['silent', 'faded', 'mush', 'chatty'].filter((k) => problems.has(k)));
     }
     function run() {
       if (running) { finish(); return; }

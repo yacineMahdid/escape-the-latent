@@ -242,6 +242,18 @@ export function injectCss(id, css) {
   document.head.append(h('style', { id, text: css }));
 }
 
+// Specs sometimes give icon-only feedback ("⚖", "✕ bones"). Pair those with a short
+// phrase so the player knows what went wrong: { badge: '⚖', title: 'not level' }.
+export function withPhrases(spec, phrases) {
+  const fb = { ...(spec.feedback || {}) };
+  for (const [k, phrase] of Object.entries(phrases)) {
+    const f = fb[k];
+    if (f == null) fb[k] = { title: phrase };
+    else if (typeof f === 'string' && !/[a-z]{4}/i.test(f)) fb[k] = { badge: f, title: phrase };
+  }
+  return { ...spec, feedback: fb };
+}
+
 // Small shared bits
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const shuffle = (arr, seed = 7) => {
