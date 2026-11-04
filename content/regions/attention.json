@@ -1,0 +1,969 @@
+{
+  "id": "attention",
+  "paper": {
+    "arxivId": "1706.03762",
+    "title": "Attention Is All You Need",
+    "authors": "Vaswani, Shazeer, Parmar, Uszkoreit, Jones, Gomez, Kaiser, Polosukhin",
+    "year": 2017
+  },
+  "region": {
+    "name": "Attendale",
+    "biome": "meadow",
+    "tagline": "A village of words, a forgetful postduck, and a Bell that isn't finished."
+  },
+  "scientist": {
+    "taskTitle": "Bring back the Listening Bell",
+    "briefing": [
+      "Speck! Good. You're small enough to squeeze through a paper hedge. I have an errand.",
+      "There's a meadow village, Attendale, that claims it can listen to everyone. At once. All together. Preposterous.",
+      "Bring me whatever they listen with. You'll fail, naturally. Everyone fails the first one.",
+      "The paper is in your little dark book. Read it. Footnotes too. ...You won't, but I said it.",
+      "Off you go. And mind the duck."
+    ],
+    "reminder": [
+      "Back already? No Bell? I'm shocked. Shocked! (I am not shocked.)",
+      "Talk to the villagers. Read the book. And stop staring at my coffee."
+    ],
+    "return": [
+      "What is that? A bell? With eight... ears? Give it here. CAREFULLY, Speck.",
+      "*ding* ...Every word heard every other word. At the same time. Hm. Hmph. HMPH.",
+      "You actually read it, didn't you. Footnote four and everything. Who taught you that? Not me.",
+      "Beginner's luck. Statistically, you were owed one. Don't let it go to your tiny head.",
+      "On the shelf. Next to my coffee. NOT touching my coffee."
+    ]
+  },
+  "story": {
+    "arrival": [
+      "Attendale: a paper meadow where every villager is a word, and the main lane spells out one long Sentence.",
+      "Tomorrow is the Meadow Fair. The Sentence must cross the stream to Reply Row, where it is copied out in Otherish.",
+      "For forty years one duck has carried it, house by house. By the last house, he has forgotten the first.",
+      "So the village built a Bell that lets everyone hear everyone at once. It is not quite finished. It is not quite working."
+    ],
+    "resolution": [
+      "The Bell rings once. Every word hears every other word at the very same moment.",
+      "The Sentence crosses the bridge in one breath. On Reply Row, five writers copy it out without a single peek.",
+      "Dabble is named Keeper of the Bell. He polishes all eight ears every morning and pretends not to be proud.",
+      "Bimble presses a tiny copy of the Bell into your hands. 'For your giant,' she squeaks. 'Tell him it listens.'"
+    ]
+  },
+  "inhabitants": [
+    {
+      "id": "tansy",
+      "name": "Tansy",
+      "species": "bunny",
+      "colors": {
+        "fur": "#ecdcc8",
+        "shirt": "#3ec7b5"
+      },
+      "anchor": "terrace-1",
+      "role": "Giver of c1 (the Wave Loom). The Sentence's bunny, furious that the order-blind Bell keeps swapping who gave whom the pie.",
+      "lines": {
+        "default": [
+          "The Wave Loom is right here by my door. Eight strings, eight lanterns, and not one of us knows how to tune it.",
+          "The old book knows. Everything is in the old book. That's what's so annoying about it."
+        ],
+        "afterSolved": [
+          "My plate glows in its very own wave. Second house from the left, forever and ever.",
+          "Everyone knows the truth now: I gave HIM the pie. Write that down. In ink."
+        ]
+      }
+    },
+    {
+      "id": "plonk",
+      "name": "Plonk",
+      "species": "frog",
+      "colors": {
+        "fur": "#7cc76b",
+        "shirt": "#ffd35a"
+      },
+      "anchor": "terrace-3",
+      "role": "Comic relief and red herring: wants to give the duck roller skates (a faster walk is still a walk in order). The Sentence's frog; his afterSolved lines fit once c1 is solved.",
+      "lines": {
+        "default": [
+          "Everyone keeps saying I gave Tansy a pie. I have never given anyone anything. I am a frog.",
+          "My plan to fix the post: roller skates for the duck. Faster duck, faster post. You're welcome."
+        ],
+        "afterSolved": [
+          "The Bell knows I'm the one who GOT the pie. Justice! Delicious justice.",
+          "Dabble said no to the roller skates. Said speed was never his problem. Ducks are so ungrateful."
+        ]
+      }
+    },
+    {
+      "id": "bimble",
+      "name": "Bimble",
+      "species": "mouse",
+      "colors": {
+        "fur": "#b9b3c6",
+        "shirt": "#e0703a"
+      },
+      "anchor": "lane-mid",
+      "role": "Flavour and pointer: the tinkerer who built the Bell's shell but not its gearbox; sends the player up the hill to the bell station (c3). afterSolved fits once c3 is solved.",
+      "lines": {
+        "default": [
+          "I built the Bell! Well. The outside. The shiny part.",
+          "The gearbox up on the hill is still empty. The old book says how it should listen, but my paws get muddled in the sums.",
+          "Once the houses have addresses and the writers stop peeking, come and help me with the gears?"
+        ],
+        "afterSolved": [
+          "It hums! Eight little ears, all turning at once! I may cry. I am crying."
+        ]
+      }
+    },
+    {
+      "id": "lengthwise",
+      "name": "Lengthwise",
+      "species": "snake",
+      "colors": {
+        "fur": "#c9a94a",
+        "shirt": "#4f86d8"
+      },
+      "anchor": "bridge",
+      "role": "Flavour: a snake long enough to span the bridge, a living joke about the windows across the bridge in c2. afterSolved fits once c2 is solved.",
+      "lines": {
+        "default": [
+          "Sssalutations. I am the only villager long enough to touch both banks of the stream at once.",
+          "My tail is in the village and my nose is on Reply Row. Very useful. Nobody ever asks me anything."
+        ],
+        "afterSolved": [
+          "The writers can see the whole village Sentence now, right across the bridge. Without my help. Hmph.",
+          "Fine. I shall simply be decorative."
+        ]
+      }
+    },
+    {
+      "id": "nib",
+      "name": "Madame Nib",
+      "species": "cat",
+      "colors": {
+        "fur": "#3b3440",
+        "shirt": "#8fd3ff"
+      },
+      "anchor": "lane-right",
+      "role": "Giver of c2 (the Peeking Fence). Strict, fond teacher of the five Reply Row writers, who copy the Sentence into Otherish.",
+      "lines": {
+        "default": [
+          "Ah, a visitor. I teach the writers of Reply Row. We copy the Sentence into Otherish for the Fair.",
+          "But nothing makes sense over here until the village knows who stands where. See the bunny about her plates first."
+        ],
+        "afterSolved": [
+          "Otherish is a lovely language. We simply drop the little words. 'Bunno gavo frogo pio.' Poetry."
+        ]
+      }
+    },
+    {
+      "id": "dabble",
+      "name": "Dabble",
+      "species": "duck",
+      "colors": {
+        "fur": "#fbf3e0",
+        "shirt": "#d84f4f"
+      },
+      "anchor": "bank-left",
+      "role": "Giver of c4 (explain). The postduck who carries notes house by house, in order, in one small satchel: recurrence in a red jacket.",
+      "lines": {
+        "default": [
+          "Quack. Post's late. Post is always late. It's a long lane, and I have to visit every house in order.",
+          "By the time I reach the last house, the first house's note is crumpled at the bottom of my satchel.",
+          "Now they've built a BELL. Go on, help them. See if I care. (I care.)"
+        ],
+        "afterSolved": [
+          "Eight ears, polished. Not one note crumpled. Don't tell anyone, but I like the Bell."
+        ]
+      }
+    }
+  ],
+  "stations": [
+    {
+      "id": "bell",
+      "kind": "machine",
+      "anchor": "hilltop",
+      "label": "The Listening Bell",
+      "look": "A tall cut-paper bell tower on the hilltop: a brass-yellow paper bell in a wooden frame with eight tiny teal ear-trumpets around its rim. At its base an open gearbox with two empty sockets labelled ONE EAR and MANY EARS, and a little typewriter on a stool."
+    },
+    {
+      "id": "postbox",
+      "kind": "mailbox",
+      "anchor": "lane-left",
+      "label": "Dabble's Postbox",
+      "look": "A chubby red paper postbox on a post, with a slot far too narrow for more than one note and a hand-painted sign: ONE NOTE AT A TIME, PLEASE."
+    },
+    {
+      "id": "gatesign",
+      "kind": "sign",
+      "anchor": "path-to-gate",
+      "label": "To the Deeper Meadow (opens when the Bell rings)",
+      "look": "A wooden arrow sign on a stake pointing at the hedge gate, with a tiny paper bell hanging from its tip."
+    }
+  ],
+  "challenges": [
+    {
+      "id": "c1",
+      "type": "puzzle",
+      "title": "The Wave Loom",
+      "giver": "tansy",
+      "requires": [],
+      "puzzle": "positional-wave-loom",
+      "spec": {
+        "title": "The Wave Loom",
+        "controlsHint": "Click a SIN/COS token to flip it, click ◀ ▶ to change a string's slowness, choose how plates join the coats, then ring the Bell.",
+        "dModel": 8,
+        "base": 10000,
+        "houses": [
+          {
+            "pos": 0,
+            "word": "the"
+          },
+          {
+            "pos": 1,
+            "word": "bunny"
+          },
+          {
+            "pos": 2,
+            "word": "gave"
+          },
+          {
+            "pos": 3,
+            "word": "the"
+          },
+          {
+            "pos": 4,
+            "word": "frog"
+          },
+          {
+            "pos": 5,
+            "word": "a"
+          },
+          {
+            "pos": 6,
+            "word": "pie"
+          },
+          {
+            "pos": 7,
+            "word": "."
+          }
+        ],
+        "lanterns": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "faceOptions": [
+          "sin",
+          "cos"
+        ],
+        "slownessOptions": [
+          {
+            "m": 0,
+            "divisor": 1.0,
+            "label": "1"
+          },
+          {
+            "m": 1,
+            "divisor": 3.1622776601683795,
+            "label": "3.162"
+          },
+          {
+            "m": 2,
+            "divisor": 10.0,
+            "label": "10"
+          },
+          {
+            "m": 3,
+            "divisor": 31.622776601683793,
+            "label": "31.62"
+          },
+          {
+            "m": 4,
+            "divisor": 100.0,
+            "label": "100"
+          },
+          {
+            "m": 5,
+            "divisor": 316.22776601683796,
+            "label": "316.2"
+          },
+          {
+            "m": 6,
+            "divisor": 1000.0,
+            "label": "1000"
+          },
+          {
+            "m": 7,
+            "divisor": 3162.2776601683795,
+            "label": "3162"
+          },
+          {
+            "m": 8,
+            "divisor": 10000.0,
+            "label": "10000"
+          }
+        ],
+        "lanternValue": "value(pos, j) = FACE_j(pos / divisor_j) in radians, FACE_j is Math.sin or Math.cos, divisor_j = base ** (m_j / dModel).",
+        "colorScale": {
+          "stops": [
+            {
+              "value": -1,
+              "color": "#4b3f9e"
+            },
+            {
+              "value": 0,
+              "color": "#fffdf6"
+            },
+            {
+              "value": 1,
+              "color": "#ffd35a"
+            }
+          ],
+          "interpolation": "linear in RGB between neighbouring stops"
+        },
+        "joinQuestion": "How do the plates join each villager's word-coat?",
+        "joinOptions": [
+          {
+            "id": "add",
+            "label": "Paint the lanterns onto the coat, lantern by lantern"
+          },
+          {
+            "id": "concat",
+            "label": "Sew the plate on beside the coat (the coat gets 8 lanterns wider)"
+          }
+        ],
+        "initial": {
+          "faces": [
+            "cos",
+            "cos",
+            "cos",
+            "cos",
+            "cos",
+            "cos",
+            "cos",
+            "cos"
+          ],
+          "m": [
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8
+          ],
+          "join": null
+        },
+        "solution": {
+          "faces": [
+            "sin",
+            "cos",
+            "sin",
+            "cos",
+            "sin",
+            "cos",
+            "sin",
+            "cos"
+          ],
+          "m": [
+            0,
+            0,
+            2,
+            2,
+            4,
+            4,
+            6,
+            6
+          ],
+          "join": "add"
+        },
+        "rule": "Section 3.5: PE(pos, 2i) = sin(pos / 10000^(2i/d_model)) and PE(pos, 2i+1) = cos(pos / 10000^(2i/d_model)), i = 0, 1, 2, ... Lantern j belongs to pair i = floor(j/2), so m_j = 2*floor(j/2), FACE_j = sin for even j and cos for odd j. The encodings have the same width d_model as the embeddings so that the two are summed (Figure 1 shows a ⊕).",
+        "winCondition": "When 'Ring the Bell' is pressed: faces[j] === solution.faces[j] and m[j] === solution.m[j] for every j in 0..7, and join === 'add'. Exact match: every control is discrete, so there is no tolerance.",
+        "feedback": {
+          "joinMissing": "Tansy taps the choice card: 'You haven't said how the plates go on yet!'",
+          "join": "Tansy tugs at her coat: 'It won't fit through the Bell's door like this!'",
+          "faces": "The Bell hums sourly: some lanterns start their wave on the wrong foot.",
+          "slowness": "The Bell wobbles: some strings sway at the wrong speed."
+        },
+        "hintAfterFailures": {
+          "after": 3,
+          "text": "Tansy squints at the dark book: 'The waves live in the part about positions. Every little letter in that rule means something.'"
+        },
+        "successText": "Ding! Every house sings its own wave. The Bell knows who stands where."
+      },
+      "design": "A cork board titled 'The Wave Loom' with spec.controlsHint printed along the top and a close button (✕) top right that calls api.onClose(). Upper area: eight paper house plates stacked as rows, labelled 'house 0' to 'house 7' with the word that lives there (spec.houses: the, bunny, gave, the, frog, a, pie, .). Each plate holds eight round paper lanterns in a row, columns labelled lantern 0 to 7 (left to right). Under each lantern column hangs a string with two controls: (a) a two-sided paper token showing SIN or COS (click to flip, api.sfx('paper')); (b) a slowness dial showing the current divisor label from spec.slownessOptions, with ◀ ▶ arrows that step through the nine options (mouse wheel over the dial also steps). Lantern j on house pos glows with FACE_j(pos / divisor_j) (spec.lanternValue); its fill colour follows spec.colorScale (indigo -1, cream 0, gold +1) and hovering shows the value to 2 decimals. Plates recompute live on every change, so fast strings visibly flicker from house to house while slow strings barely change. A choice card to the right asks spec.joinQuestion with the two spec.joinOptions as radio buttons (none selected at start). Start from spec.initial. A big 'Ring the Bell' button evaluates spec.winCondition. Win: the Bell dings (api.sfx('success')), every plate pulses gold, spec.successText appears, and api.onSolved() is called exactly once; then a 'Back to Attendale' button closes. Failure: a soft clonk (api.sfx('fail')), the Bell wobbles, and the board shows one line per wrong category, in this order: joinMissing (no join chosen) or join (concat chosen); faces (any token differs from the solution); slowness (any dial differs). Never say which strings are wrong or how many. From the 3rd failed ring onward also show spec.hintAfterFailures.text. The player can keep adjusting and ring again any number of times; nothing resets on failure.",
+      "paperLink": "Section 3.5 (Positional Encoding): PE(pos,2i) = sin(pos/10000^(2i/d_model)), PE(pos,2i+1) = cos(pos/10000^(2i/d_model)); encodings have dimension d_model so they can be summed with the input embeddings (Figure 1, the ⊕ under each stack).",
+      "worldEffect": "Eight-lantern address plates light up above the doors of the terrace houses, each rippling in its own wave pattern; Tansy and Plonk stop arguing and stomp back to their own houses; the Bell on the hilltop gives one faint ding.",
+      "intro": [
+        "Oh, a visitor! Are you here about the Bell? Please be here about the Bell.",
+        "It hears all of us at once, but it can't tell who stands where. It told everyone PLONK gave ME a pie!",
+        "It was MY pie. I baked it. For him. He has never baked anything. He's a frog.",
+        "Bimble says each house needs an address plate of eight lanterns that glow in waves. Nobody remembers how the waves go.",
+        "It's in the old book somewhere. Could you tune the Wave Loom for us?"
+      ],
+      "success": [
+        "The plates are glowing! Every house sings its very own wave!",
+        "The Bell finally knows who gave whom the pie. Plonk is going to be unbearable about being fifth."
+      ]
+    },
+    {
+      "id": "c2",
+      "type": "puzzle",
+      "title": "No Peeking on Reply Row",
+      "giver": "nib",
+      "requires": [
+        "c1"
+      ],
+      "puzzle": "decoder-peeking-fence",
+      "spec": {
+        "title": "The Peeking Fence",
+        "controlsHint": "Drag cards onto the desks, pick a stamp, click (or drag across) windows to stamp them, then ring the practice bell.",
+        "writers": [
+          {
+            "desk": 1,
+            "writes": "bunno"
+          },
+          {
+            "desk": 2,
+            "writes": "gavo"
+          },
+          {
+            "desk": 3,
+            "writes": "frogo"
+          },
+          {
+            "desk": 4,
+            "writes": "pio"
+          },
+          {
+            "desk": 5,
+            "writes": "■ end"
+          }
+        ],
+        "cards": [
+          {
+            "id": "start",
+            "label": "★ start",
+            "reveals": null
+          },
+          {
+            "id": "bunno",
+            "label": "bunno",
+            "reveals": 1
+          },
+          {
+            "id": "gavo",
+            "label": "gavo",
+            "reveals": 2
+          },
+          {
+            "id": "frogo",
+            "label": "frogo",
+            "reveals": 3
+          },
+          {
+            "id": "pio",
+            "label": "pio",
+            "reveals": 4
+          },
+          {
+            "id": "end",
+            "label": "■ end",
+            "reveals": 5
+          }
+        ],
+        "cardsNote": "'reveals' = the desk number whose job is to write that word (null: reveals nothing). Internal only; never display it.",
+        "villageWords": [
+          "the",
+          "bunny",
+          "gave",
+          "the",
+          "frog",
+          "a",
+          "pie",
+          "."
+        ],
+        "panels": {
+          "self": {
+            "label": "Windows onto Reply Row",
+            "rows": "writers 1-5 (writer i sits at desk i)",
+            "cols": "desks 1-5; the column header shows whatever card sits on that desk",
+            "scores": [
+              [
+                1.0,
+                2.6,
+                2.2,
+                2.9,
+                2.4
+              ],
+              [
+                0.8,
+                1.2,
+                2.8,
+                2.3,
+                2.7
+              ],
+              [
+                0.5,
+                1.1,
+                1.3,
+                3.0,
+                2.5
+              ],
+              [
+                0.4,
+                0.9,
+                1.4,
+                1.2,
+                2.8
+              ],
+              [
+                0.6,
+                0.7,
+                1.0,
+                1.5,
+                1.3
+              ]
+            ]
+          },
+          "cross": {
+            "label": "Windows across the bridge",
+            "rows": "writers 1-5",
+            "cols": "the village Sentence: the bunny gave the frog a pie .",
+            "scores": [
+              [
+                0.3,
+                3.0,
+                0.5,
+                0.2,
+                0.9,
+                0.1,
+                0.4,
+                0.0
+              ],
+              [
+                0.2,
+                0.8,
+                3.0,
+                0.1,
+                0.7,
+                0.2,
+                0.5,
+                0.0
+              ],
+              [
+                0.1,
+                0.9,
+                0.6,
+                0.3,
+                3.0,
+                0.2,
+                0.4,
+                0.1
+              ],
+              [
+                0.2,
+                0.4,
+                0.8,
+                0.1,
+                0.5,
+                0.7,
+                3.0,
+                0.3
+              ],
+              [
+                0.6,
+                0.3,
+                0.3,
+                0.6,
+                0.3,
+                0.6,
+                0.9,
+                2.2
+              ]
+            ]
+          }
+        },
+        "stamps": [
+          {
+            "id": "fence",
+            "label": "−∞ iron fence",
+            "setsScoreTo": "-inf"
+          },
+          {
+            "id": "screen",
+            "label": "0 paper screen",
+            "setsScoreTo": 0
+          },
+          {
+            "id": "eraser",
+            "label": "eraser",
+            "setsScoreTo": "raw"
+          }
+        ],
+        "math": "Scores are fixed per window (they do not depend on the cards; cards only decide what a window would reveal). For every writer row i and each panel separately: s'_j = -Infinity if window j has the fence stamp, 0 if it has the screen stamp, else the raw score. If every s'_j in the row is -Infinity the row has FAINTED (softmax undefined, NaN). Otherwise w_j = exp(s'_j - max s') / sum_k exp(s'_k - max s'). Recompute and redraw after every change.",
+        "legalRule": "Self panel only: writer i may look at desk j iff the card on desk j has reveals === null or reveals < i. peek(i) = sum of w_ij over the desks j that are NOT legal for writer i.",
+        "initial": {
+          "desks": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "selfStamps": "none",
+          "crossStamps": "none"
+        },
+        "solution": {
+          "desks": [
+            "start",
+            "bunno",
+            "gavo",
+            "frogo",
+            "pio"
+          ],
+          "selfStamps": [
+            [
+              null,
+              "fence",
+              "fence",
+              "fence",
+              "fence"
+            ],
+            [
+              null,
+              null,
+              "fence",
+              "fence",
+              "fence"
+            ],
+            [
+              null,
+              null,
+              null,
+              "fence",
+              "fence"
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              "fence"
+            ],
+            [
+              null,
+              null,
+              null,
+              null,
+              null
+            ]
+          ],
+          "crossStamps": "none"
+        },
+        "evaluation": [
+          "1. If any desk is empty: show feedback.emptyDesk and stop.",
+          "2. For each writer i: FAINTED if every self-panel window in row i is fenced; else PEEKING if peek(i) > 1e-12 (show round(100*peek(i)) as {pct}); SQUINTING if any LEGAL self-panel window in row i carries any stamp (fence or screen).",
+          "3. BRIDGE if any window in the cross panel carries any stamp.",
+          "4. DESKS if the desk cards differ from solution.desks.",
+          "5. Win iff no writer has a badge and neither BRIDGE nor DESKS is set. (With the solution desks this means: the fence on exactly the 10 self-panel windows with desk > writer, nothing else stamped anywhere.)"
+        ],
+        "feedback": {
+          "emptyDesk": "Madame Nib taps an empty desk: 'Every writer needs something in front of them before we begin.'",
+          "peeking": "Desk {desk} is peeking at a word nobody has written yet! ({pct}% of their looking)",
+          "fainted": "Desk {desk} can't see anything at all and faints. The practice bell squeaks: 'NaN!'",
+          "squinting": "Desk {desk} can't see a word that has already been written.",
+          "bridge": "The windows across the bridge are boarded up! The village Sentence already exists; the writers need to see it.",
+          "desks": "Madame Nib frowns at the desks: 'At the real Fair, would my writers truly have these in front of them?'"
+        },
+        "successText": "Not a single peek, not a single faint. Madame Nib almost smiles."
+      },
+      "design": "A paper classroom board in three strips, spec.controlsHint along the top, close button (✕) top right calling api.onClose(). TOP, 'The Desks': five desks in a row, Desk 1 to Desk 5. Each desk shows a little tag 'writes: <spec.writers[i].writes>' (what that writer must produce) and an empty card slot (what lies on the desk in front of them while they write). A tray below holds the six cards of spec.cards (labels only). Drag a card onto a slot; dropping on an occupied slot swaps; dragging a card back to the tray removes it; each card is on at most one desk. MIDDLE: two window grids side by side. Left, 'Windows onto Reply Row': 5x5, rows = writers 1-5, columns = desks 1-5, column headers show the card currently on that desk (or a blank). Right, 'Windows across the bridge': 5x8, rows = writers 1-5, columns = the village words. Each cell is a little paper window whose glow (dark shutter at 0, bright at 1) shows the writer's attention weight from spec.math, recomputed live after every change; hover shows the weight as a percentage. Fainted rows draw dark with a dizzy face. BOTTOM: a stamp palette with three tools from spec.stamps (iron fence, paper screen, eraser). Pick a tool, then click a window or click-drag across several to apply it (api.sfx('stamp')); a stamped window shows the stamp icon. The live weights let the player see for themselves that a paper screen does not stop the looking. 'Ring the practice bell' runs spec.evaluation. Win: little fences pop up with a tok-tok-tok, spec.successText shows, api.onSolved() is called exactly once, then a 'Back to Attendale' button closes. Failure: api.sfx('fail'), then a badge next to each affected writer row (peeking / fainted / squinting, text from spec.feedback with {desk} and {pct} filled in) plus the general lines that apply (emptyDesk, bridge, desks). Never highlight which windows or cards to change and never show the 'reveals' numbers. Badges clear as soon as the board changes; the player can ring again any number of times.",
+      "paperLink": "Section 3.1 (Decoder: self-attention is masked to prevent attending to subsequent positions; 'combined with fact that the output embeddings are offset by one position'); Section 3.2.3 (encoder-decoder attention lets every decoder position attend over all input positions; decoder self-attention attends 'up to and including that position', implemented by setting illegal softmax inputs to −∞); Figure 1 ('Outputs (shifted right)'); Figure 2 (Mask (opt.)).",
+      "worldEffect": "Little wooden fences pop up between the windows along Reply Row in a neat staircase, the windows facing the bridge stay wide open, and five tidy desks with cards appear outside Madame Nib's school.",
+      "intro": [
+        "The village has addresses at last. Bon. Now, my own little problem.",
+        "To practise, my five writers all write at once. Very fast. Very modern. Very naughty.",
+        "They peek through the windows at words the others haven't written yet! At the real Fair, those words won't exist.",
+        "Set each desk with what a writer would truly have in front of them, put up the right fences, and ring my practice bell."
+      ],
+      "success": [
+        "Not one peek! Each writer sees only what has already been written. Magnifique.",
+        "And nobody fainted. Last spring we fenced poor Desk One completely blind."
+      ]
+    },
+    {
+      "id": "c3",
+      "type": "code",
+      "title": "The Bell's Gearbox",
+      "giver": "bell",
+      "requires": [
+        "c1",
+        "c2"
+      ],
+      "prompt": "## The Bell's Gearbox\n\n*Bimble's note, pinned inside the gearbox:* \"Two sockets, two gears. Build them **exactly** as the old book says, or the Bell hums nonsense. —B.\"\n\nWrite two numpy functions. Work in `float64`. Loops over heads are fine.\n\n### 1. `attention(Q, K, V, causal=False)`: the ONE EAR\nScaled Dot-Product Attention, exactly as **Eq. (1)** in Section 3.2.1.\n\n- `Q`: shape `(n_q, d_k)`, one question (query) per row\n- `K`: shape `(n_k, d_k)`, one name tag (key) per row\n- `V`: shape `(n_k, d_v)`, one gift (value) per row; row `j` of `V` belongs to row `j` of `K`\n- **returns** shape `(n_q, d_v)`: row `i` is the gift that query `i` takes home, a weighted mix of the rows of `V`. For each query the weights are non-negative and sum to 1.\n- `causal=True` (only ever used when `n_q == n_k`): query `i` may only use keys `j <= i`. Every key `j > i` must get weight **exactly 0**, and the remaining weights must still sum to 1. Do it the way Section 3.2.3 describes.\n- **Big numbers:** the result must stay finite even when raw dot products are around `10**4`. (For one query, adding the same constant to all of its scores does not change a softmax.)\n\n### 2. `multi_head_attention(x_q, x_kv, W_q, W_k, W_v, W_o, h, causal=False)`: the MANY EARS\nMulti-Head Attention, exactly as the **MultiHead** equation in Section 3.2.2.\n\n- `x_q`: `(n_q, d_model)`, the rows the queries are projected from\n- `x_kv`: `(n_k, d_model)`, the rows the keys **and** values are projected from (self-attention passes the same array twice)\n- `W_q`, `W_k`: `(d_model, h*d_k)`; `W_v`: `(d_model, h*d_v)`; `W_o`: `(h*d_v, d_model)`\n- `h`: number of heads; `d_k = W_q.shape[1] // h` and `d_v = W_v.shape[1] // h` (they need not be equal)\n- The per-head projection matrices are stored side by side: head `i` (0-based) uses columns `i*d_k:(i+1)*d_k` of `W_q` and of `W_k`, and columns `i*d_v:(i+1)*d_v` of `W_v`.\n- Each head is one scaled dot-product attention on its own projected queries, keys and values, with the same `causal` flag.\n- Glue the head outputs side by side in head order (head 0 first) into `(n_q, h*d_v)`, then apply `W_o`.\n- **returns** shape `(n_q, d_model)`.\n\nRun the tests when you're ready. The gearbox only turns when every test passes.\n",
+      "starterCode": "import numpy as np\n\n\ndef attention(Q, K, V, causal=False):\n    \"\"\"THE ONE EAR: Scaled Dot-Product Attention (Section 3.2.1, Eq. 1).\n\n    Q: (n_q, d_k)   K: (n_k, d_k)   V: (n_k, d_v)   ->   returns (n_q, d_v)\n    causal=True: query i may only use keys j <= i (only used when n_q == n_k).\n    \"\"\"\n    Q = np.asarray(Q, dtype=np.float64)\n    K = np.asarray(K, dtype=np.float64)\n    V = np.asarray(V, dtype=np.float64)\n    # TODO: the gearbox is empty. The Bell hums nothing at all.\n    return np.zeros((Q.shape[0], V.shape[1]))\n\n\ndef multi_head_attention(x_q, x_kv, W_q, W_k, W_v, W_o, h, causal=False):\n    \"\"\"THE MANY EARS: Multi-Head Attention (Section 3.2.2).\n\n    x_q: (n_q, d_model)   x_kv: (n_k, d_model)\n    W_q, W_k: (d_model, h*d_k)   W_v: (d_model, h*d_v)   W_o: (h*d_v, d_model)\n    returns (n_q, d_model)\n    \"\"\"\n    x_q = np.asarray(x_q, dtype=np.float64)\n    W_o = np.asarray(W_o, dtype=np.float64)\n    # TODO: eight little ears, all deaf.\n    return np.zeros((x_q.shape[0], W_o.shape[1]))\n",
+      "tests": "import numpy as np\n\n\ndef _arr(x):\n    return np.asarray(x, dtype=np.float64)\n\n\ndef test_one_ear_hand_checked():\n    # One question, two name tags, two gifts. d_k = 9, d_v = 2.\n    Q = np.ones((1, 9))\n    K = np.zeros((2, 9))\n    K[0, 0] = 3.0\n    V = np.array([[10.0, 0.0], [0.0, 10.0]])\n    out = _arr(attention(Q, K, V))\n    assert out.shape == (1, 2), f\"attention must return shape (n_q, d_v) = (1, 2), got {out.shape}\"\n    assert np.all(np.isfinite(out)), \"attention returned nan or inf on a tiny, friendly example\"\n    if np.allclose(out, [[9.525741268224333, 0.4742587317756678]], atol=1e-4):\n        raise AssertionError(\"Too sharp! Those are the weights of the raw dot products. Eq. (1) does one more thing to them first.\")\n    assert np.allclose(out, [[7.310585786300049, 2.6894142136999513]], atol=1e-6), (\n        \"The one ear hands out the wrong gift on a hand-checked example (one query, d_k = 9, two keys). Re-read Eq. (1).\")\n\n\ndef test_weights_are_a_proper_softmax_over_keys():\n    rng = np.random.default_rng(7)\n    Q = rng.normal(size=(4, 8))\n    K = rng.normal(size=(6, 8))\n    W = _arr(attention(Q, K, np.eye(6)))  # with V = identity, row i of the output is query i's weights\n    assert W.shape == (4, 6), f\"with Q (4, 8), K (6, 8), V (6, 6) the output must be (4, 6), got {W.shape}\"\n    assert np.all(np.isfinite(W)), \"the weights contain nan or inf\"\n    assert np.all(W >= 0), \"attention weights can never be negative\"\n    assert np.allclose(W.sum(axis=1), 1.0, atol=1e-9), (\n        \"each query's weights must sum to 1: normalise over the keys, one query (row) at a time\")\n    S = Q @ K.T\n    for i in range(4):\n        assert np.array_equal(np.argsort(S[i]), np.argsort(W[i])), (\n            \"a key that matches a query better (bigger dot product) must get a bigger weight\")\n\n\ndef test_quiet_questions_hear_everyone_equally():\n    rng = np.random.default_rng(1)\n    K = rng.normal(size=(5, 4))\n    V = rng.normal(size=(5, 3)) + 2.0\n    out = _arr(attention(np.zeros((3, 4)), K, V))\n    assert out.shape == (3, 3), f\"expected shape (3, 3), got {out.shape}\"\n    assert np.allclose(out, np.tile(V.mean(axis=0), (3, 1)), atol=1e-9), (\n        \"a query of all zeros matches every key equally well, so it must take home the plain average of all the gifts\")\n\n\ndef test_causal_hand_checked():\n    Q = np.zeros((3, 2))\n    K = np.zeros((3, 2))\n    V = np.array([[3.0], [6.0], [9.0]])\n    open_out = _arr(attention(Q, K, V, causal=False))\n    assert np.allclose(open_out, [[6.0], [6.0], [6.0]], atol=1e-9), (\n        \"with causal=False nothing is fenced: equal matches must average all three gifts\")\n    out = _arr(attention(Q, K, V, causal=True))\n    assert out.shape == (3, 1), f\"expected shape (3, 1), got {out.shape}\"\n    assert np.all(np.isfinite(out)), (\n        \"causal attention returned nan/inf. Is some position fenced off from *everything*?\")\n    assert np.allclose(out, [[3.0], [4.5], [6.0]], atol=1e-9), (\n        \"with causal=True, query i may use keys 0..i only, and its remaining weights must still add up to 1\")\n\n\ndef test_causal_never_peeks():\n    rng = np.random.default_rng(11)\n    n, d = 6, 4\n    Q = rng.normal(size=(n, d)) * 2.0\n    K = rng.normal(size=(n, d)) * 2.0\n    W = _arr(attention(Q, K, np.eye(n), causal=True))\n    assert W.shape == (n, n), f\"expected shape {(n, n)}, got {W.shape}\"\n    assert np.all(np.isfinite(W)), \"the causal weights contain nan or inf\"\n    assert np.all(W[np.triu_indices(n, 1)] == 0.0), \"a query is peeking at a later key: those weights must be exactly 0\"\n    assert np.allclose(W.sum(axis=1), 1.0, atol=1e-9), \"with the fence up, each query's weights must still sum to 1\"\n    assert np.all(W[np.tril_indices(n)] > 0.0), \"a query must still hear every key up to and including its own position\"\n    V = rng.normal(size=(n, 3))\n    before = _arr(attention(Q, K, V, causal=True))\n    K2, V2 = K.copy(), V.copy()\n    K2[4:] += 5.0\n    V2[4:] -= 7.0\n    after = _arr(attention(Q, K2, V2, causal=True))\n    assert np.allclose(before[:4], after[:4], atol=1e-12), (\n        \"changing the keys/values at positions 4 and 5 changed the outputs at positions 0..3: the future leaked\")\n    assert not np.allclose(before[4:], after[4:]), \"positions 4 and 5 should notice their own (changed) keys and values\"\n\n\ndef test_big_numbers_do_not_break_the_bell():\n    Q = np.array([[100.0, 100.0], [-100.0, 50.0]])\n    K = np.array([[100.0, 100.0], [99.0, 100.0], [-100.0, -100.0]])\n    V = np.array([[1.0, 0.0], [0.0, 1.0], [5.0, 5.0]])\n    out = _arr(attention(Q, K, V))\n    assert np.all(np.isfinite(out)), \"huge dot products (around 10^4) made the softmax overflow into nan/inf\"\n    assert np.allclose(out, [[1.0, 0.0], [5.0, 5.0]], atol=1e-9), (\n        \"with huge, well-separated scores each query should take (almost exactly) the gift of its best key\")\n    X = np.array([[60.0, 80.0], [80.0, 60.0], [-70.0, 70.0]])\n    Wc = _arr(attention(X, X, np.eye(3), causal=True))\n    assert np.all(np.isfinite(Wc)), \"huge scores plus the causal fence produced nan/inf\"\n    assert np.allclose(Wc, np.eye(3), atol=1e-9), (\n        \"huge, well-separated scores with the fence up should give (almost exactly) one-hot weights\")\n\n\ndef test_many_ears_hand_checked():\n    x = np.array([[2.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 2.0]])\n    I = np.eye(4)\n    out = _arr(multi_head_attention(x, x, I, I, I, I, 2))\n    assert out.shape == (2, 4), f\"multi_head_attention must return (n_q, d_model) = (2, 4), got {out.shape}\"\n    assert np.all(np.isfinite(out)), \"the many ears returned nan/inf on a tiny example\"\n    if np.allclose(out, [[1.7615941559557646, 0.0, 0.0, 1.0], [1.0, 0.0, 0.0, 1.7615941559557646]], atol=1e-4):\n        raise AssertionError(\"So close! But each ear only hears its own little slice. How wide is one head, really?\")\n    assert np.allclose(out, [[1.8883855615856606, 0.0, 0.0, 1.0], [1.0, 0.0, 0.0, 1.8883855615856606]], atol=1e-6), (\n        \"two heads, identity projections, d_model = 4: wrong output. Check how the columns are shared out \"\n        \"between the heads and how the heads are glued back together.\")\n\n\ndef test_one_head_with_real_projections():\n    x = np.array([[-0.7, -1.6, 0.9], [0.8, -1.1, -0.5], [1.2, -0.8, -0.4]])\n    W_q = np.array([[0.5, -1.3, 0.3], [-0.8, -1.8, -0.9], [-0.6, 1.8, -0.7]])\n    W_k = np.array([[0.2, 0.3, 1.3], [1.4, 0.5, 0.4], [0.8, -0.1, -0.4]])\n    W_v = np.array([[0.4, -0.5, -0.8], [-1.2, 1.1, 0.1], [0.3, -0.2, -0.6]])\n    W_o = np.array([[-0.3, 1.4, 0.0], [1.2, 0.0, -0.2], [1.3, 1.1, 0.4]])\n    out = _arr(multi_head_attention(x, x, W_q, W_k, W_v, W_o, 1))\n    assert out.shape == (3, 3), f\"expected shape (3, 3), got {out.shape}\"\n    want = [[-3.0479171556, 1.1275188896, 0.0007733619],\n            [-3.0383967782, 1.1574944331, 0.0069549324],\n            [-3.0130934836, 1.2327141539, 0.0231058432]]\n    assert np.allclose(out, want, atol=1e-6), (\n        \"with a single head (h = 1) and real projection matrices the output is wrong. \"\n        \"Are all four projections used, each on the right side?\")\n\n\ndef test_bridge_questions_from_one_side_gifts_from_the_other():\n    # Encoder-decoder style: 2 questions from x_q, 3 tags/gifts from x_kv. h = 2, d_k = 1, d_v = 2, d_model = 4.\n    x_q = np.array([[1.4, -0.6, 1.2, -2.0], [-0.6, 0.1, 1.4, -1.8]])\n    x_kv = np.array([[1.3, -1.4, -1.3, 1.2], [1.2, 0.3, -0.6, 2.1], [2.1, -1.6, 0.1, 0.2]])\n    W_q = np.array([[0.6, 0.4], [-0.3, 0.7], [-0.6, 0.4], [1.0, -0.8]])\n    W_k = np.array([[0.5, -0.6], [-0.4, -0.4], [0.0, 0.4], [-1.1, -0.2]])\n    W_v = np.array([[0.3, -0.1, -0.2, 0.7], [0.5, -0.7, -0.7, -1.0], [1.5, -2.2, 0.5, -1.4], [0.4, -1.8, -1.0, 0.8]])\n    W_o = np.array([[-0.5, 0.8, 0.0, -0.8], [-0.3, -0.4, 0.0, -1.4], [-0.4, 1.1, 0.0, -0.4], [1.3, 0.6, 1.7, 0.3]])\n    out = _arr(multi_head_attention(x_q, x_kv, W_q, W_k, W_v, W_o, 2))\n    assert out.shape == (2, 4), f\"2 questions in, so 2 rows out: expected (2, 4), got {out.shape}\"\n    want = [[5.4391586771, 3.232914873, 6.209178279, 4.5006753979],\n            [5.5476119282, 3.2833286245, 6.271596134, 4.770025982]]\n    assert np.allclose(out, want, atol=1e-6), (\n        \"questions from one side of the bridge, name tags and gifts from the other (n_q != n_k, d_k != d_v): wrong output\")\n\n\ndef test_heads_keep_to_their_own_columns():\n    rng = np.random.default_rng(5)\n    n, d_model, h = 4, 8, 2\n    x = rng.normal(size=(n, d_model))\n    W_q = rng.normal(size=(d_model, 8))\n    W_k = rng.normal(size=(d_model, 8))\n    W_v = rng.normal(size=(d_model, 8))\n    I = np.eye(8)\n    base = _arr(multi_head_attention(x, x, W_q, W_k, W_v, I, h))\n    assert base.shape == (n, d_model), f\"expected shape {(n, d_model)}, got {base.shape}\"\n    W_q2 = W_q.copy()\n    W_q2[:, 4:] = rng.normal(size=(d_model, 4)) * 3.0   # only the second head's query columns change\n    after = _arr(multi_head_attention(x, x, W_q2, W_k, W_v, I, h))\n    assert np.allclose(base[:, :4], after[:, :4], atol=1e-12), (\n        \"changing only the second head's query columns changed the first head's output columns\")\n    assert not np.allclose(base[:, 4:], after[:, 4:]), (\n        \"changing the second head's query columns should change the second head's output columns\")\n\n\ndef test_many_ears_with_the_fence():\n    rng = np.random.default_rng(21)\n    n, d_model, h = 5, 8, 4\n    x = rng.normal(size=(n, d_model))\n    W_q, W_k, W_v, W_o = (rng.normal(size=(d_model, d_model)) for _ in range(4))\n    base = _arr(multi_head_attention(x, x, W_q, W_k, W_v, W_o, h, causal=True))\n    assert base.shape == (n, d_model), f\"expected shape {(n, d_model)}, got {base.shape}\"\n    assert np.all(np.isfinite(base)), \"causal multi-head attention returned nan/inf\"\n    x_future = x.copy()\n    x_future[3:] += rng.normal(size=(2, d_model)) * 3.0\n    after = _arr(multi_head_attention(x_future, x_future, W_q, W_k, W_v, W_o, h, causal=True))\n    assert np.allclose(base[:3], after[:3], atol=1e-10), (\n        \"with causal=True, changing positions 3 and 4 must not change the outputs at positions 0..2 (in every head)\")\n    assert not np.allclose(base[3:], after[3:]), \"positions 3 and 4 should notice that they changed\"\n    x_past = x.copy()\n    x_past[0] += 1.0\n    after_past = _arr(multi_head_attention(x_past, x_past, W_q, W_k, W_v, W_o, h, causal=True))\n    assert not np.allclose(base[4], after_past[4]), \"the last position must still hear the first one\"\n    open_base = _arr(multi_head_attention(x, x, W_q, W_k, W_v, W_o, h, causal=False))\n    open_after = _arr(multi_head_attention(x_future, x_future, W_q, W_k, W_v, W_o, h, causal=False))\n    assert not np.allclose(open_base[0], open_after[0]), (\n        \"with causal=False there is no fence: the first position should hear the later ones\")\n",
+      "solutionFile": "server/solutions/attention_c3.py",
+      "paperLink": "Section 3.2.1, Eq. (1) (Scaled Dot-Product Attention) and footnote 4; Section 3.2.2 (MultiHead(Q,K,V) = Concat(head_1..head_h)W^O, head_i = Attention(QW_i^Q, KW_i^K, VW_i^V), d_k = d_v = d_model/h); Section 3.2.3 (decoder masking by setting illegal softmax inputs to −∞; encoder-decoder attention takes queries from the decoder and keys/values from the encoder); Figure 2.",
+      "intro": [
+        "The Bell's gearbox hangs open. Two empty sockets are labelled in Bimble's wobbly handwriting: ONE EAR and MANY EARS.",
+        "A typewriter sits on a stool beside it, with a note: 'Build both exactly as the old book says, or the Bell hums nonsense. —B.'"
+      ],
+      "success": [
+        "The gears catch. The Bell turns its eight little ears toward the village and begins to hum.",
+        "Down the lane, every villager hears every other villager at the very same moment."
+      ]
+    },
+    {
+      "id": "c4",
+      "type": "explain",
+      "title": "Why a Bell, Not a Duck?",
+      "giver": "dabble",
+      "requires": [
+        "c1",
+        "c2",
+        "c3"
+      ],
+      "question": "I carry the Sentence house by house, in order, and I'm the fastest duck in the meadow. So why is the Bell better than me? Tell me the book's real reasons. And be honest: is there any lane where a duck would still win?",
+      "rubric": [
+        "Sequential vs. parallel (Sections 1 and 4, Table 1): a recurrent model computes each hidden state h_t from h_(t-1), so the n positions must be processed one after another (O(n) sequential operations), which prevents parallelization within a training example; a self-attention layer connects all positions with a constant number (O(1)) of sequential operations, so all positions are computed at once and training is much faster.",
+        "Path length (Section 4, Table 1): a signal between two distant positions must pass through O(n) steps in a recurrent layer but only O(1) in self-attention, where every position is directly connected to every other; the paper argues that shorter forward/backward paths make long-range dependencies easier to learn (the duck forgetting the first house is the long-path problem).",
+        "Cost trade-off, i.e. where the duck can still win (Section 4, Table 1): self-attention costs O(n^2·d) per layer versus O(n·d^2) for a recurrent layer, so it is cheaper only when the sequence length n is smaller than the representation dimension d (the usual case for sentences); for very long sequences the all-pairs (quadratic in n) cost dominates, and the paper proposes restricting attention to a neighbourhood of size r, which raises the maximum path length to O(n/r).",
+        "A price of the Bell named in the paper: attending to every position averages the attention-weighted positions, reducing effective resolution, which Multi-Head Attention counteracts (Section 2, Section 3.2.2); OR, with no recurrence or convolution the model has no sense of word order, so positional encodings must be added (Section 3.5)."
+      ],
+      "passBar": "Pass if at least 3 of the 4 criteria are clearly met and criteria 1 and 2 are both among them. Fail regardless of the count if the answer states something false about the paper, e.g. that self-attention is cheaper than recurrence for every sequence length, that the Transformer reads the words one at a time, or that self-attention needs more sequential steps or longer paths than a recurrent layer.",
+      "offline": [
+        [
+          "parallel",
+          "at once",
+          "same time",
+          "simultaneous",
+          "one after another",
+          "one at a time",
+          "sequential",
+          "in order",
+          "step by step"
+        ],
+        [
+          "path",
+          "long-range",
+          "long range",
+          "distance",
+          "distant",
+          "far apart",
+          "far away",
+          "directly",
+          "direct",
+          "any two",
+          "every pair"
+        ],
+        [
+          "n^2",
+          "n²",
+          "n*n",
+          "n squared",
+          "quadratic",
+          "squared",
+          "n < d",
+          "n<d",
+          "n > d",
+          "n>d",
+          "very long",
+          "longer than",
+          "restricted",
+          "neighbourhood",
+          "neighborhood"
+        ]
+      ],
+      "paperLink": "Section 4 (Why Self-Attention) and Table 1 (complexity per layer, minimum sequential operations, maximum path length); Section 1 (recurrence 'precludes parallelization within training examples'); Section 2 (constant number of operations between positions, reduced effective resolution counteracted by Multi-Head Attention).",
+      "intro": [
+        "Quack. So you're the one who fixed the Bell. Everyone's very happy. Hooray.",
+        "I've carried the Sentence house by house for forty years. I'm the fastest duck in the meadow!",
+        "So explain it to me, Speck. Plainly, with the book's real reasons. Why is a Bell better than a duck?",
+        "And be honest... is there any lane where a duck would still win?"
+      ],
+      "success": [
+        "Huh. So it's not that I'm slow. It's that I have to go in order, and the far houses are SO far.",
+        "And on a long enough lane, the Bell would huff and puff. Ha! I'll take that.",
+        "Keeper of the Bell, they're calling me. Polishing eight ears. Sounds like a promotion."
+      ],
+      "retry": [
+        "Hmm. That's very nice, but my feathers aren't convinced.",
+        "You told me the Bell is better. But what does it actually do that I can't, and why does that help?",
+        "Think about the first house and the last house. And about a really, really, REALLY long lane."
+      ]
+    }
+  ],
+  "artefact": {
+    "id": "eight-eared-bell",
+    "name": "The Eight-Eared Bell",
+    "description": "A pocket-sized copy of Attendale's Listening Bell. Ring it once and every word hears every other word at the same time: no duck, no waiting, no crumpled notes. It has eight little ears because one ear only hears the average, and its pull-rope is braided from a sine thread and a cosine thread so it never forgets who stands where.",
+    "look": "A small brass-yellow paper bell (about 0.5 units tall) with a rounded crown and a flared lip; eight tiny teal ear-trumpets spaced evenly around its waist, pointing outward; a soft teardrop clapper; a short pull-rope of two twisted threads, one pink (sine) and one sky-blue (cosine), ending in a tassel. Idle: a gentle wobble; when rung, the ears glow faintly one after another and then all together."
+  },
+  "book": {
+    "guard": [
+      "Do not state, restate or fill in the sinusoidal positional-encoding rule of Section 3.5: which dimensions get sine and which cosine, what i counts in 10000^(2i/d_model), or the divisor/wavelength of any particular dimension (e.g. 1, 10, 100, 1000 for an 8-lantern plate).",
+      "Do not say whether positional encodings are added to (summed with) or concatenated onto the embeddings.",
+      "Do not say that the decoder's input is the output sequence shifted right by one position behind a start token, or which card belongs on which desk.",
+      "Do not say which entries of the decoder self-attention mask are blocked (key position j > query position i), or whether a position may attend to itself.",
+      "Do not say that masked scores are set to -infinity in the input of the softmax, or explain why a score of 0 does not block attention.",
+      "Do not say whether encoder-decoder attention is masked, or where its queries versus its keys and values come from.",
+      "Do not write out or complete Equation (1): the 1/sqrt(d_k) scaling, where it is applied, or which axis the softmax normalizes over.",
+      "Do not describe how to split and merge heads in code (column blocks per head, per-head d_k = d_model/h, concatenation order, W^O), and never write attention or multi-head attention code.",
+      "Do not mention the numerically stable softmax trick (subtracting each row's maximum).",
+      "Do not explain why self-attention beats recurrence: no entries of Table 1 (complexity per layer, sequential operations, maximum path length), no n < d condition, no restricted attention with neighbourhood r, and nothing on how multi-head attention counteracts averaging.",
+      "Never confirm, grade or correct the player's proposed answer to any puzzle, code task or explanation in this region."
+    ],
+    "offlineHints": [
+      {
+        "keywords": [
+          "order",
+          "position",
+          "address",
+          "where",
+          "who",
+          "plate"
+        ],
+        "text": "The Bell hears everyone and remembers no one's place. Order must be painted on. Seek the section that names positions."
+      },
+      {
+        "keywords": [
+          "wave",
+          "sine",
+          "cosine",
+          "sinusoid",
+          "lantern",
+          "loom"
+        ],
+        "text": "Two kinds of wave, taking turns. Section 3.5 writes them in a single breath. Read the small letters beneath."
+      },
+      {
+        "keywords": [
+          "slowness",
+          "frequency",
+          "wavelength",
+          "10000",
+          "exponent",
+          "dial",
+          "pace"
+        ],
+        "text": "The pace of each string hides in an exponent in Section 3.5. Read it slowly. Then read it again."
+      },
+      {
+        "keywords": [
+          "paint",
+          "sew",
+          "join",
+          "add",
+          "concat",
+          "coat",
+          "embedding"
+        ],
+        "text": "How do plate and coat become one? The answer sits beside the waves, in the same section, and in the first figure."
+      },
+      {
+        "keywords": [
+          "peek",
+          "mask",
+          "fence",
+          "future",
+          "cheat",
+          "window"
+        ],
+        "text": "Those who write must not see what is unwritten. Section 3.1 hides one sentence about it. Section 3.2.3 hides another."
+      },
+      {
+        "keywords": [
+          "desk",
+          "card",
+          "shift",
+          "start",
+          "offset",
+          "input"
+        ],
+        "text": "The writers' words arrive late. Figure 1 says so in two small words beneath the right-hand tower."
+      },
+      {
+        "keywords": [
+          "bridge",
+          "cross",
+          "encoder",
+          "decoder",
+          "otherish",
+          "reply row"
+        ],
+        "text": "Attention is used in three ways. Count them in Section 3.2.3, and ask which of them is ever fenced."
+      },
+      {
+        "keywords": [
+          "infinity",
+          "∞",
+          "zero",
+          "screen",
+          "faint",
+          "nan",
+          "stamp"
+        ],
+        "text": "Some silences are only pretend. The third way of attention names the number that truly hushes a window."
+      },
+      {
+        "keywords": [
+          "scale",
+          "sqrt",
+          "root",
+          "sharp",
+          "gradient",
+          "loud",
+          "softmax"
+        ],
+        "text": "Loud scores deafen the softmax. A footnote small as a whisper, near Equation 1, explains why."
+      },
+      {
+        "keywords": [
+          "heads",
+          "multi-head",
+          "each head",
+          "one head",
+          "ears",
+          "split",
+          "columns",
+          "gearbox",
+          "numpy"
+        ],
+        "text": "One ear hears only the average. Many ears, many slices. Section 3.2.2 counts the columns. So must you."
+      },
+      {
+        "keywords": [
+          "duck",
+          "dabble",
+          "recurrent",
+          "rnn",
+          "fast",
+          "parallel",
+          "sequential",
+          "in order",
+          "path",
+          "long-range",
+          "long range",
+          "satchel"
+        ],
+        "text": "The duck walks; the Bell rings. 'Why Self-Attention' weighs them, and Table 1 keeps the score."
+      },
+      {
+        "keywords": [
+          "cost",
+          "price",
+          "complexity",
+          "expensive",
+          "quadratic",
+          "cheaper",
+          "long lane"
+        ],
+        "text": "Nothing is free. The Bell's price grows with the lane. Section 4 says when it is cheaper, and when it is not."
+      }
+    ]
+  }
+}

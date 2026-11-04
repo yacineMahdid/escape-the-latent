@@ -1,0 +1,107 @@
+{
+  "id": "fixture",
+  "paper": { "arxivId": "1706.03762", "title": "Attention Is All You Need", "authors": "Vaswani et al.", "year": 2017 },
+  "region": {
+    "name": "Testmeadow",
+    "biome": "meadow",
+    "tagline": "A tiny meadow where every flower pays attention to every other."
+  },
+  "scientist": {
+    "taskTitle": "Bring me the Lantern of Focus",
+    "briefing": ["Hmph. Testmeadow. Go there and bring me the Lantern of Focus.", "And do not come back with a candle."],
+    "reminder": ["The lantern. Not a candle. The LANTERN."],
+    "return": ["...It actually glows evenly. Fine. FINE. Adequate work, I suppose."]
+  },
+  "story": {
+    "arrival": ["The meadow hums. Every flower turns to look at every other flower."],
+    "resolution": ["The lamps settle into a calm, even glow, and the flowers stop squinting."]
+  },
+  "inhabitants": [
+    {
+      "id": "pip",
+      "name": "Pip",
+      "species": "bunny",
+      "colors": { "fur": "#f2e6d8", "shirt": "#3ec7b5" },
+      "anchor": "lane-mid",
+      "role": "an anxious young lamplighter whose lamps flare far too bright",
+      "lines": {
+        "default": ["My lamps blaze so hard that all the light lands on one flower!"],
+        "afterSolved": ["The lamps glow evenly now. Thank you!"]
+      }
+    },
+    {
+      "id": "elder",
+      "name": "Elder Moss",
+      "species": "frog",
+      "colors": { "fur": "#7fb86a", "shirt": "#8a5a9e" },
+      "anchor": "terrace-2",
+      "role": "the meadow's old lamp keeper, who wants to understand why",
+      "lines": {
+        "default": ["Ribbit. I wonder why the big lamps need taming at all..."],
+        "afterSolved": ["Ah, so that is why we dim them. Wise little human."]
+      }
+    }
+  ],
+  "stations": [
+    {
+      "id": "loom",
+      "kind": "terminal",
+      "anchor": "terrace-1",
+      "label": "The Glow Loom",
+      "look": "a wooden loom strung with glowing threads, with a small slate screen"
+    }
+  ],
+  "challenges": [
+    {
+      "id": "code1",
+      "type": "code",
+      "title": "Even Out the Glow",
+      "giver": "loom",
+      "requires": [],
+      "prompt": "The Glow Loom's threads blaze unevenly: a few burn white-hot while the rest go dark. Write `softmax(x)` so each row of glow is shared out fairly.\n\n- **Input:** `x`, a 2-D numpy array of shape `(n, m)`: one row per lamp, one column per flower.\n- **Output:** an array of the same shape whose row `i` is the softmax of row `i`: `exp(x[i, j]) / sum_k exp(x[i, k])`. Every row sums to 1.\n- Rows are independent of each other, and huge scores (like `1000`) must not overflow into `nan` or `inf`.\n\nYou may use numpy.",
+      "starterCode": "import numpy as np\n\n\ndef softmax(x):\n    \"\"\"Row-wise softmax of a 2-D array x with shape (n, m).\"\"\"\n    # Your code here\n    raise NotImplementedError\n",
+      "tests": "import numpy as np\n\n\ndef test_keeps_shape_and_rows_sum_to_one():\n    x = np.array([[1.0, 2.0, 3.0], [0.0, 0.0, 0.0]])\n    out = softmax(x)\n    assert out.shape == x.shape, \"softmax must keep the shape of x\"\n    assert np.allclose(out.sum(axis=1), 1.0), \"every row must sum to 1\"\n\n\ndef test_known_values():\n    out = softmax(np.array([[0.0, np.log(3.0)]]))\n    assert np.allclose(out, [[0.25, 0.75]]), \"softmax([0, log 3]) should be [0.25, 0.75]\"\n\n\ndef test_rows_are_independent():\n    x = np.array([[1.0, 2.0], [10.0, 20.0]])\n    out = softmax(x)\n    assert np.allclose(out[0], [0.26894142, 0.73105858]), \"row 0 must be the softmax of row 0 alone\"\n    assert not np.allclose(out[0], out[1]), \"rows must not be normalised together\"\n\n\ndef test_shift_invariance():\n    x = np.random.default_rng(0).normal(size=(4, 5))\n    assert np.allclose(softmax(x), softmax(x + 7.0)), \"adding a constant to a row must not change it\"\n\n\ndef test_large_values_are_stable():\n    out = softmax(np.array([[1000.0, 1001.0, 1002.0]]))\n    assert np.all(np.isfinite(out)), \"huge scores must not overflow into nan or inf\"\n    assert np.allclose(out, softmax(np.array([[0.0, 1.0, 2.0]]))), \"huge scores must give the same glow as small ones\"\n\n\ndef test_does_not_modify_input():\n    x = np.array([[3.0, 1.0], [2.0, 2.0]])\n    before = x.copy()\n    softmax(x)\n    assert np.array_equal(x, before), \"softmax must not change its input\"\n",
+      "solutionFile": "server/test/fixtures/solutions/fixture_code1.py",
+      "paperLink": "Section 3.2.1, Equation (1)",
+      "intro": ["The loom's slate flickers: SOFTMAX REQUIRED. ONE ROW PER LAMP."],
+      "success": ["The threads dim and brighten until every row shares its glow fairly."]
+    },
+    {
+      "id": "explain1",
+      "type": "explain",
+      "title": "Why Dim the Lamps?",
+      "giver": "elder",
+      "requires": ["code1"],
+      "question": "Little one, the paper divides the attention scores by something before the softmax. Why do they scale the scores at all?",
+      "rubric": [
+        "Says the dot-product scores are divided by the square root of the key dimension d_k",
+        "Explains that for large d_k the dot products grow large in magnitude",
+        "Explains that large scores push the softmax into regions with extremely small gradients (saturation), which the scaling avoids"
+      ],
+      "passBar": "Criteria 1 and 3 must be met; criterion 2 may be implied by the rest.",
+      "offline": [["sqrt", "square root", "scale", "scaling"], ["softmax", "saturat", "gradient"]],
+      "paperLink": "Section 3.2.1, the paragraph after Equation (1)",
+      "intro": ["Ribbit. Sit with me a moment and tell me why we dim the lamps."],
+      "success": ["Ribbit! So that is why. The meadow can rest easy now."],
+      "retry": ["Ribbit... that is part of it, but why would big numbers trouble the softmax?"]
+    }
+  ],
+  "artefact": {
+    "id": "lantern-of-focus",
+    "name": "Lantern of Focus",
+    "description": "A lantern whose light spreads evenly over everything it looks at, just like scaled attention weights.",
+    "look": "a small brass lantern with a softly glowing paper shade and a dial marked with a square-root sign"
+  },
+  "book": {
+    "guard": [
+      "That the scores are divided by sqrt(d_k), and why (large dot products saturate the softmax and leave tiny gradients)",
+      "Any working code for a numerically stable softmax (such as subtracting the row maximum)"
+    ],
+    "offlineHints": [
+      { "keywords": ["softmax", "exponent", "exp"], "text": "Exponents grow wild. Tame them before they burn, and the sum will still be one." },
+      { "keywords": ["scale", "scaling", "sqrt", "divide", "d_k"], "text": "Section 3.2.1 whispers of a divisor. Ask what grows as the keys grow longer." },
+      { "keywords": ["query", "queries", "key", "value"], "text": "Three faces of every word: one asks, one answers, one is carried home." },
+      { "keywords": ["head", "heads", "multi-head"], "text": "Many small gazes see more than one great stare. Section 3.2.2." }
+    ]
+  }
+}
