@@ -5,6 +5,8 @@
 // Uses a server on CREATOR_TEST_PORT (default 3102); if none is running it starts one: PORT=3102 node server/index.js
 // No API key needed: every /api/status and /api/avatar answer that matters is mocked (so a server that has a key
 // is never asked to look at a photo). Needs WebGL (SwiftShader). Screenshots land in test-output/creator-*.png.
+// Text follows docs/ARCHITECTURE.md "Concise text": the words a first-time player needs are on the surface
+// (title, tab and row labels, worded buttons, the photo path and its status lines), all short, no paragraphs.
 const { chromium } = require('playwright');
 const { spawn } = require('node:child_process');
 const path = require('node:path');
@@ -108,7 +110,82 @@ async function cardVars(page) {
   return page.$eval('.cr-card', (el) => ['--sk', '--hc', '--ec', '--tc', '--bc', '--fc'].map((k) => el.style.getPropertyValue(k)).join(' '));
 }
 const rect = (page, sel) => page.$eval(sel, (el) => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
-const badgeTip = (page) => page.getAttribute('.cr-badge', 'title');
+const statusLine = (page) => page.$eval('.cr-status', (el) => el.textContent);
+const waitStatus = (page, line) => page.waitForFunction((l) => document.querySelector('.cr-status')?.textContent === l, line);
+
+// ---- the words on the creator (docs/ARCHITECTURE.md "Concise text")
+const TAB_WORDS = ['Face', 'Hair', 'Clothes', 'Extras'];
+const ROW_LABELS = {
+  face: ['Skin', 'Eyes', 'Facial hair', 'Freckles'],
+  hair: ['Style', 'Colour'],
+  clothes: ['Top', 'Top colour', 'Bottom', 'Shoes'],
+  extras: ['Glasses', 'Accessory'],
+};
+const PHOTO_WORDS = ['From a photo', 'Choose or drop one', 'Take one', 'We make a look-alike.', 'The photo isn’t kept.'];
+const SAID = {
+  working: 'Making your look-alike…', done: '✓ Look-alike ready', offline: '✕ Offline', notPhoto: '✕ Not a photo',
+  unreadable: '✕ Couldn’t read that photo', busy: '✕ Busy. Try again.', failed: '✕ That didn’t work. Try again.',
+};
+const words = (s) => (s.match(/[A-Za-z’'-]+/g) || []).length;
+// every visible line of text on the card (icons included; whitespace squeezed)
+const visibleLines = (page) => page.$eval('.cr-card', (card) => {
+  const out = [];
+  const walk = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+    const el = n.parentElement;
+    const cs = el && getComputedStyle(el);
+    if (!el || !el.getClientRects().length || cs.visibility !== 'visible') continue;
+    for (const line of n.textContent.split('\n')) { const t = line.replace(/\s+/g, ' ').trim(); if (t) out.push(t); }
+  }
+  return out;
+});
+// the rule: needed words present, labels of 1-3 words, nothing longer than a short hint, no paragraphs
+// (photo: true = the photo path's words are all shown, false = none of them, null = do not look)
+async function checkConciseText(page, { photo }) {
+  const lines = await visibleLines(page);
+  const text = lines.join(' | ');
+  for (const w of ['Make your Speck', ...TAB_WORDS, 'Random', 'Done']) assert.ok(lines.includes(w), `"${w}" on the surface: ${text}`);
+  if (photo !== null) for (const w of PHOTO_WORDS) assert.equal(lines.includes(w), photo, `"${w}" ${photo ? 'shown' : 'hidden'}: ${text}`);
+  const long = lines.filter((l) => l.length > 60 || words(l) > 8);
+  assert.deepEqual(long, [], 'no line over 60 characters or 8 words');
+  const labels = await page.$$eval('.cr-title, .cr-tab-word, .cr-row-label, .cr-photo-head, .cr-act, .cr-pill', (els) => els.filter((e) => e.getClientRects().length).map((e) => e.textContent.replace(/[^A-Za-z’' -]/g, '').trim()));
+  const wordy = labels.filter((l) => !l || words(l) > 3);
+  assert.deepEqual(wordy, [], 'labels and buttons: 1-3 words each');
+  const tips = await page.$$eval('.cr-card [title]', (els) => els.map((e) => e.title));
+  assert.deepEqual(tips.filter((t) => words(t) > 4), [], 'tooltips of 4 words at most');
+  const nameless = await page.$$eval('.cr-card button, .cr-card [role="button"]', (bs) => bs.filter((b) => b.getClientRects().length && !b.textContent.trim() && !b.title && !b.getAttribute('aria-label')).length);
+  assert.equal(nameless, 0, 'every visible button says what it does (a word, or a tooltip for a swatch or chip)');
+  return lines;
+}
+// the words fit: Random and Done side by side inside the stage, the title in view, no label cut short
+async function checkFit(page) {
+  const r = await page.evaluate(() => {
+    const box = (s) => document.querySelector(s).getBoundingClientRect();
+    const dice = box('.cr-dice'), ok = box('.cr-ok'), stage = box('.cr-stage'), title = box('.cr-title');
+    const cut = [...document.querySelectorAll('.cr-title, .cr-tab-word, .cr-row-label, .cr-photo-head, .cr-pick-text, .cr-pill, .cr-act, .cr-note')]
+      .filter((el) => el.getClientRects().length && getComputedStyle(el).visibility === 'visible' && el.scrollWidth > el.clientWidth + 1)
+      .map((el) => el.textContent);
+    return {
+      sameRow: Math.abs(dice.top + dice.height / 2 - (ok.top + ok.height / 2)) < 2,
+      inside: dice.left >= stage.left && ok.right <= stage.right,
+      titleIn: title.top >= 0 && title.left >= 0 && title.right <= innerWidth,
+      cut,
+    };
+  });
+  assert.ok(r.sameRow && r.inside, `Random and Done side by side in the stage: ${JSON.stringify(r)}`);
+  assert.ok(r.titleIn, 'the title is in view');
+  assert.deepEqual(r.cut, [], 'no label cut short');
+}
+// every row of choices on every tab has its short label
+async function checkRowLabels(page) {
+  for (const [tab, want] of Object.entries(ROW_LABELS)) {
+    await page.click(`.cr-tab[data-tab="${tab}"]`);
+    const rows = await page.$$eval('.cr-panel .cr-row', (rs) => rs.map((r) => ({ label: r.querySelector('.cr-row-label')?.textContent || '', by: r.getAttribute('aria-labelledby') === r.querySelector('.cr-row-label')?.id })));
+    assert.deepEqual(rows.map((r) => r.label), want, `${tab}: a label on every row`);
+    assert.ok(rows.every((r) => r.by), `${tab}: each row is named by its label`);
+    assert.equal(await page.getAttribute(`.cr-tab[data-tab="${tab}"]`, 'aria-selected'), 'true');
+  }
+}
 
 // records every camera stream the page opens; window.__gumDelay (ms) holds getUserMedia back
 const CAM_SPY = () => {
@@ -220,7 +297,7 @@ const liveTracks = (page) => page.evaluate(() => window.__streams.flatMap((s) =>
     });
 
     // ------------------------------------------------------------------ creator, manual (real offline server)
-    await step('creator offline: no photo zone, no words, randomize + every kind of control, ✓ / Enter return params', async () => {
+    await step('creator offline: no photo zone, short labels on everything, randomize + every kind of control, ✓ / Enter return params', async () => {
       const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
       const errors = watch(page);
       await page.route('**/api/status', (r) => r.fulfill({ json: { ai: false, model: 'mock' } })); // even if the server has a key
@@ -231,15 +308,14 @@ const liveTracks = (page) => page.evaluate(() => window.__streams.flatMap((s) =>
       assert.equal(await page.$eval('.cr-card', (el) => el.classList.contains('no-photo')), true, 'offline server: the photo path must not be offered');
       assert.equal(await page.isVisible('.cr-photo'), false);
       assert.ok((await rect(page, '.cr-stage')).w > 650, 'the stage takes the photo column');
-      // minimal text: no words on the surface, no name field, no offline chip; every tooltip is a word or a few
-      const text = await page.$eval('.cr-card', (el) => el.innerText);
-      assert.equal(/[A-Za-z]{2,}/.test(text), false, `words on the creator surface: ${JSON.stringify(text)}`);
+      // concise text: title, tab words, worded buttons, a short label on every row; no photo words (it is not
+      // offered), no name field, no offline chip; nothing longer than a short line
+      const lines = await checkConciseText(page, { photo: false });
+      assert.deepEqual(lines.filter((l) => /[A-Za-z]/.test(l)), ['Make your Speck', 'Random', 'Done', ...TAB_WORDS, ...ROW_LABELS.face], 'exactly the needed words');
       assert.equal(await page.$('.cr-card input[type="text"], .cr-name, .cr-offline'), null, 'no name field / offline chip');
-      const tips = await page.$$eval('.cr-card [title]', (els) => els.map((e) => e.title));
-      const wordy = tips.filter((t) => (t.match(/[A-Za-z]+/g) || []).length > 4);
-      assert.deepEqual(wordy, [], 'tooltips of 4 words at most');
-      const untitled = await page.$$eval('.cr-card button', (bs) => bs.filter((b) => b.offsetParent && !b.title && !b.getAttribute('aria-label')).length);
-      assert.equal(untitled, 0, 'every visible button has a tooltip');
+      assert.equal(await page.getAttribute('.cr-card', 'aria-labelledby'), 'cr-title', 'the dialog is named by its title');
+      await checkRowLabels(page);
+      await page.click('.cr-tab[data-tab="face"]');
       assert.ok((await previewCoverage(page)) > 0.03, 'the 3D preview draws the character');
 
       const before = await cardVars(page);
@@ -323,15 +399,21 @@ const liveTracks = (page) => page.evaluate(() => window.__streams.flatMap((s) =>
       await page.goto(`${BASE}/dev/creator.html`);
       await page.waitForSelector('.cr-card:not(.checking)');
       assert.equal(await page.isVisible('.cr-photo'), true, 'photo zone offered when the AI is on');
-      assert.match(await page.getAttribute('.cr-frame', 'title'), /never saved/);
+      // the photo path in a few words: what it is, how (choose, drop or take one), what we do with it
+      await checkConciseText(page, { photo: true });
+      assert.equal(await statusLine(page), '', 'no status line before a photo');
       assert.equal(await page.getAttribute('.cr-frame', 'role'), 'button');
+      assert.equal(await page.getAttribute('.cr-frame', 'aria-label'), 'Choose a photo');
       assert.equal(await page.$('.cr-photo[role="button"], [role="button"] button'), null, 'no buttons inside a button');
       await sleep(700);
       await page.screenshot({ path: path.join(OUT, 'creator-photo-idle.png') });
       await page.setInputFiles('.cr-file', { name: 'me.png', mimeType: 'image/png', buffer: await makePhoto(page) });
       await page.waitForSelector('.cr-photo[data-state="busy"] .cr-spin', { state: 'visible' });
       await page.waitForFunction(() => document.querySelector('.cr-photo-img')?.complete);
-      // while Claude looks: 🎲 and ✓ wait; the swatches stay live and win over the answer
+      // while Claude looks: a working line and a worded Cancel; 🎲 and ✓ wait; the swatches stay live and win
+      assert.equal(await statusLine(page), SAID.working);
+      assert.equal(await page.isVisible('.cr-cancel'), true, 'Cancel shown while Claude looks');
+      assert.equal(await page.isVisible('.cr-cam'), false, 'no camera while Claude looks');
       assert.equal(await page.isDisabled('.cr-ok'), true, '✓ waits for the photo');
       assert.equal(await page.isDisabled('.cr-dice'), true, '🎲 waits for the photo');
       await page.click('.cr-tab[data-tab="clothes"]');
@@ -346,6 +428,8 @@ const liveTracks = (page) => page.evaluate(() => window.__streams.flatMap((s) =>
       assert.equal(Math.abs(size.w / size.h - 4 / 3) < 0.01, true, 'aspect kept');
       release();
       await page.waitForSelector('.cr-photo[data-state="done"]');
+      assert.equal(await statusLine(page), SAID.done);
+      assert.equal(await page.isVisible('.cr-cancel'), false);
       assert.equal(await page.isDisabled('.cr-ok'), false);
       await sleep(250);
       await page.screenshot({ path: path.join(OUT, 'creator-photo-poof.png') });
@@ -358,14 +442,16 @@ const liveTracks = (page) => page.evaluate(() => window.__streams.flatMap((s) =>
       await ctx.close();
     });
 
-    await step('creator with Claude (mocked): drops anywhere, every failure shows ⦸ + a word and keeps the look', async () => {
+    await step('creator with Claude (mocked): drops anywhere, every failure shows a short status line and keeps the look', async () => {
       const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
       const page = await ctx.newPage();
       const errors = watch(page);
       const answers = [
         { status: 422, json: { error: '✕ clouded', code: 'refused' } },
         { status: 503, json: { error: '… busy', code: 'busy', retryable: true } },
+        { status: 503, json: { error: '✕ unreachable', code: 'offline', offline: true, retryable: true } },
         { status: 200, json: { nope: 1 } },
+        { abort: true },
         { status: 200, body: 'not json', contentType: 'text/plain' },
       ];
       let calls = 0, hold = null;
@@ -373,48 +459,55 @@ const liveTracks = (page) => page.evaluate(() => window.__streams.flatMap((s) =>
       await page.route('**/api/avatar', async (r) => {
         const a = answers[calls++] || { status: 200, json: { params: MOCK_PARAMS } };
         if (hold) await hold;
-        r.fulfill(a);
+        if (a.abort) r.abort('failed'); else r.fulfill(a);
       });
       await page.goto(`${BASE}/dev/creator.html`);
       await page.waitForSelector('.cr-card:not(.checking)');
       const b64 = (await makePhoto(page, 900, 1400, 'image/jpeg')).toString('base64');
+      const send = () => page.setInputFiles('.cr-file', { name: 'me.jpg', mimeType: 'image/jpeg', buffer: Buffer.from(b64, 'base64') });
       const look = await cardVars(page);
-      // 422 refused: the server's word
+      // 422 refused: Claude could not make a look-alike from it
       assert.deepEqual(await dropOn(page, '.cr-photo', b64), { enter: true, over: true, drop: true });
-      await page.waitForSelector('.cr-photo[data-state="error"] .cr-badge', { state: 'visible' });
-      assert.equal(await page.textContent('.cr-badge'), '⦸');
-      assert.equal(await badgeTip(page), '✕ clouded');
+      await page.waitForSelector('.cr-photo[data-state="error"] .cr-status', { state: 'visible' });
+      assert.equal(await statusLine(page), SAID.unreadable);
+      assert.equal(await page.getAttribute('.cr-status', 'role'), 'status');
       // a non-image is refused locally
       await page.setInputFiles('.cr-file', { name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('hello') });
-      await page.waitForFunction(() => document.querySelector('.cr-badge')?.title === '✕ not a photo');
+      await waitStatus(page, SAID.notPhoto);
       assert.equal(calls, 1);
       await sleep(400);
       await page.screenshot({ path: path.join(OUT, 'creator-photo-error.png') });
       // a drop on the backdrop, outside the card, is taken too (the browser must never open the file)
       const card = await rect(page, '.cr-card');
       assert.deepEqual(await dropOn(page, '.cr-overlay', b64, { at: [card.x / 2, card.y + 40] }), { enter: true, over: true, drop: true });
-      // 503 busy: the server's word, and the photo stays on offer
-      await page.waitForFunction(() => document.querySelector('.cr-badge')?.title === '… busy');
+      // 503 busy: try again, and the photo stays on offer
+      await waitStatus(page, SAID.busy);
       assert.equal(await page.$eval('.cr-card', (el) => el.classList.contains('no-photo')), false, 'busy is not offline');
-      // 200 without params, then a 200 that is not JSON: ⦸, and the look does not change
-      await page.setInputFiles('.cr-file', { name: 'me.jpg', mimeType: 'image/jpeg', buffer: Buffer.from(b64, 'base64') });
-      await page.waitForFunction(() => document.querySelector('.cr-badge')?.title === '✕ cloudy');
-      await page.setInputFiles('.cr-file', { name: 'me.jpg', mimeType: 'image/jpeg', buffer: Buffer.from(b64, 'base64') });
-      for (let i = 0; i < 100 && calls < 4; i++) await sleep(100);
-      assert.equal(calls, 4);
-      await page.waitForFunction(() => document.querySelector('.cr-photo')?.dataset.state === 'error');
-      assert.equal(await badgeTip(page), '✕ cloudy');
+      // the server cannot reach Claude (retryable), a 200 without params, no connection at all, a 200 that is not JSON
+      for (const [n, line] of [[3, '✕ No connection'], [4, SAID.failed], [5, '✕ No connection'], [6, SAID.failed]]) {
+        await send();
+        for (let i = 0; i < 100 && calls < n; i++) await sleep(100);
+        assert.equal(calls, n);
+        await waitStatus(page, line);
+      }
+      assert.equal(await page.getAttribute('.cr-photo', 'data-state'), 'error');
       assert.equal(await cardVars(page), look, 'a bad answer keeps the current look');
-      // cancel while Claude looks: a click on the frame, or Esc
+      // cancel while Claude looks: the Cancel button, a click on the frame, or Esc
       let free;
       hold = new Promise((r) => { free = r; });
-      await page.setInputFiles('.cr-file', { name: 'me.jpg', mimeType: 'image/jpeg', buffer: Buffer.from(b64, 'base64') });
+      await send();
+      await page.waitForSelector('.cr-photo[data-state="busy"]');
+      assert.equal(await statusLine(page), SAID.working);
+      await page.click('.cr-cancel');
+      await page.waitForSelector('.cr-photo[data-state="idle"]');
+      assert.equal(await statusLine(page), '', 'cancelled: no status line');
+      assert.equal(await page.isDisabled('.cr-ok'), false);
+      await send();
       await page.waitForSelector('.cr-photo[data-state="busy"]');
       assert.equal(await page.getAttribute('.cr-frame', 'title'), 'Cancel');
       await page.click('.cr-frame');
       await page.waitForSelector('.cr-photo[data-state="idle"]');
-      assert.equal(await page.isDisabled('.cr-ok'), false);
-      await page.setInputFiles('.cr-file', { name: 'me.jpg', mimeType: 'image/jpeg', buffer: Buffer.from(b64, 'base64') });
+      await send();
       await page.waitForSelector('.cr-photo[data-state="busy"]');
       await page.keyboard.press('Escape');
       await page.waitForSelector('.cr-photo[data-state="idle"]');
@@ -422,6 +515,7 @@ const liveTracks = (page) => page.evaluate(() => window.__streams.flatMap((s) =>
       await sleep(500);
       assert.equal(await page.getAttribute('.cr-photo', 'data-state'), 'idle', 'a cancelled answer is ignored');
       assert.equal(await cardVars(page), look);
+      assert.equal(await page.$eval('.cr-card', (el) => el.classList.contains('no-photo')), false, 'a retryable failure keeps the photo on offer');
       await page.click('.cr-tab[data-tab="hair"]');
       await page.click('.cr-chip[data-field="hairStyle"][data-value="bun"]');
       await page.click('.cr-ok');
@@ -451,14 +545,26 @@ const liveTracks = (page) => page.evaluate(() => window.__streams.flatMap((s) =>
       await page.waitForFunction(() => document.querySelector('.cr-video')?.videoWidth > 0, null, { timeout: 15000 });
       await sleep(500);
       assert.equal(await page.evaluate(() => window.__streams.length), 1, 'one stream for a double click');
+      // the camera's buttons say what they do: Snap and Cancel (Take one waits)
+      assert.equal(await page.isVisible('.cr-cam'), false);
+      assert.match(await page.textContent('.cr-snap'), /Snap$/);
+      assert.match(await page.textContent('.cr-cancel'), /Cancel$/);
+      await checkConciseText(page, { photo: null });
       await page.screenshot({ path: path.join(OUT, 'creator-webcam.png') });
+      // Cancel stops the camera and brings Take one back
+      await page.click('.cr-cancel');
+      await page.waitForSelector('.cr-cam', { state: 'visible' });
+      assert.equal(await liveTracks(page), 0, 'Cancel stops the camera');
+      assert.equal(await page.isVisible('.cr-snap'), false);
+      await page.click('.cr-cam');
+      await page.waitForFunction(() => document.querySelector('.cr-video')?.videoWidth > 0, null, { timeout: 15000 });
       // snap: a <=768px frame goes out, the camera stops; 503 busy keeps the photo on offer
       await page.click('.cr-snap');
       await page.waitForSelector('.cr-photo[data-state="error"]');
       assert.equal(sent.length, 1);
       const size = await imageSize(page, sent[0].image);
       assert.ok(Math.max(size.w, size.h) <= 768, `webcam frame downscaled (${size.w}x${size.h})`);
-      assert.equal(await badgeTip(page), '… busy');
+      assert.equal(await statusLine(page), SAID.busy);
       assert.equal(await liveTracks(page), 0, 'camera stopped after the snap');
       // camera on again, then a dropped photo: the camera stops and the photo shows
       await page.click('.cr-cam');
@@ -468,8 +574,8 @@ const liveTracks = (page) => page.evaluate(() => window.__streams.flatMap((s) =>
       await page.waitForSelector('.cr-photo[data-state="error"]');
       assert.equal(await liveTracks(page), 0, 'a dropped photo stops the camera');
       assert.equal(await page.$eval('.cr-photo', (el) => el.classList.contains('cam')), false);
-      // 503 offline (no key, or a key turned away): ⦸ "offline", then the polaroid folds away
-      assert.equal(await badgeTip(page), '✕ offline');
+      // 503 offline (no key, or a key turned away): "✕ Offline", then the polaroid folds away
+      assert.equal(await statusLine(page), SAID.offline);
       await page.waitForSelector('.cr-card.no-photo', { timeout: 5000 });
       await page.waitForSelector('.cr-photo', { state: 'hidden', timeout: 5000 });
       await page.waitForFunction(() => document.querySelector('.cr-stage').getBoundingClientRect().width > 650, null, { timeout: 5000 });
@@ -487,7 +593,7 @@ const liveTracks = (page) => page.evaluate(() => window.__streams.flatMap((s) =>
       await sleep(150);
       await page.click('.cr-ok');
       await page.waitForFunction(() => window.__creator.closes === 2);
-      await page.waitForFunction(() => window.__streams.length === 3, null, { timeout: 10000 });
+      await page.waitForFunction(() => window.__streams.length === 4, null, { timeout: 10000 });
       await sleep(1200);
       assert.equal(await liveTracks(page), 0, 'the late camera was stopped');
       assert.deepEqual(errors, []);
@@ -495,7 +601,7 @@ const liveTracks = (page) => page.evaluate(() => window.__streams.flatMap((s) =>
     });
 
     // ------------------------------------------------------------------ layouts
-    await step('layouts: tablet, phone landscape, slow /api/status (no jumps, round buttons, stage in view)', async () => {
+    await step('layouts: tablet, phone landscape, slow /api/status (no jumps, the words fit, stage in view)', async () => {
       const ctx = await browser.newContext({ viewport: { width: 1024, height: 768 } });
       const page = await ctx.newPage();
       const errors = watch(page);
@@ -503,10 +609,7 @@ const liveTracks = (page) => page.evaluate(() => window.__streams.flatMap((s) =>
       await page.goto(`${BASE}/dev/creator.html`);
       await page.waitForSelector('.cr-card:not(.checking)');
       await sleep(900);
-      for (const sel of ['.cr-dice', '.cr-ok']) {
-        const b = await rect(page, sel);
-        assert.ok(Math.abs(b.w - b.h) < 1, `${sel} is round at 1024x768 (${b.w}x${b.h})`);
-      }
+      await checkFit(page);
       assert.ok((await rect(page, '.cr-stage')).w >= 340, 'the stage keeps >= 340px next to the polaroid');
       await page.screenshot({ path: path.join(OUT, 'creator-tablet.png') });
       // phone in landscape: one row, the character in the first screen
@@ -517,6 +620,7 @@ const liveTracks = (page) => page.evaluate(() => window.__streams.flatMap((s) =>
       assert.ok((await rect(page, '.cr-photo')).x < st.x, 'polaroid beside the stage');
       assert.ok((await previewCoverage(page)) > 0.03, 'the character is drawn');
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), 844, 'no sideways scroll');
+      await checkFit(page);
       await page.screenshot({ path: path.join(OUT, 'creator-phone-land.png') });
       await ctx.close();
       // a slow /api/status: the stage keeps its width when the polaroid shows up
@@ -563,6 +667,7 @@ const liveTracks = (page) => page.evaluate(() => window.__streams.flatMap((s) =>
       // the title screen belongs to core and may be animated: click through the DOM
       await page.$eval('.title-btns .etl-btn', (b) => b.click());
       await page.waitForSelector('.cr-card:not(.checking)', { timeout: 20000 });
+      assert.equal(await page.textContent('.cr-title'), 'Make your Speck', 'the first screen says what it is');
       await page.click('.cr-dice');
       await page.click('.cr-tab[data-tab="hair"]');
       await page.click('.cr-chip[data-field="hairStyle"][data-value="ponytail"]');

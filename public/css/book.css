@@ -260,7 +260,8 @@
 .bk-arm { display: none; font-size: 13px; line-height: 1; white-space: nowrap; }
 .bk-ib.bk-del.armed { display: inline-flex; gap: 5px; width: auto; padding: 0 11px 0 8px; border-radius: 999px; }
 .bk-del.armed .bk-arm { display: inline; }
-.bk-del.armed { color: #ff9cb0; background: rgba(255, 90, 130, .14); animation: bk-tremble .11s linear 4; }
+.bk-del.armed, .bk-del.armed:hover:not(:disabled) { color: #ff9cb0; background: rgba(255, 90, 130, .14); text-shadow: none; }
+.bk-del.armed { animation: bk-tremble .11s linear 4; }
 .bk-del.armed .bk-emoji { filter: grayscale(1) sepia(1) hue-rotate(300deg) saturate(4) brightness(1.2); }
 @keyframes bk-tremble { 25% { transform: translate(1px, -1px); } 50% { transform: translate(-1px, 1px); } 75% { transform: translate(1px, 1px); } }
 

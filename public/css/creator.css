@@ -65,7 +65,7 @@
 }
 .cr-pick { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 12px; text-align: center; transition: transform .2s; user-select: none; }
 .cr-pick-ic svg { display: block; width: 76px; height: 76px; filter: drop-shadow(3px 3px 0 rgba(43, 34, 51, .2)); }
-.cr-pick-text { font: 600 16px/1.25 var(--font-ui); color: var(--ink-soft); }
+.cr-pick-text { font: 600 16px/1.25 var(--font-ui); color: var(--ink-soft); text-wrap: balance; }
 .cr-photo:hover .cr-pick { transform: scale(1.05) rotate(-3deg); }
 .cr-photo.drag .cr-frame { border-color: var(--pink); background: #ffe6f2; }
 .cr-photo.drag .cr-pick { transform: scale(1.12) rotate(3deg); }
@@ -90,7 +90,7 @@
 /* the status line: a paper label on the bottom of the photo (working, done, or what went wrong) */
 .cr-status {
   position: absolute; z-index: 2; left: 50%; bottom: 10px; width: max-content; max-width: calc(100% - 16px);
-  padding: 4px 10px; text-align: center; font: 700 14px/1.25 var(--font-ui); color: var(--ink);
+  padding: 4px 10px; text-align: center; text-wrap: balance; font: 700 14px/1.25 var(--font-ui); color: var(--ink);
   background: var(--paper); border: 3px solid var(--ink); border-radius: 10px; box-shadow: 2px 2px 0 rgba(43, 34, 51, .25);
   transform: translateX(-50%) rotate(-1deg); pointer-events: none; animation: cr-label .3s cubic-bezier(.2, 1.5, .4, 1);
 }
@@ -116,7 +116,7 @@
 .cr-snap { background: var(--pink); color: #fff; text-shadow: 1px 1px 0 rgba(43, 34, 51, .3); }
 .cr-snap:hover { background: #ff92c6; }
 
-.cr-note { margin: 0; font: 500 13px/1.35 var(--font-ui); color: var(--ink-soft); text-align: center; white-space: pre-line; }
+.cr-note { margin: 0; font: 500 13px/1.35 var(--font-ui); color: var(--ink-soft); text-align: center; white-space: pre-line; text-wrap: balance; }
 
 /* ---------------- stage: the live 3D turntable ---------------- */
 .cr-stage {
@@ -278,7 +278,7 @@
   .cr-pick { gap: 4px; padding: 6px; }
   .cr-pick-ic svg { width: 38px; height: 38px; }
   .cr-pick-text { font-size: 12px; }
-  .cr-spin { width: 44px; height: 44px; }
+  .cr-spin { top: 9px; width: 44px; height: 44px; } /* above a two-line status label */
   .cr-spin::after { inset: 13px; }
   .cr-status { bottom: 6px; padding: 2px 6px; font-size: 11px; border-width: 2px; border-radius: 8px; }
   .cr-photo-foot { gap: 5px; min-height: 30px; }

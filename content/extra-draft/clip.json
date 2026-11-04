@@ -439,9 +439,12 @@
             "at": [
               -19.5,
               -0.95,
-              8.0
+              7.5
             ],
-            "collider": 0.6,
+            "collider": {
+              "w": 1.8,
+              "d": 0.7
+            },
             "look": "A banana sculpted from sand (a curved, lumpy capsule 1.2 long, #e9cf8f) lying on the beach, a red toy bucket and a blue spade beside it.",
             "snapper": "a sandcastle",
             "lens": "a banana",
@@ -455,7 +458,7 @@
             "at": [
               31.0,
               0.82,
-              -0.7
+              -0.62
             ],
             "collider": null,
             "interact": {
@@ -497,9 +500,12 @@
             "at": [
               30.6,
               -0.95,
-              8.3
+              7.5
             ],
-            "collider": 0.5,
+            "collider": {
+              "w": 0.86,
+              "d": 0.56
+            },
             "look": "A wooden fruit crate (0.8 × 0.5 × 0.5) with a plain bunch of ripe bananas on top and a paper tag 'No. 954'.",
             "snapper": "a banana",
             "snapperRight": true,
@@ -546,16 +552,19 @@
             "at": [
               7.5,
               -0.95,
-              8.2
+              7.45
             ],
-            "collider": 0.8,
+            "collider": {
+              "w": 1.6,
+              "d": 0.56
+            },
             "look": "A small yellow canoe (half-capsule hull, 1.6 long) on the sand, a wooden paddle across it.",
             "snapper": "a banana",
             "lens": "a canoe",
             "react": "A yellow canoe. Not a banana. That's film wasted!"
           }
         ],
-        "propsNote": "Positions are [x, y, z] world units (the Speck is 1.9 tall); y is the floor of that layer (main path 0, terrace 1.7, hilltop 3.4, bank -0.95). Each prop faces the camera (+z), is about 1-1.4 units big and gets a circle collider of the given radius (none for the float in the river and the cup on the well, which already has one). Interactable pos = at, unless interact gives pos / radius / promptHeight. Nudge a prop if it clips a tree, house or villager.",
+        "propsNote": "Positions are [x, y, z] world units (the Speck is 1.9 tall); y is the floor of that layer (main path 0, terrace 1.7, hilltop 3.4, bank -0.95). Each prop faces the camera (+z), is about 1-1.4 units big and gets a collider: a number is a circle radius, {w, d} a box footprint centred on at (none for the float in the river and the cup on the well, which already has one). The bank is only 2.1 deep, so its props sit on the river side (z about 7.5) with box colliders, leaving a 0.8-wide walkway behind them like the one behind Old Scribbit. Interactable pos = at, unless interact gives pos / radius / promptHeight. Nudge a prop if it clips a tree, house or villager.",
         "onSnap": [
           "Flash: a white full-screen div in #ui-root (pointer-events none), opacity 0.9 → 0 over 0.3 s, then removed; w.sfx('pop').",
           "film -= 1. The prop's interactable gets enabled = false, and a paper flag on a pin pops up 0.4 to its right: green #7bcd5d with ✓ if it counts, grey #9a9aa6 with ✗ if not.",
