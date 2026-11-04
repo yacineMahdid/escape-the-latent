@@ -770,7 +770,7 @@ const stripArt = (band) => art(`strip|${band}`, () => {
 });
 const cloudArt = () => art('cloud', () => makeSprite(90, 50, 45, 25, paintCloud));
 const sandArt = (v, hl) => art(`sand|${v}|${hl ? 1 : 0}`, () => { const sp = makeSprite(56, 40, 28, 22, (g) => paintSand(g, v)); return hl ? outlined(sp, 3) : sp; });
-const beadArt = (C, tok, hl, s = 1) => art(`bead|${tok}|${hl ? 1 : 0}|${s}`, () => {
+const beadArt = (C, tok, hl, s = 1) => art(`bead|${C.grains[tok]?.color}|${C.grains[tok]?.cut}|${hl ? 1 : 0}|${s}`, () => {
   const gr = C.grains[tok] || DEF.grains.ruby;
   const sp = makeSprite(48 * s, 50 * s, 24 * s, 24 * s, (g) => paintBead(g, gr.cut, gr.color, s));
   return hl ? outlined(sp, 3) : sp;
@@ -784,7 +784,7 @@ const speckArt = (C, pose) => art(`speck|${C.skin}${C.hair}${C.top}${C.bald ? 'b
 const tumbleArt = (cheer) => art(`tumble|${cheer ? 1 : 0}`, () => makeSprite(46, 70, 23, 44, (g) => paintTumble(g, cheer)));
 const kayveeArt = (pose, step) => art(`kayvee|${pose}|${step}`, () => makeSprite(80, 76, 44, 66, (g) => paintKayvee(g, pose, step)));
 const cartArt = () => art('cart', () => makeSprite(100, 46, 90, 38, paintCart));
-const heapArt = (S, C, n) => art(`heap|${S.roadIndex}|${n}`, () => makeSprite(76, 80, 38, 72, (g) => paintHeap(g, S, C, n, S.fx.items)));
+const heapArt = (S, C, n) => art(`heap|${S.road}|${n}`, () => makeSprite(76, 80, 38, 72, (g) => paintHeap(g, S, C, n, S.fx.items)));
 const snakeIconArt = () => art('snakeIcon', () => makeSprite(40, 32, 18, 16, paintSnakeIcon));
 const mouseIconArt = () => art('mouseIcon', () => makeSprite(32, 30, 12, 16, paintMouseIcon));
 const tinyCartArt = (n) => art(`tinyCart|${Math.min(60, n)}`, () => makeSprite(26, 28, 13, 20, (g) => paintTinyCart(g, n)));

@@ -63,13 +63,15 @@ const SPECIES = {
 const POST_DX = 0.3;                     // a post stands at the right end of its parcel's strip: clear of the stage lantern at x -18
 const POST_H = 0.95;
 const CARD = { r: 0.3, y: 1.22 };        // the round portrait card: radius, centre height
-const PLATE = { w: 0.96, h: 0.25, dy: -0.27 }; // the name plate across the card's lower edge (big enough to read in game)
+const PLATE = { w: 0.84, h: 0.25, dy: -0.27 }; // the name plate across the card's lower edge (big enough to read in game)
 const FLAG = { w: 0.48, h: 0.36, pin: 0.5 };   // big enough to read ✓ / ✕ from the camera
 const BUBBLE_GAP = 0.5;                  // speech bubbles start this far above the card
 const PXU = 220;                         // bubble canvas pixels per world unit
 const STRIP_PAD = 0.36;                  // a strip reaches this far past its first and last slot
 // Noodle's run (spec.noodle.path): glide to the start, slither right, linger, glide home. About 20 s.
-const RUN = { start: [-25.3, 1.45], z: 1.45, speed: 1.6, end: -7.2, toStart: 0.8, linger: 0.6, back: 1.8, stop: 0.9, judge: 0.35, early: 0.12, hop: 0.25 };
+// A slot is handled when he passes its x - early; he stops for a bell at its x - bell (the slot before a bell is
+// always 0.82 earlier, so the order holds), which keeps his glowing belly clear of the owner's card while he shouts.
+const RUN = { start: [-25.3, 1.45], z: 1.45, speed: 1.6, end: -7.2, toStart: 0.8, linger: 0.6, back: 1.8, stop: 0.9, judge: 0.35, early: 0.12, bell: 0.45, hop: 0.25 };
 const FACE = { left: -0.75, right: 0.6, front: 0.3 }; // rotation.y while gliding left, slithering right, shouting
 const STRETCH = 1.2;   // he stretches up to shout: his face then clears the stage lantern in front of Tumble's bell
 const HEAD = { y: 1.98, top: 0.36 }; // the snake villager's head centre and half height (engine/villagers.js)
@@ -192,7 +194,8 @@ function paintPlate(name) {
     g.fillText(name, W / 2, H / 2 + 3);
   };
 }
-// A speech bubble; tail 'left' points down-left (at Noodle), 'down' points at the card below.
+// A speech bubble; tail 'left' / 'right' points down-left / down-right from that end of the bubble,
+// 'down' points straight down from its middle.
 // Returns the canvas and where the tail's tip sits ([0..1] from the left, [0..1] from the bottom).
 function paintBubble(lines, { color = INK, outline = false, tail = 'down', size = 44 } = {}) {
   const c = document.createElement('canvas');
@@ -203,8 +206,9 @@ function paintBubble(lines, { color = INK, outline = false, tail = 'down', size 
   const bw = Math.ceil(tw + 2 * padX), bh = Math.ceil(lines.length * lh + 2 * padY);
   c.width = bw + 2 * m; c.height = bh + tailH + 2 * m;
   g = c.getContext('2d');
-  const bot = m + bh, base = tail === 'left' ? m + Math.min(bw * 0.24, 64) : m + bw / 2, half = size * 0.3;
-  const tipX = tail === 'left' ? base - size * 0.5 : base, tipY = bot + tailH;
+  const end = Math.min(bw * 0.24, 64), half = size * 0.3, bot = m + bh;
+  const base = tail === 'left' ? m + end : tail === 'right' ? m + bw - end : m + bw / 2;
+  const tipX = tail === 'left' ? base - size * 0.5 : tail === 'right' ? base + size * 0.5 : base, tipY = bot + tailH;
   g.lineJoin = 'round'; g.lineCap = 'round';
   rr(g, m, m, bw, bh, Math.min(size * 0.62, bh / 2)); g.fillStyle = '#ffffff'; g.fill(); g.lineWidth = 6; g.strokeStyle = INK; g.stroke();
   g.beginPath(); g.moveTo(base - half, bot - 4); g.lineTo(tipX, tipY); g.lineTo(base + half, bot - 4); g.fillStyle = '#ffffff'; g.fill();
@@ -455,6 +459,8 @@ export default {
       colliders.push(w.addCollider({ type: 'circle', x, z: row.z, r: 0.15 }));
       posts.set(p.owner, { x, g, bell, flag, flagFace, portrait, owner: p.owner, top: CARD.y + CARD.r, bubble: null });
     }
+    // the last post's bubbles open to the left: the camera's right edge is close to it
+    const lastPost = [...posts.values()].reduce((a, b) => (!a || b.x > a.x ? b : a), null);
     game.region(w.regionId).then((r) => {
       if (destroyed) return;
       for (const inh of r?.inhabitants || []) looks[inh.id] = inh;
@@ -667,8 +673,8 @@ export default {
     function shout(post, heard) {
       const b = heard ? BEADS[heard] : null;
       const text = b ? fill(spec.bells?.word || '{WORD}!', { WORD: b.word }) : (spec.bells?.nothing || 'Nothing for you!');
-      const p = noodle.position, top = p.y + (HEAD.y + HEAD.top) * (standIn ? 0.9 : STRETCH) + 0.1;
-      setBubble(post, [text], { color: b ? b.color : GREY, outline: !!b, tail: 'left', size: 54 }, [p.x + 0.16, top, p.z + 0.1]);
+      const p = noodle.position, top = p.y + (HEAD.y + HEAD.top) * (standIn ? 0.9 : STRETCH) + 0.1, flip = post === lastPost;
+      setBubble(post, [text], { color: b ? b.color : GREY, outline: !!b, tail: flip ? 'right' : 'left', size: 54 }, [p.x + (flip ? -0.16 : 0.16), top, p.z + 0.1]);
     }
     let stretchTw = null;
     function stretch(to, dur) { // squash and stretch, keeping his volume
@@ -679,7 +685,7 @@ export default {
     function react(post, r) {
       const lines = reactions[r.owner] || {};
       const text = r.ok ? (lines.right || 'Thanks, Noodle!') : (lines.wrong || reactions.fallbackWrong || "That's not mine!");
-      setBubble(post, wrap2(text), { color: INK, tail: 'down', size: 42 });
+      setBubble(post, wrap2(text), { color: INK, tail: post === lastPost ? 'right' : 'down', size: 42 });
     }
     function popFlag(post, ok) {
       post.flagFace.material.map = flagTex[ok].tex; post.flagFace.material.needsUpdate = true;
@@ -741,7 +747,7 @@ export default {
       take(); setBelly(null, true);
       await glide(RUN.start[0], RUN.start[1], RUN.toStart, FACE.left); if (destroyed) return;
       for (const s of slots) {
-        await slitherTo(s.x - RUN.early); if (destroyed) return;
+        await slitherTo(s.x - (s.tok === 'bell' ? RUN.bell : RUN.early)); if (destroyed) return;
         if (BEADS[s.tok]) {
           const o = slotObj.get(s.i);
           if (o) hop(o.gem, () => { setBelly(s.tok); w.sfx('pop'); }); else setBelly(s.tok);
