@@ -27,7 +27,8 @@ async function playRegion(browser, regionId) {
   const p = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   const errors = [];
   p.on('pageerror', (e) => errors.push(e.message));
-  p.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+  // optional files (an extra content pack, a model not built yet) may 404; that is not an error
+  p.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push(m.text()); });
   if (process.env.DEBUG) console.log('  start', regionId);
   await p.goto(`${BASE}/`);
   await p.evaluate(([id, solved]) => localStorage.setItem('etl-save-v1', JSON.stringify({
@@ -64,7 +65,8 @@ async function playRegion(browser, regionId) {
   }
   // every step is solved now, so the artefact lies in the world: walk over and pick it up
   const aName = region.artefact?.name || 'artefact';
-  const apos = await p.evaluate((lab) => { const it = window.__etl.ws.interactables.find((x) => x.label === lab); if (!it) return null; const q = typeof it.pos === 'function' ? it.pos() : it.pos; return [q.x, q.y ?? 0, q.z]; }, aName);
+  // the artefact's prompt has the ✦ icon (a station may share its name)
+  const apos = await p.evaluate((lab) => { const it = window.__etl.ws.interactables.find((x) => x.label === lab && x.icon === '✦'); if (!it) return null; const q = typeof it.pos === 'function' ? it.pos() : it.pos; return [q.x, q.y ?? 0, q.z]; }, aName);
   if (apos) {
     await p.evaluate(([x, y, z]) => window.__etl.ws.player.place(x + 0.6, y, z + 0.4), apos);
     await p.waitForTimeout(500);
