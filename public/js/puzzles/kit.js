@@ -3,7 +3,7 @@
 //   const board = createBoard(container, spec, api, { theme: 'cork' | 'sea' | 'sand' });
 //   board.body                      your puzzle goes here
 //   board.button(label, fn, opts)   footer button ({ primary, title })
-//   board.fail(key, vars)           wrong attempt: shows spec.feedback[key] ({var} filled in),
+//   board.fail(key | [keys], vars)  wrong attempt: shows spec.feedback[key] ({var} filled in),
 //                                   shakes, and after spec.hintAfterFailures.after fails shows its text
 //   board.note(text)                neutral line in the feedback area
 //   board.solve()                   stamp + spec.successText, then api.onSolved() exactly once
@@ -19,7 +19,9 @@ export function h(tag, attrs = {}, children = []) {
     if (v == null || v === false) continue;
     if (k === 'class') el.className = v;
     else if (k === 'text') el.textContent = v;
-    else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+    else if (k === 'style' && typeof v === 'object') {
+      for (const [sk, sv] of Object.entries(v)) { if (sk.startsWith('--')) el.style.setProperty(sk, sv); else el.style[sk] = sv; }
+    }
     else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2), v);
     else el.setAttribute(k, v === true ? '' : v);
   }
@@ -92,12 +94,13 @@ export function createBoard(container, spec = {}, api = {}, opts = {}) {
       actions.append(b);
       return b;
     },
-    note(text, kind = 'info') { show([h('span', { text })], kind); },
+    note(text, kind = 'info') { show([h('div', { class: 'pz-line' }, [h('span', { text })])], kind); },
     fail(key, vars = {}, fallback = 'Not yet.') {
       if (solved) return;
       fails++;
       sfx('buzz');
-      show(feedbackNodes(key, vars, fallback), 'bad');
+      const keys = Array.isArray(key) ? key : [key];
+      show(keys.map((k) => h('div', { class: 'pz-line' }, feedbackNodes(k, vars, fallback))), 'bad');
       root.classList.remove('pz-shake'); void root.offsetWidth; root.classList.add('pz-shake');
       showHint();
     },
@@ -105,7 +108,7 @@ export function createBoard(container, spec = {}, api = {}, opts = {}) {
       if (solved) return;
       solved = true;
       sfx('win');
-      show([h('span', { text: spec.successText || 'Solved!' })], 'good');
+      show([h('div', { class: 'pz-line' }, [h('span', { text: spec.successText || 'Solved!' })])], 'good');
       root.classList.add('pz-solved');
       root.append(h('div', { class: 'pz-stamp', text: '✓' }));
       solveTimer = setTimeout(() => api.onSolved?.(), opts.solveDelay ?? 1500);
@@ -228,6 +231,12 @@ export function createDnd(root, { onDrop, canDrop = () => true, sfx = gameSfx } 
     unpick() { setPicked(null); },
     destroy() { end(); setPicked(null); root.removeEventListener('click', onRootClick); root.removeEventListener('pointerdown', resetSwallow, true); },
   };
+}
+
+// Puzzle-specific styles live in the puzzle module; inject them once.
+export function injectCss(id, css) {
+  if (document.getElementById(id)) return;
+  document.head.append(h('style', { id, text: css }));
 }
 
 // Small shared bits
