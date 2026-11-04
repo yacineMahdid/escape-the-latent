@@ -385,11 +385,15 @@
               3.4,
               -11.2
             ],
-            "collider": 0.4,
+            "collider": 0.5,
+            "scale": 1.2,
             "look": "A small wooden easel (three brown sticks, 1.3 tall) holding a cream paper sheet (0.9 × 0.7) with a grey pencil banana on it: hatched outline, no colour (canvas texture).",
             "snapper": "a sheet of paper",
             "lens": "a banana",
-            "react": "A DRAWING of a banana? Sneaky. ...It counts."
+            "react": "A DRAWING of a banana? Sneaky. ...It counts.",
+            "interact": {
+              "promptHeight": 2.0
+            }
           },
           {
             "id": "painting",
@@ -401,11 +405,18 @@
               1.7,
               -4.9
             ],
-            "collider": 0.4,
+            "collider": {
+              "w": 1.3,
+              "d": 0.4
+            },
+            "scale": 1.15,
             "look": "A painted board (1.0 × 0.8) in a bright pink frame on a short post: a cartoon banana with a huge smile and stick arms, flat bright colours.",
             "snapper": "a smiley face",
             "lens": "a banana",
-            "react": "It's smiling at me. I don't like it. It counts."
+            "react": "It's smiling at me. I don't like it. It counts.",
+            "interact": {
+              "promptHeight": 2.2
+            }
           },
           {
             "id": "float",
@@ -437,7 +448,7 @@
             "shift": "ImageNet-R (sculpture)",
             "where": "front bank, right of the beach umbrella",
             "at": [
-              -19.5,
+              -20.6,
               -0.95,
               7.5
             ],
@@ -461,6 +472,7 @@
               -0.62
             ],
             "collider": null,
+            "scale": 1.3,
             "interact": {
               "pos": [
                 31.0,
@@ -468,7 +480,7 @@
                 -0.2
               ],
               "radius": 2.0,
-              "promptHeight": 2.0
+              "promptHeight": 2.3
             },
             "look": "A white teacup with a pink rim on the well's rim, a real banana stuck in it upside down like an odd houseplant.",
             "snapper": "a teacup",
@@ -485,7 +497,11 @@
               0,
               -1.6
             ],
-            "collider": 0.5,
+            "collider": {
+              "w": 1.5,
+              "d": 0.7
+            },
+            "scale": 1.25,
             "look": "A clump of five big broad leaves (0.8 tall) with a real yellow banana half hidden among them and a red ladybird (0.12, black spots) sitting on the banana.",
             "snapper": "a ladybird",
             "lens": "a banana",
@@ -503,9 +519,10 @@
               7.5
             ],
             "collider": {
-              "w": 0.86,
-              "d": 0.56
+              "w": 1.0,
+              "d": 0.65
             },
+            "scale": 1.15,
             "look": "A wooden fruit crate (0.8 × 0.5 × 0.5) with a plain bunch of ripe bananas on top and a paper tag 'No. 954'.",
             "snapper": "a banana",
             "snapperRight": true,
@@ -522,7 +539,11 @@
               1.7,
               -4.9
             ],
-            "collider": 0.4,
+            "collider": {
+              "w": 1.2,
+              "d": 0.6
+            },
+            "scale": 1.3,
             "look": "A yellow wooden boomerang (two flat arms at 100°, 0.9 across, brown stripes) leaning on a small rock.",
             "snapper": "a banana",
             "lens": "a boomerang",
@@ -542,7 +563,10 @@
             "look": "A flat yellow crescent-moon cut-out with a sleepy face, 0.9 tall, on a 1.2 stake, a little paper star dangling from its tip.",
             "snapper": "a banana",
             "lens": "a moon",
-            "react": "That's the moon, Speck. Even I know it's no banana."
+            "react": "That's the moon, Speck. Even I know it's no banana.",
+            "interact": {
+              "promptHeight": 2.45
+            }
           },
           {
             "id": "canoe",
@@ -564,7 +588,7 @@
             "react": "A yellow canoe. Not a banana. That's film wasted!"
           }
         ],
-        "propsNote": "Positions are [x, y, z] world units (the Speck is 1.9 tall); y is the floor of that layer (main path 0, terrace 1.7, hilltop 3.4, bank -0.95). Each prop faces the camera (+z), is about 1-1.4 units big and gets a collider: a number is a circle radius, {w, d} a box footprint centred on at (none for the float in the river and the cup on the well, which already has one). The bank is only 2.1 deep, so its props sit on the river side (z about 7.5) with box colliders, leaving a 0.8-wide walkway behind them like the one behind Old Scribbit. Interactable pos = at, unless interact gives pos / radius / promptHeight. Nudge a prop if it clips a tree, house or villager.",
+        "propsNote": "Positions are [x, y, z] world units (the Speck is 1.9 tall); y is the floor of that layer (main path 0, terrace 1.7, hilltop 3.4, bank -0.95). Each prop faces the camera (+z), is about 1-1.4 units big (scale multiplies the look's sizes, so small things still read from the diorama camera) and gets a collider: a number is a circle radius, {w, d} a box footprint centred on at (none for the float in the river and the cup on the well, which already has one). The bank is only 2.1 deep, so its props sit on the river side (z about 7.5) with box colliders, leaving a 0.8-wide walkway behind them like the one behind Old Scribbit, at x spots the foreground leaves do not hide. Interactable pos = at, unless interact gives pos / radius / promptHeight (the prompt floats just above the prop). Nudge a prop if it clips a tree, house or villager.",
         "onSnap": [
           "Flash: a white full-screen div in #ui-root (pointer-events none), opacity 0.9 → 0 over 0.3 s, then removed; w.sfx('pop').",
           "film -= 1. The prop's interactable gets enabled = false, and a paper flag on a pin pops up 0.4 to its right: green #7bcd5d with ✓ if it counts, grey #9a9aa6 with ✗ if not.",

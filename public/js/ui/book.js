@@ -12,8 +12,9 @@
 // localStorage: etl-notes-<arxivId>, etl-book-chat-<regionId|lab>, etl-book-page-<arxivId>,
 //               etl-book-tab, etl-book-ink, etl-book-learned-seen
 // Text rule (docs/ARCHITECTURE.md, "Concise text"): every control and state a first-time player must
-// understand gets a short word or one line (all in SAY below); universal glyphs (✕ close, ➤ send,
-// + − zoom, 🗑 erase, ink dots) stand alone; tooltips only add extras such as key hints.
+// understand gets a short word or one line (all in SAY below); glyphs everyone knows (✕ close, ➤ send,
+// + − zoom, ↗ arXiv, 🗑 erase, ink dots, a note's ✎ mark) stand alone with a tooltip; tooltips only add
+// extras such as key hints.
 // All player / AI text goes in with textContent, never as HTML.
 import { openModal, closeModal, topModal } from './modal.js';
 import { api } from '../api.js';

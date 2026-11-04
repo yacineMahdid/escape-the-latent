@@ -269,10 +269,9 @@ function drawBrine(g, x, y, o) {
   g.restore();
 }
 function drawPomelo(g, mood, amb, alpha) { // her head peeks over the card's left end; she holds it up
-  const x = 196, y = 60 + Math.sin(amb * 2.1) * 1.6 - (mood === 'happy' ? 4 : 0);
+  const x = 196, y = 51 + Math.sin(amb * 2.1) * 1.6 - (mood === 'happy' ? 3 : 0);
   const PINK = '#f7a8b8', DARK = '#e98aa0';
   g.save(); g.globalAlpha *= alpha;
-  draw.paper(g, () => { g.beginPath(); for (let k = 0; k <= 8; k++) { const a = Math.PI * (1 + k / 8); const r = k % 2 ? 26 : 31; g[k ? 'lineTo' : 'moveTo'](x + Math.cos(a) * r * 1.2, y + 26 + Math.sin(a) * r * 0.32); } g.closePath(); }, '#8fcf5a', { lw: 3, shadow: false });
   for (const side of [-1, 1]) draw.paper(g, () => { g.beginPath(); g.moveTo(x + side * 10, y - 19); g.lineTo(x + side * 24, y - 30 + (mood === 'shock' ? -4 : 0)); g.lineTo(x + side * 21, y - 12); g.closePath(); }, DARK, { lw: 2.6, shadow: false });
   draw.paper(g, () => { g.beginPath(); g.ellipse(x, y, 25, 23, 0, 0, 7); }, PINK, { lw: 3, shadow: false });
   draw.paper(g, () => { g.beginPath(); g.ellipse(x + 3, y + 7, 10, 7.5, 0, 0, 7); }, '#ffc6d3', { lw: 2.4, shadow: false });
@@ -285,6 +284,12 @@ function drawPomelo(g, mood, amb, alpha) { // her head peeks over the card's lef
     if (mood === 'worried') { g.beginPath(); g.moveTo(x + ex - 4, y - 12 + (ex < 0 ? 2 : -1)); g.lineTo(x + ex + 4, y - 12 + (ex < 0 ? -1 : 2)); g.stroke(); }
   }
   g.fillStyle = 'rgba(255, 110, 140, .45)'; for (const cx of [-15, 19]) { g.beginPath(); g.ellipse(x + cx, y + 4, 4, 2.6, 0, 0, 7); g.fill(); }
+  // her green collar, a scalloped ruffle under the chin, just above the card's edge
+  draw.paper(g, () => {
+    g.beginPath(); g.moveTo(x - 20, y + 19); g.quadraticCurveTo(x, y + 25, x + 20, y + 19);
+    for (let k = 0; k < 5; k++) { const x1 = x + 20 - k * 8; g.quadraticCurveTo(x1 - 4, y + 33, x1 - 8, y + 26); }
+    g.closePath();
+  }, '#8fcf5a', { lw: 2.6, shadow: false });
   g.restore();
 }
 function drawHooves(g, alpha) {
@@ -507,6 +512,7 @@ function makeGame(ctx) {
     } else S.hold = held ? { dir: held, t: 0, next: T.repeatAfter } : null;
     // click or tap a raft: one long hop straight there
     S.hover = ctx.pointerIn() ? raftAt(S, input.pointer.x, input.pointer.y) : -1;
+    S.hoverShow = ctx.pointerActive();
     if (input.pointer.clicked) { const i = raftAt(S, input.pointer.x, input.pointer.y); if (i >= 0) hopTo(S, i, true); }
     // fuse sparks
     if (Math.random() < Math.min(1, dt * 30)) {
@@ -624,7 +630,7 @@ function makeGame(ctx) {
     const polTop = POL.cy - POL.h / 2 - DECK.y - DECK.h / 2;
     draw.paper(g, () => draw.roundRect(g, -3.5, polTop - 6, 7, -polTop + 2, 3), '#8a5a36', { lw: 2.5, shadow: false });
     if (!r.lifted) {
-      const mark = fuse && i === S.at ? 'sel' : fuse && i === S.hover ? 'hover' : null;
+      const mark = fuse && i === S.at ? 'sel' : fuse && i === S.hover && S.hoverShow ? 'hover' : null;
       drawPolaroid(g, r.photo, 0, POL.cy - DECK.y - DECK.h / 2, 1, r.tilt + Math.sin(S.t * 1.7 + r.phase) * 0.012, { mark, peg: true });
     }
     draw.paper(g, () => draw.roundRect(g, -DECK.w / 2, -DECK.h / 2, DECK.w, DECK.h, 7), '#b8864e', { lw: 3.5, shadow: false });
@@ -893,7 +899,7 @@ function makeGame(ctx) {
 export default {
   mount(container, spec = {}, api = {}) {
     const keys = [];
-    let pointerIn = false;
+    let pointerIn = false, lastPointer = -1e9;
     let canvas = null;
     const b = spec.brine?.bubbles || {};
     const ctx = {
@@ -902,6 +908,8 @@ export default {
       lines: { right: b.right || 'Ha!', splash: b.splash || 'Blast!', none: b.none || 'No sticker for THAT!' },
       sfx: (n) => { try { (api.sfx || gameSfx)(n); } catch { /* sound is optional */ } },
       pointerIn: () => pointerIn,
+      pointerActive: () => pointerIn && performance.now() - lastPointer < 1500, // the mouse is in use
+
       setCursor: (c) => { if (canvas && canvas.style.cursor !== c) canvas.style.cursor = c; },
       lastDraw: 0,
     };
@@ -914,8 +922,8 @@ export default {
     };
     window.addEventListener('keydown', onKey, true);
     if (canvas) {
-      canvas.addEventListener('pointermove', () => { pointerIn = true; });
-      canvas.addEventListener('pointerdown', () => { pointerIn = true; });
+      canvas.addEventListener('pointermove', () => { pointerIn = true; lastPointer = performance.now(); });
+      canvas.addEventListener('pointerdown', () => { pointerIn = true; lastPointer = performance.now(); });
       canvas.addEventListener('pointerleave', () => { pointerIn = false; });
     }
     return {

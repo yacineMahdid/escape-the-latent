@@ -22,74 +22,77 @@ const easeBack = (u) => { const c = 1.9; const v = Math.min(1, Math.max(0, u)) -
 
 // A banana outline in canvas units (y down): the belly is the lower edge, the tips curve up.
 function bananaOutline(cx, cy, len, thick, bend) {
-  const R = len / bend, top = [], bot = [];
-  for (let i = 0; i <= 28; i++) {
-    const u = i / 28, a = -bend / 2 + bend * u;
+  const R = len / bend, top = [], bot = [], mid = [];
+  for (let i = 0; i <= 32; i++) {
+    const u = i / 32, a = -bend / 2 + bend * u;
     const x = cx + R * Math.sin(a), y = cy - R * (1 - Math.cos(a));
     const nx = Math.sin(a), ny = Math.cos(a); // outward (belly) normal
-    const h = thick * (0.14 + 0.86 * Math.pow(Math.sin(Math.PI * u), 0.6));
-    top.push([x - nx * h, y - ny * h]); bot.push([x + nx * h, y + ny * h]);
+    const h = thick * (0.12 + 0.88 * Math.pow(Math.sin(Math.PI * u), 0.7));
+    top.push([x - nx * h, y - ny * h]); bot.push([x + nx * h, y + ny * h]); mid.push([x, y]);
   }
-  const tip0 = [cx + R * Math.sin(-bend / 2), cy - R * (1 - Math.cos(bend / 2))];
-  const tip1 = [cx + R * Math.sin(bend / 2), tip0[1]];
-  return { pts: [...top, ...bot.reverse()], tip0, tip1, stemDir: [-Math.cos(bend / 2), -Math.sin(bend / 2)] };
+  return { pts: [...top, ...[...bot].reverse()], top, bot, mid, tip0: mid[0], tip1: mid[32], stemDir: [-Math.cos(bend / 2), -Math.sin(bend / 2)] };
 }
-function outlinePath(g, pts) { g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); }
+function linePath(g, pts, close = false) { g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); if (close) g.closePath(); }
+const outlinePath = (g, pts) => linePath(g, pts, true);
 
-// A pencil drawing of a banana: grey hatching, a sketchy outline, no colour.
+// A pencil drawing of a banana: grey hatching on its shady belly, a sketchy outline, no colour.
 function drawSketch(g, W, H) {
   g.fillStyle = '#fbf6e6'; g.fillRect(0, 0, W, H);
   g.fillStyle = 'rgba(150,130,100,.10)'; for (let i = 0; i < 260; i++) g.fillRect((i * 97) % W, (i * 61) % H, 2, 2);
-  const B = bananaOutline(W * 0.5, H * 0.66, W * 0.7, H * 0.16, 1.3);
+  const B = bananaOutline(W * 0.5, H * 0.6, W * 0.8, H * 0.12, 1.9);
+  // hatching on the lower (shaded) half only
+  g.save(); outlinePath(g, [...B.mid, ...[...B.bot].reverse()]); g.clip();
+  g.strokeStyle = 'rgba(70,70,80,.55)'; g.lineWidth = 1.5;
+  for (let x = -H; x < W + H; x += 7) { g.beginPath(); g.moveTo(x, H); g.lineTo(x + H, 0); g.stroke(); }
+  g.restore();
   g.save(); outlinePath(g, B.pts); g.clip();
-  g.strokeStyle = 'rgba(70,70,80,.5)'; g.lineWidth = 1.6;
-  for (let x = -H; x < W; x += 8) { g.beginPath(); g.moveTo(x, H); g.lineTo(x + H * 0.75, 0); g.stroke(); }
-  g.strokeStyle = 'rgba(70,70,80,.35)';
-  for (let x = 0; x < W + H; x += 13) { g.beginPath(); g.moveTo(x, H * 0.95); g.lineTo(x - H * 0.6, H * 0.35); g.stroke(); }
+  g.strokeStyle = 'rgba(70,70,80,.3)'; g.lineWidth = 1.2;
+  for (let x = -H; x < W + H; x += 11) { g.beginPath(); g.moveTo(x, H); g.lineTo(x + H * 0.6, 0); g.stroke(); }
   g.restore();
   g.lineCap = 'round'; g.lineJoin = 'round';
-  for (let k = 0; k < 3; k++) { g.save(); g.translate((k - 1) * 1.7, (1 - k) * 1.1); g.strokeStyle = k === 1 ? '#45454e' : 'rgba(70,70,80,.55)'; g.lineWidth = k === 1 ? 3.4 : 1.6; outlinePath(g, B.pts); g.stroke(); g.restore(); }
-  // the ridge along its back, the stem and the dark tip
-  g.strokeStyle = 'rgba(60,60,70,.6)'; g.lineWidth = 1.8;
-  g.beginPath(); const mid = B.pts.slice(4, 25); mid.forEach(([x, y], i) => (i ? g.lineTo(x, y + 10) : g.moveTo(x, y + 10))); g.stroke();
+  // the stem: a stubby stalk with a cut end; the dark blossom tip
   const [sx, sy] = B.tip0, [dx, dy] = B.stemDir;
-  g.lineWidth = 7; g.strokeStyle = '#4a4a54'; g.beginPath(); g.moveTo(sx + 4, sy + 2); g.lineTo(sx + dx * 18, sy + dy * 18); g.stroke();
-  g.fillStyle = '#3a3a44'; g.beginPath(); g.arc(B.tip1[0] - 2, B.tip1[1] + 3, 4.5, 0, 7); g.fill();
+  g.strokeStyle = '#4a4a54'; g.lineWidth = 9; g.lineCap = 'butt'; g.beginPath(); g.moveTo(sx - dx * 3, sy - dy * 3); g.lineTo(sx + dx * 17, sy + dy * 17); g.stroke();
+  g.lineCap = 'round'; g.fillStyle = '#3a3a44'; g.beginPath(); g.arc(B.tip1[0], B.tip1[1], 4.5, 0, 7); g.fill();
+  // sketchy outline: one firm pass, two light ones
+  for (let k = 0; k < 3; k++) { g.save(); g.translate((k - 1) * 1.6, (1 - k) * 1.0); g.strokeStyle = k === 1 ? '#45454e' : 'rgba(70,70,80,.5)'; g.lineWidth = k === 1 ? 3.2 : 1.4; outlinePath(g, B.pts); g.stroke(); g.restore(); }
+  // the ridge along its side
+  g.strokeStyle = 'rgba(60,60,70,.65)'; g.lineWidth = 1.8;
+  linePath(g, B.mid.slice(4, 29).map(([x, y]) => [x, y - 3])); g.stroke();
   // a scribbled shadow and the artist's initial
   g.strokeStyle = 'rgba(70,70,80,.4)'; g.lineWidth = 2;
-  for (let i = 0; i < 7; i++) { const y = H * 0.86 + (i % 2) * 4; g.beginPath(); g.moveTo(W * 0.3 + i * 14, y); g.lineTo(W * 0.3 + i * 14 + 22, y - 2); g.stroke(); }
-  g.fillStyle = 'rgba(60,60,70,.55)'; g.font = 'italic 18px Georgia, serif'; g.fillText('B.', W - 34, H - 14);
+  for (let i = 0; i < 8; i++) { const y = H * 0.9 + (i % 2) * 4; g.beginPath(); g.moveTo(W * 0.24 + i * 18, y); g.lineTo(W * 0.24 + i * 18 + 24, y - 2); g.stroke(); }
+  g.fillStyle = 'rgba(60,60,70,.55)'; g.font = 'italic 18px Georgia, serif'; g.fillText('B.', W - 34, 26);
 }
 
 // A cartoon banana with a huge smile and stick arms, flat bright colours.
 function drawPainting(g, W, H) {
   g.fillStyle = '#8fdcff'; g.fillRect(0, 0, W, H);
-  g.fillStyle = '#7bcd5d'; g.fillRect(0, H * 0.78, W, H);
-  g.fillStyle = '#fff2a0'; g.beginPath(); g.arc(W * 0.87, H * 0.15, 17, 0, 7); g.fill();
+  g.fillStyle = '#7bcd5d'; g.fillRect(0, H * 0.8, W, H);
+  g.fillStyle = '#fff2a0'; g.beginPath(); g.arc(W * 0.88, H * 0.14, 16, 0, 7); g.fill();
+  const B = bananaOutline(W * 0.5, H * 0.63, W * 0.8, H * 0.17, 2.0);
   g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = INK; g.lineWidth = 6;
-  // stick arms (waving) and legs, drawn first so the banana sits on top
-  const limb = (pts) => { g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke(); };
-  limb([[70, 122], [44, 104], [32, 72]]); limb([[188, 120], [214, 98], [222, 64]]);
-  limb([[112, 162], [106, 188]]); limb([[146, 162], [152, 188]]);
-  g.fillStyle = '#ffffff'; for (const [x, y] of [[32, 66], [222, 58]]) { g.beginPath(); g.arc(x, y, 9, 0, 7); g.fill(); g.lineWidth = 4; g.stroke(); }
-  g.fillStyle = '#e8566a'; for (const [x, y] of [[100, 190], [158, 190]]) { g.beginPath(); g.ellipse(x, y, 12, 7, 0, 0, 7); g.fill(); g.lineWidth = 4; g.stroke(); }
-  const B = bananaOutline(W * 0.5, H * 0.66, W * 0.64, H * 0.2, 1.35);
+  // stick arms waving up, stick legs, drawn first so the banana sits on top
+  linePath(g, [[100, 100], [86, 66], [70, 44]]); g.stroke(); linePath(g, [[156, 100], [170, 66], [186, 44]]); g.stroke();
+  linePath(g, [[116, 158], [110, 186]]); g.stroke(); linePath(g, [[140, 158], [146, 186]]); g.stroke();
+  g.fillStyle = '#ffffff'; for (const [x, y] of [[68, 40], [188, 40]]) { g.beginPath(); g.arc(x, y, 9, 0, 7); g.fill(); g.lineWidth = 4; g.stroke(); }
+  g.fillStyle = '#e8566a'; for (const [x, y] of [[104, 188], [152, 188]]) { g.beginPath(); g.ellipse(x, y, 12, 7, 0, 0, 7); g.fill(); g.lineWidth = 4; g.stroke(); }
   g.fillStyle = '#ffe14d'; outlinePath(g, B.pts); g.fill();
-  g.save(); outlinePath(g, B.pts); g.clip(); g.fillStyle = '#fff3a6'; g.beginPath(); g.ellipse(W * 0.5, H * 0.43, 60, 12, 0, 0, 7); g.fill(); g.restore();
-  g.lineWidth = 6; g.strokeStyle = INK; outlinePath(g, B.pts); g.stroke();
+  g.save(); outlinePath(g, B.pts); g.clip(); g.fillStyle = '#ffc93a'; outlinePath(g, [...B.mid.map(([x, y]) => [x, y + 9]), ...[...B.bot].reverse()]); g.fill(); g.restore();
   const [sx, sy] = B.tip0, [dx, dy] = B.stemDir;
-  g.lineWidth = 10; g.strokeStyle = '#7a5a2a'; g.beginPath(); g.moveTo(sx + 5, sy + 3); g.lineTo(sx + dx * 16, sy + dy * 16); g.stroke();
-  g.fillStyle = '#5a3a1a'; g.beginPath(); g.arc(B.tip1[0] - 3, B.tip1[1] + 4, 6, 0, 7); g.fill();
+  g.lineCap = 'butt'; g.lineWidth = 11; g.strokeStyle = '#7a5a2a'; g.beginPath(); g.moveTo(sx - dx * 2, sy - dy * 2); g.lineTo(sx + dx * 15, sy + dy * 15); g.stroke(); g.lineCap = 'round';
+  g.lineWidth = 6; g.strokeStyle = INK; outlinePath(g, B.pts); g.stroke();
+  g.fillStyle = '#5a3a1a'; g.beginPath(); g.arc(B.tip1[0], B.tip1[1], 6, 0, 7); g.fill();
   // face: big eyes and a HUGE smile
-  for (const ex of [108, 150]) {
-    g.fillStyle = '#ffffff'; g.beginPath(); g.ellipse(ex, 112, 11, 13, 0, 0, 7); g.fill(); g.lineWidth = 3; g.stroke();
-    g.fillStyle = INK; g.beginPath(); g.arc(ex + 2, 115, 5.5, 0, 7); g.fill();
-    g.fillStyle = '#ffffff'; g.beginPath(); g.arc(ex + 4, 112, 2, 0, 7); g.fill();
+  for (const ex of [112, 144]) {
+    g.fillStyle = '#ffffff'; g.beginPath(); g.ellipse(ex, 112, 10, 12, 0, 0, 7); g.fill(); g.lineWidth = 3; g.strokeStyle = INK; g.stroke();
+    g.fillStyle = INK; g.beginPath(); g.arc(ex + 2, 115, 5, 0, 7); g.fill();
+    g.fillStyle = '#ffffff'; g.beginPath(); g.arc(ex + 3.5, 112, 1.8, 0, 7); g.fill();
   }
-  g.fillStyle = '#ff9ab8'; for (const cx of [88, 172]) { g.beginPath(); g.ellipse(cx, 128, 9, 5, 0, 0, 7); g.fill(); }
-  g.beginPath(); g.moveTo(98, 128); g.quadraticCurveTo(129, 172, 160, 128); g.closePath();
+  g.fillStyle = '#ff9ab8'; for (const cx of [96, 160]) { g.beginPath(); g.ellipse(cx, 130, 8, 5, 0, 0, 7); g.fill(); }
+  g.beginPath(); g.moveTo(104, 128); g.quadraticCurveTo(128, 166, 152, 128); g.closePath();
   g.fillStyle = '#5a1a2a'; g.fill(); g.lineWidth = 4; g.strokeStyle = INK; g.stroke();
-  g.fillStyle = '#ff6a8a'; g.beginPath(); g.ellipse(129, 145, 13, 6, 0, 0, 7); g.fill();
+  g.fillStyle = '#ff6a8a'; g.beginPath(); g.ellipse(128, 143, 11, 5, 0, 0, 7); g.fill();
 }
 
 function drawTag(g, W, H) {
@@ -166,15 +169,15 @@ export default {
       for (let i = 0; i <= 8; i++) { const a = -bend / 2 + (bend * i) / 8; pts.push(new THREE.Vector3(R * Math.sin(a), thick + R * (1 - Math.cos(a)), 0)); }
       const curve = new THREE.CatmullRomCurve3(pts);
       const radius = (u) => thick * (0.3 + 0.7 * Math.pow(Math.sin(Math.PI * u), 0.55));
-      const skin = M(o.color ?? 0xffd84a, { roughness: o.rough ?? 0.55 });
-      const tipM = M(o.tip ?? 0x4a3420, { roughness: 0.7 });
-      mesh(taperTubeGeo(curve, radius, 32, 10), skin, 0, 0, 0, g);
+      const skin = M(o.color ?? 0xffd84a, { roughness: o.rough ?? 0.55, emissive: o.glow ?? 0x2a2000, flatShading: !!o.flat });
+      const tipM = M(o.tip ?? 0x4a3420, { roughness: 0.7, flatShading: !!o.flat });
+      mesh(taperTubeGeo(curve, radius, o.flat ? 18 : 32, o.flat ? 7 : 10), skin, 0, 0, 0, g);
       const p1 = curve.getPointAt(1);
       mesh(new THREE.SphereGeometry(thick * 0.31, 10, 8), tipM, p1.x, p1.y, p1.z, g);
       const p0 = curve.getPointAt(0), out = curve.getTangentAt(0).negate();
       mesh(new THREE.SphereGeometry(thick * 0.3, 10, 8), skin, p0.x, p0.y, p0.z, g);
-      const sl = thick * 1.3;
-      const st = mesh(new THREE.CylinderGeometry(thick * 0.17, thick * 0.24, sl, 8), M(o.stem ?? 0x8a7a3a), 0, 0, 0, g);
+      const sl = thick * (o.stemLen ?? 1.3);
+      const st = mesh(new THREE.CylinderGeometry(thick * 0.17, thick * 0.24, sl, 8), M(o.stem ?? 0x8a7a3a, { flatShading: !!o.flat }), 0, 0, 0, g);
       st.position.copy(p0).addScaledVector(out, sl / 2); st.quaternion.setFromUnitVectors(UP, out);
       const e = p0.clone().addScaledVector(out, sl);
       mesh(new THREE.SphereGeometry(thick * 0.19, 8, 6), tipM, e.x, e.y, e.z, g);
@@ -246,17 +249,18 @@ export default {
       // ImageNet-R (sculpture): a banana sculpted from sand, a bucket and a spade beside it
       sandcastle(g) {
         const mound = mesh(new THREE.SphereGeometry(1, 24, 10, 0, Math.PI * 2, 0, Math.PI / 2), M(0xe3c27a, { roughness: 1 }), 0, -0.02, 0, g); mound.scale.set(0.74, 0.16, 0.36);
-        const b = banana(g, 1.2, 0.25, { color: 0xe9cf8f, tip: 0xc9a862, stem: 0xd4b670, rough: 1, bend: 1.2 });
-        b.g.position.set(0, 0.05, 0);
-        const lumpM = M(0xe0bf78, { roughness: 1 });
-        for (let i = 0; i < 10; i++) {
-          const u = 0.12 + (0.76 * i) / 9, P = b.curve.getPointAt(u), rr = b.radius(u);
-          const nrm = b.center.clone().sub(P).normalize();
-          const side = i % 2 ? 0.55 : -0.2;
-          mesh(new THREE.SphereGeometry(0.045 + (i % 3) * 0.018, 8, 6), lumpM, P.x + nrm.x * rr * 0.75, P.y + nrm.y * rr * 0.75, rr * side + 0.02, b.g);
+        const b = banana(g, 1.3, 0.19, { color: 0xe9cf8f, tip: 0xc9a862, stem: 0xc9a862, rough: 1, bend: 1.6, stemLen: 0.75, glow: 0x000000, flat: true });
+        b.g.position.set(0, 0.04, 0);
+        const lumpM = M(0xe0bf78, { roughness: 1, flatShading: true });
+        for (let i = 0; i < 7; i++) {
+          const u = 0.18 + (0.64 * i) / 6, P = b.curve.getPointAt(u), rr = b.radius(u);
+          mesh(new THREE.DodecahedronGeometry(0.03 + (i % 3) * 0.008, 0), lumpM, P.x, P.y - rr * 0.35, rr * 0.93, b.g);
         }
-        const groove = []; for (let i = 0; i <= 10; i++) { const u = 0.1 + 0.8 * (i / 10), P = b.curve.getPointAt(u), nrm = b.center.clone().sub(P).normalize(); groove.push(P.clone().addScaledVector(nrm, b.radius(u) * 0.62).add(new THREE.Vector3(0, 0, b.radius(u) * 0.74))); }
-        mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(groove), 20, 0.014, 5), M(0xc9a862, { roughness: 1 }), 0, 0, 0, b.g);
+        // two ridges pressed in along its length, like a real banana's edges
+        for (const [up, fwd] of [[0.55, 0.8], [0.95, 0.25]]) {
+          const pts = []; for (let i = 0; i <= 12; i++) { const u = 0.08 + 0.84 * (i / 12), P = b.curve.getPointAt(u), nrm = b.center.clone().sub(P).normalize(), r = b.radius(u); pts.push(P.clone().addScaledVector(nrm, r * up).add(new THREE.Vector3(0, 0, r * fwd))); }
+          mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, 0.012, 5), M(0xc9a862, { roughness: 1 }), 0, 0, 0, b.g);
+        }
         // a red toy bucket and a blue spade
         const bucket = group(g, 0.82, 0, 0.18);
         const red = M(0xe8566a, { roughness: 0.6, side: THREE.DoubleSide });
@@ -270,7 +274,7 @@ export default {
         mesh(plate(0.17, 0.2, 0.03, 0.06), blue, 0, 0.08, 0, spade);
         mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.36, 6), blue, 0, 0.36, 0, spade);
         mesh(plate(0.13, 0.04, 0.04, 0.015), blue, 0, 0.55, 0, spade);
-        return { flag: [1.16, 0, 0.05] };
+        return { flag: [-1.16, 0, 0.05] };
       },
       // ObjectNet (odd place, odd pose): a banana planted upside down in a teacup on the well's rim
       teacup(g) {
@@ -280,7 +284,7 @@ export default {
         mesh(new THREE.TorusGeometry(0.174, 0.016, 8, 28), M(0xff7ab8, { roughness: 0.4 }), 0, 0.243, 0, g).rotation.x = Math.PI / 2;
         const handle = mesh(new THREE.TorusGeometry(0.06, 0.018, 8, 14, Math.PI * 1.3), china, 0.19, 0.13, 0, g); handle.rotation.z = -Math.PI * 0.65;
         mesh(new THREE.CircleGeometry(0.15, 20), M(0x6a4a2a, { roughness: 1 }), 0, 0.2, 0, g).rotation.x = -Math.PI / 2; // soil
-        const plant = group(g, 0, 0, 0); plant.rotation.z = 0.12;
+        const plant = group(g, 0, 0, 0); plant.rotation.set(0.3, 0, 0.1); // leans out from under the well's roof
         const b = banana(plant, 0.66, 0.085, { bend: 1.0 });
         b.g.rotation.z = -Math.PI / 2; b.g.position.set(-0.11, 0.39, 0);
         return { flag: [0.3, 0, 0], scale: 1.3 };
@@ -335,7 +339,7 @@ export default {
       // look-alike: a yellow boomerang leaning on a little rock
       boomerang(g) {
         const rock = mesh(new THREE.DodecahedronGeometry(0.21, 0), M(0xa7a29a, { flatShading: true }), 0.02, 0.12, -0.2, g); rock.scale.set(1.3, 0.7, 1);
-        const bm = group(g, 0, 0, 0); bm.rotation.x = -0.32;
+        const bm = group(g, 0, 0, 0); bm.rotation.x = -0.24;
         const yel = M(0xf2c84a, { roughness: 0.7 }), band = M(0x8a5a36);
         const L = 0.62, elbow = new THREE.Vector3(0, 0.48, 0);
         for (const s of [-1, 1]) {

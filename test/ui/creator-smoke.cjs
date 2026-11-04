@@ -662,24 +662,25 @@ const liveTracks = (page) => page.evaluate(() => window.__streams.flatMap((s) =>
       const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
       const page = await ctx.newPage();
       const errors = watch(page);
+      // the whole 3D game boots here: generous waits, as a busy machine renders it slowly
       await page.goto(`${BASE}/`);
-      await page.waitForSelector('.title-btns .etl-btn');
+      await page.waitForSelector('.title-btns .etl-btn', { timeout: 90000 });
       // the title screen belongs to core and may be animated: click through the DOM
       await page.$eval('.title-btns .etl-btn', (b) => b.click());
-      await page.waitForSelector('.cr-card:not(.checking)', { timeout: 20000 });
+      await page.waitForSelector('.cr-card:not(.checking)', { timeout: 60000 });
       assert.equal(await page.textContent('.cr-title'), 'Make your Speck', 'the first screen says what it is');
       await page.click('.cr-dice');
       await page.click('.cr-tab[data-tab="hair"]');
       await page.click('.cr-chip[data-field="hairStyle"][data-value="ponytail"]');
       await sleep(1500);
-      await page.screenshot({ path: path.join(OUT, 'creator-in-game.png') });
+      await page.screenshot({ path: path.join(OUT, 'creator-in-game.png'), timeout: 120000 });
       await page.click('.cr-ok');
       await page.waitForFunction(() => !document.querySelector('.cr-overlay'));
       const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('etl-save-v1') || '{}').character);
       assert.equal(saved?.hairStyle, 'ponytail');
-      await page.waitForSelector('.dlg', { timeout: 30000 });
+      await page.waitForSelector('.dlg', { timeout: 60000 });
       await sleep(1500);
-      await page.screenshot({ path: path.join(OUT, 'creator-lab.png') });
+      await page.screenshot({ path: path.join(OUT, 'creator-lab.png'), timeout: 120000 });
       assert.deepEqual(errors, []);
       await ctx.close();
     });

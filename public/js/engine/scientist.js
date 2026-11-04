@@ -12,11 +12,12 @@ import {
   shade, clamp, smooth, finishShadows, PI, TAU, DS, UP,
 } from './toyparts.js';
 
+// (jaw: how far the beard drops open; lift: how far the moustache rises with the upper lip)
 const EXPRESSIONS = {
-  neutral: { browY: 0.0, slant: 0.1, arch: 0.02, browS: 1.0, eyeY: 1.0, eyeX: 1.0, lid: 0.34, crease: 0.25, tilt: 0, startle: 0 },
-  grumpy: { browY: -0.13, slant: 0.42, arch: -0.03, browS: 1.04, eyeY: 0.92, eyeX: 1.0, lid: 0.6, crease: 1, tilt: 0.02, startle: 0 },
-  surprised: { browY: 0.13, slant: -0.15, arch: 0.1, browS: 1.05, eyeY: 1.45, eyeX: 1.18, lid: 0.0, crease: 0, tilt: -0.05, startle: 1 },
-  talking: { browY: -0.06, slant: 0.28, arch: 0.0, browS: 1.0, eyeY: 0.96, eyeX: 1.0, lid: 0.42, crease: 0.6, tilt: 0, startle: 0 },
+  neutral: { browY: 0.0, slant: 0.1, arch: 0.02, browS: 1.0, eyeY: 1.0, eyeX: 1.0, lid: 0.34, crease: 0.25, tilt: 0, startle: 0, jaw: 0, lift: 0 },
+  grumpy: { browY: -0.13, slant: 0.42, arch: -0.03, browS: 1.04, eyeY: 0.92, eyeX: 1.0, lid: 0.6, crease: 1, tilt: 0.02, startle: 0, jaw: 0, lift: 0 },
+  surprised: { browY: 0.13, slant: -0.15, arch: 0.1, browS: 1.05, eyeY: 1.45, eyeX: 1.18, lid: 0.0, crease: 0, tilt: -0.05, startle: 1, jaw: 1, lift: 1 },
+  talking: { browY: -0.06, slant: 0.28, arch: 0.0, browS: 1.0, eyeY: 0.96, eyeX: 1.0, lid: 0.42, crease: 0.6, tilt: 0, startle: 0, jaw: 0.2, lift: 0.3 },
 };
 
 const HIP = 2.7; // the stoop pivots here
@@ -28,6 +29,7 @@ const V0 = 4.82; // the cardigan is buttoned below this height, open in a V abov
 const BROW_X = 0.54, BROW_Y = 0.44;
 const BROW_XO = [-0.32, -0.08, 0.17, 0.4]; // brow control points, offset outward from BROW_X
 const BROW_R = 0.19;
+const BEARD_Y = -1.3, JAW = 0.17; // the beard hangs from here in head coordinates; how far the jaw drops
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const named = (name, o) => { o.name = name; return o; };
@@ -78,15 +80,17 @@ function knitRevolve(pts, { seg = 72, sz = 1, gap = null, ribs = 0, amp = 0, hum
 
 // A flattened lock of hair along a smooth curve: half-width W(u) across, half-thickness H(u) along
 // out(P, u) (the direction it lies against). The end closes in a round cap about as long as the end
-// is wide (capK scales it), so no lock ends in a point. Analytic normals, outward-facing triangles.
-function lockGeo(pts, W, H, out, { segs = 20, radial = 10, capRows = 5, capK = 1, sq = 2 } = {}) {
+// is wide (capK scales it), so no lock ends in a point; capStart closes the start the same way (a lip
+// roll). Analytic normals, outward-facing triangles.
+function lockGeo(pts, W, H, out, { segs = 20, radial = 10, capRows = 5, capK = 1, sq = 2, capStart = false } = {}) {
   const e = 2 / sq; // sq > 2 squares the cross-section off (a flat ribbon of hair rather than a tube)
   const crv = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.5);
   const L = crv.getLength();
   const capLen = Math.min(0.45 * L, Math.max(0.02, W(1) * capK));
-  const uc = 1 - capLen / L;
+  const uc = 1 - capLen / L, us = capStart ? Math.min(0.45 * L, Math.max(0.02, W(0) * capK)) / L : 0;
   const rows = [];
-  for (let i = 0; i < segs; i++) rows.push([(uc * i) / segs, 0]);
+  if (capStart) for (let k = capRows; k > 0; k--) { const a = (k / capRows) * (PI / 2); rows.push([us * (1 - Math.sin(a)), -a]); }
+  for (let i = 0; i < segs; i++) rows.push([us + ((uc - us) * i) / segs, 0]);
   for (let k = 0; k <= capRows; k++) { const a = (k / capRows) * (PI / 2); rows.push([uc + (1 - uc) * Math.sin(a), a]); }
   const pos = [], nor = [], idx = [];
   const P = new THREE.Vector3(), T = new THREE.Vector3(), N = new THREE.Vector3(), B = new THREE.Vector3();
@@ -101,7 +105,7 @@ function lockGeo(pts, W, H, out, { segs = 20, radial = 10, capRows = 5, capK = 1
     N.normalize();
     prev.copy(N);
     B.crossVectors(T, N).normalize();
-    const w0 = Math.max(0.004, W(Math.min(uu, uc))), h0 = Math.max(0.004, H(Math.min(uu, uc)));
+    const w0 = Math.max(0.004, W(clamp(uu, us, uc))), h0 = Math.max(0.004, H(clamp(uu, us, uc)));
     const f = Math.cos(a), w = Math.max(0.002, w0 * f), h = Math.max(0.002, h0 * f);
     const ca = Math.cos(a), sa = Math.sin(a);
     for (let j = 0; j <= radial; j++) {
@@ -129,16 +133,18 @@ function lockGeo(pts, W, H, out, { segs = 20, radial = 10, capRows = 5, capK = 1
 // The beard mass: a surface of revolution of the profile BP (ascending y, closed at both ends), squashed
 // in z by sz, whose front is shaped into broad soft lobes (rounded ridges and rounded valleys). The lobes
 // hang a little lower toward the middle, so the bottom edge is a row of round scallops.
-function beardGeo(BP, { seg = 80, sz = 0.62, lobes = 10, amp = 0.07, drop = 0.2 } = {}) {
+// notch dips the top of the front centre (under the mouth) down and back a little.
+function beardGeo(BP, { seg = 80, sz = 0.62, lobes = 10, amp = 0.07, drop = 0.2, notch = 0, notchW = 0.5 } = {}) {
   const pos = [], idx = [];
   const yb = BP[0].y, yt = BP[BP.length - 1].y;
   for (const p of BP) {
     const low = smooth(yb + 0.7 * (yt - yb), yb, p.y); // 0 in the upper part, 1 at the bottom
+    const high = smooth(yt - 0.45, yt - 0.04, p.y) * smooth(0, 0.35, p.x); // the top surface (not the pole)
     for (let i = 0; i <= seg; i++) {
       const phi = -PI + (TAU * i) / seg, c = Math.cos(phi);
       const front = smooth(-0.1, 0.7, c), w = Math.pow(0.5 + 0.5 * Math.cos(lobes * phi), 1.5);
-      const r = p.x * (1 + amp * front * (w - 0.35));
-      pos.push(r * Math.sin(phi), p.y - drop * front * w * (0.5 + 0.5 * c) * low, r * c * sz);
+      const r = p.x * (1 + amp * front * (w - 0.35)), dip = notch * high * Math.exp(-((phi / notchW) ** 2));
+      pos.push(r * Math.sin(phi), p.y - drop * front * w * (0.5 + 0.5 * c) * low - dip, r * c * sz - 0.4 * dip);
     }
   }
   for (let j = 0; j < BP.length - 1; j++) for (let i = 0; i < seg; i++) {
@@ -217,7 +223,7 @@ export function buildScientist() {
   const J = profile([[1.8, 2.34], [1.76, 2.6], [1.72, 3.1], [1.74, 4.1], [1.72, 5.1], [1.64, 5.9], [1.46, 6.55], [1.14, 7.02], [0.84, 7.26], [0.68, 7.34]], 20);
   const cardGap = (y) => 0.05 + (y > V0 ? Math.pow((y - V0) / (7.34 - V0), 1.15) * 1.3 : 0);
   const hump = (y) => 0.3 * Math.exp(-(((y - 6.15) / 0.8) ** 2));
-  add(up, knitRevolve(J, { seg: 88, sz: SZJ, gap: cardGap, hump }), cardM);
+  add(up, knitRevolve(J, { seg: 76, sz: SZJ, gap: cardGap, hump }), cardM);
   // ribbed hem
   add(up, knitRevolve(profile([[1.74, 2.28], [1.85, 2.33], [1.87, 2.5], [1.85, 2.66], [1.78, 2.71]], 6), { seg: 110, sz: SZJ, gap: () => 0.05, ribs: 55, amp: 0.024, hump }), ribM);
   const onCard = (phi, y, out = 0.02) => { const r = radiusAt(J, y) + out; return V(r * Math.sin(phi), y, r * Math.cos(phi) * SZJ); };
@@ -307,12 +313,15 @@ export function buildScientist() {
   const solids = [];
   for (const a of [right, left]) {
     const s = toUp(a.sh), e = toUp(a.fore), h = toUp(a.hand);
-    solids.push({ a: s, b: s, r: 0.62 }, { a: s, b: e, r: 0.56 }, { a: e, b: h, r: 0.53 }, { a: h, b: h, r: 0.5 });
+    solids.push({ a: s, b: s, r: 0.62, fw: 1 }, { a: s, b: e, r: 0.56, fw: 1 }, { a: e, b: h, r: 0.53 }, { a: h, b: h, r: 0.5 });
   }
   solids.push({ a: toUp(left.hand), b: toUp(finger), r: 0.34 });
   solids.push({ a: mug.position.clone().add(V(0, -0.5, 0)), b: mug.position.clone().add(V(0, 0.6, 0)), r: 0.6 });
-  const tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3();
-  const pushOut = (P, off) => {
+  const tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3(), tmp3 = new THREE.Vector3();
+  // (fwd > 0 leans the way out of a shoulder or upper arm toward the front, so a broad sheet of hair rides
+  // over the arm instead of wrapping round its side; such sheets keep only a small gap to the forearm, hand
+  // and mug, which mostly sit in front of them, so they are not crumpled against the elbow)
+  const pushOut = (P, off, fwd = 0) => {
     for (let it = 0; it < 4; it++) {
       if (P.y > 2.3 && P.y < 7.34) {
         const rj = radiusAt(J, P.y) + off;
@@ -328,8 +337,12 @@ export function buildScientist() {
         const L2 = tmp.lengthSq();
         const t = L2 > 1e-8 ? clamp(tmp2.subVectors(P, s.a).dot(tmp) / L2, 0, 1) : 0;
         const c = tmp2.copy(s.a).addScaledVector(tmp, t);
-        const d = P.distanceTo(c), need = s.r + off;
-        if (d < need) P.sub(c).multiplyScalar(need / Math.max(d, 1e-4)).add(c);
+        const d = P.distanceTo(c), need = s.r + (fwd && !s.fw ? 0.35 * off : off);
+        if (d >= need) continue;
+        if (!fwd || !s.fw) { P.sub(c).multiplyScalar(need / Math.max(d, 1e-4)).add(c); continue; }
+        const r = tmp3.subVectors(P, c).divideScalar(Math.max(d, 1e-4)), rz = r.z;
+        const b = r.set(r.x, r.y, rz + fwd).normalize(), rb = (b.x * (P.x - c.x) + b.y * (P.y - c.y) + b.z * (P.z - c.z));
+        P.addScaledVector(b, -rb + Math.sqrt(Math.max(0, rb * rb - d * d + need * need)));
       }
     }
     return P;
@@ -337,7 +350,7 @@ export function buildScientist() {
 
   // ---- the big head
   const head = grp(up, HEAD.x, HEAD.y, HEAD.z);
-  add(head, new THREE.SphereGeometry(HR, 44, 32), skin).scale.set(...HS);
+  add(head, new THREE.SphereGeometry(HR, 40, 28), skin).scale.set(...HS);
   const F = ellipsoid(HR * HS[0], HR * HS[1], HR * HS[2]);
   const nrmH = (p) => V(p.x / (F.ax * F.ax), p.y / (F.ay * F.ay), p.z / (F.az * F.az)).normalize();
   const onFace = (x, y, out = 0) => { const z = F.z(x, y), p = V(x, y, z); return p.addScaledVector(nrmH(p), out); };
@@ -436,23 +449,73 @@ export function buildScientist() {
     F.put(add(head, new THREE.CircleGeometry(0.17, 18), blushM), sx * 0.86, -0.48, 0.17).scale.set(1.25, 0.85, 1);
   }
 
-  // mouths (one at a time) in the opening between the moustache and the beard: lip-pink rims on a dark
-  // inside so they read on the black beard from across the room
-  const lipM = M.std(C.lip, { r: 0.6 });
-  const inM = M.std(C.mouth, { r: 0.6 });
-  const mouth = grp(head);
-  F.put(mouth, 0, -1.02, 0.1);
+  // ---- the mouth sits on a small skin pad that bulges out of the lower face, in the opening between the
+  // moustache and the beard, so it faces forward instead of down. Every mouth is sunk into the pad: open
+  // mouths are a dark ellipsoid cavity inside a closed ring of lips swept along the pad; closed mouths are a
+  // dark lip line over a pouting lower lip, swept along the pad with round ends (no open torus arcs).
+  // Pink lips on a dark inside read on the black beard from across the room.
+  const PAD = V(0, -1.05, 0.64), FP = ellipsoid(0.43, 0.42, 0.46);
+  named('mouth', add(head, new THREE.SphereGeometry(1, 22, 14), skin, PAD.x, PAD.y, PAD.z)).scale.set(FP.ax, FP.ay, FP.az);
+  const nrmP = (p) => V(p.x / FP.ax ** 2, p.y / FP.ay ** 2, p.z / FP.az ** 2).normalize();
+  const onPad = (x, y) => V(x, y, FP.z(x, y));
+  const lipM = M.std(C.lip, { r: 0.6 }), inM = M.std(C.mouth, { r: 0.7 });
+  const mouth = grp(head, PAD.x, PAD.y, PAD.z); // mouth pieces live in pad coordinates
   const mouths = { frown: grp(mouth), flat: grp(mouth), o: grp(mouth), talk: grp(mouth) };
-  add(mouths.frown, new THREE.TorusGeometry(0.23, 0.085, 10, 24, PI), lipM, 0, -0.1, 0).scale.set(1.1, 0.9, 0.8);
-  add(mouths.frown, new THREE.TorusGeometry(0.2, 0.04, 6, 20, PI), inM, 0, -0.06, 0.045).scale.set(1.1, 0.9, 0.8);
-  add(mouths.flat, new THREE.CapsuleGeometry(0.075, 0.4, 4, 8), lipM, 0, -0.04, 0).rotation.z = PI / 2;
-  add(mouths.flat, new THREE.CapsuleGeometry(0.04, 0.42, 4, 8), inM, 0, 0.03, 0.045).rotation.z = PI / 2;
-  add(mouths.o, new THREE.TorusGeometry(0.165, 0.066, 10, 22), lipM, 0, -0.06, 0).scale.set(1, 1.25, 1);
-  add(mouths.o, new THREE.CircleGeometry(0.175, 22), M.std('#2e0f18'), 0, -0.06, -0.005).scale.set(1, 1.25, 1);
-  add(mouths.talk, new THREE.SphereGeometry(0.24, 16, 12), M.std('#3a1420', { r: 0.6 })).scale.set(1.3, 1, 0.38);
-  add(mouths.talk, new THREE.TorusGeometry(0.245, 0.05, 8, 26), lipM).scale.set(1.3, 1, 1);
-  add(mouths.talk, new THREE.SphereGeometry(0.13, 12, 8), M.std(C.tongue), 0, -0.11, 0.05).scale.set(1.25, 0.6, 0.4);
-  add(mouths.talk, new THREE.CapsuleGeometry(0.045, 0.26, 4, 8), M.std('#fffaf0'), 0, 0.15, 0.04).rotation.z = PI / 2;
+  // a lip roll along [x, y] points on the pad, round at both ends; w across the lip, h out of the pad
+  const lipRoll = (parent, pts, w, h, mat) => add(parent, lockGeo(pts.map(([x, y]) => onPad(x, y)), () => w, () => h, (P) => nrmP(P), { segs: 12, radial: 8, capRows: 3, capStart: true }), mat);
+  const arc = (y0, half, sag, n = 7) => Array.from({ length: n }, (_, i) => { const x = -half + (2 * half * i) / (n - 1); return [x, y0 - sag * (x / half) ** 2]; });
+  // a closed ring of lips round (0, y0) on the pad, and the dark cavity sunk into the pad inside it
+  const RING_N = 36, RING_R = 8;
+  const lipRing = (parent, y0, rx, ry, r) => {
+    const pts = [];
+    for (let i = 0; i < 18; i++) { const a = (i / 18) * TAU; pts.push(onPad(rx * Math.cos(a), y0 + ry * Math.sin(a))); }
+    const crv = new THREE.CatmullRomCurve3(pts, true);
+    const m = add(parent, new THREE.TubeGeometry(crv, RING_N, r, RING_R, true), lipM);
+    m.userData.crv = crv;
+    return m;
+  };
+  const placeHole = (m, y0, rx, ry, d = 0.08) => FP.put(m, 0, y0, -0.55 * d).scale.set(rx, ry, d);
+  const cavity = (parent, y0, rx, ry) => {
+    const m = add(parent, new THREE.SphereGeometry(1, 18, 12), inM);
+    placeHole(m, y0, rx, ry);
+    return m;
+  };
+  // grumpy: a downturned lip line over a pouting lower lip
+  lipRoll(mouths.frown, arc(0.07, 0.25, 0.12), 0.042, 0.03, inM);
+  lipRoll(mouths.frown, arc(-0.02, 0.19, 0.09), 0.066, 0.052, lipM);
+  // neutral: a flat, tight line
+  lipRoll(mouths.flat, arc(0.05, 0.22, 0.015), 0.038, 0.028, inM);
+  lipRoll(mouths.flat, arc(-0.03, 0.16, -0.01), 0.058, 0.048, lipM);
+  // surprised: a big round O, taller than wide (the jaw drops and the moustache lifts to make room)
+  cavity(mouths.o, -0.07, 0.2, 0.25);
+  lipRing(mouths.o, -0.07, 0.22, 0.27, 0.058);
+  // talking: an open mouth with teeth and a tongue; animate() opens and shuts it from the upper lip down,
+  // moving the lower half of the ring along the pad (so the lips never sink into it or float off it)
+  const TALK = { y: -0.02, rx: 0.27, ry: 0.19 };
+  const talkHole = cavity(mouths.talk, TALK.y, 0.25, 0.17);
+  const talkRing = lipRing(mouths.talk, TALK.y, TALK.rx, TALK.ry, 0.05);
+  const tongue = add(mouths.talk, new THREE.SphereGeometry(1, 12, 8), M.std(C.tongue));
+  FP.put(add(mouths.talk, new THREE.CapsuleGeometry(0.038, 0.22, 4, 8), M.std('#fffaf0')), 0, TALK.y + 0.115, 0, PI / 2); // teeth
+  const ringBase = talkRing.geometry.attributes.position.array.slice();
+  const ringC = Array.from({ length: RING_N + 1 }, (_, i) => talkRing.userData.crv.getPointAt(i / RING_N));
+  const topY = TALK.y + TALK.ry;
+  const openMouth = (s) => {
+    // s: 1 wide open .. ~0.25 nearly shut; every point keeps its height below the upper lip times s
+    const pa = talkRing.geometry.attributes.position;
+    for (let i = 0; i <= RING_N; i++) {
+      const c = ringC[i], y = topY + (c.y - topY) * s, dz = FP.z(c.x, y) - FP.z(c.x, c.y);
+      for (let j = 0; j <= RING_R; j++) {
+        const q = 3 * (i * (RING_R + 1) + j);
+        pa.array[q + 1] = ringBase[q + 1] + (y - c.y);
+        pa.array[q + 2] = ringBase[q + 2] + dz;
+      }
+    }
+    pa.needsUpdate = true;
+    const cy = topY - TALK.ry * s;
+    placeHole(talkHole, cy, 0.25, 0.17 * s);
+    FP.put(tongue, 0, cy - 0.08 * s, -0.012).scale.set(0.14, 0.075 * Math.max(0.5, s), 0.05);
+  };
+  openMouth(1);
 
   // ---- the beard: a shell over the jaw and cheeks (open around the mouth), a full bushy mass growing
   // from under the lip down onto the chest in a few broad soft lobes with a rounded end, and a drooping
@@ -462,16 +525,20 @@ export function buildScientist() {
   const jowl = (phi, th) => smooth(0.58 * PI, 0.74 * PI, th) * (1 - 0.6 * smooth(0.9 * PI, PI, th)) * Math.exp(-(((Math.abs(phi) - 0.72) / 0.42) ** 2));
   const beardK = (phi, th) => 1.05 + 0.09 * smooth(0.55 * PI, 0.85 * PI, th) * (0.5 + 0.5 * Math.cos(phi) ** 2) + 0.1 * jowl(phi, th);
   add(head, shellGeo(F, { phi0: -1.8, phi1: 1.8, top: beardTop, bottom: () => 0.97 * PI, k: beardK, segU: 56, segV: 12, rim: 0.95 }), hairM);
-  const beardG = grp(head, 0, -1.3, 0.38);
+  const beardG = grp(head, 0, BEARD_Y, 0.38); // (the jaw: it drops when the mouth opens)
   beardG.rotation.x = -0.1;
   const BP = profile([[0, -1.64], [0.34, -1.61], [0.6, -1.51], [0.83, -1.32], [1.0, -1.04], [1.1, -0.68], [1.1, -0.32], [0.98, -0.06], [0.76, 0.06], [0.44, 0.12], [0, 0.14]], 24);
-  named('beard', add(beardG, beardGeo(BP, { seg: 70, sz: 0.62, lobes: 10, amp: 0.075, drop: 0.24 }), hairM));
+  named('beard', add(beardG, beardGeo(BP, { seg: 70, sz: 0.62, lobes: 10, amp: 0.075, drop: 0.24, notch: 0.1, notchW: 0.42 }), hairM));
+  // a dark mass under the chin, behind the beard's top, so no gap opens onto the collar when the jaw drops
+  add(head, new THREE.SphereGeometry(1, 16, 10), hairDeep, 0, -1.36, 0.16).scale.set(0.98, 0.34, 0.62);
   // the moustache: two bushy lobes from under the nose drooping into the beard, bridged in the middle
+  // (it lifts a little with the upper lip when the mouth opens)
+  const stache = grp(head);
   for (const sx of [-1, 1]) {
     const pts = [[-0.06, -0.59], [0.3, -0.665], [0.55, -0.79], [0.7, -0.98], [0.72, -1.16]].map(([x, y], i) => onFace(sx * x, y, 0.09 - 0.015 * i));
-    add(head, lockGeo(pts, taper(0.245, 0.65), taper(0.14, 0.7), (P) => nrmH(P), { segs: 20, radial: 10 }), hairM);
+    add(stache, lockGeo(pts, taper(0.245, 0.65), taper(0.14, 0.7), (P) => nrmH(P), { segs: 20, radial: 10 }), hairM);
   }
-  F.put(add(head, new THREE.SphereGeometry(0.2, 14, 10), hairM), 0, -0.6, 0.11).scale.set(1.25, 0.95, 0.7);
+  F.put(add(stache, new THREE.SphereGeometry(0.2, 14, 10), hairM), 0, -0.6, 0.11).scale.set(1.25, 0.95, 0.7);
 
   // ---- hair: long, black, a bit unkempt; parted off-centre, broad locks sweeping back over the temples
   // (lower on his right), a mane down the back and locks over the shoulders onto the chest.
@@ -486,7 +553,7 @@ export function buildScientist() {
   // (soft lumps over the crown: a bit unkempt, never spiky)
   const lumps = (phi, th) => 0.022 * Math.sin(3 * phi + 1.1) * Math.sin(4.2 * th + 0.4) * smooth(0.02 * PI, 0.12 * PI, th);
   const capK = (phi, th) => 1.075 + 0.055 * Math.max(0, Math.cos(th)) + 0.07 * smooth(0.35 * PI, 0.65 * PI, th) * smooth(1.2, 2.4, Math.abs(phi)) + lumps(phi, th) - groove(phi, th);
-  add(head, shellGeo(F, { bottom: capLine, k: capK, segU: 96, segV: 16, rim: 0.95 }), hairM);
+  add(head, shellGeo(F, { bottom: capLine, k: capK, segU: 84, segV: 16, rim: 0.95 }), hairM);
   const onCap = (phi, th, extra = 0.02) => F.at(phi, th * PI, capK(phi, th * PI) + extra);
   const sweep = (path, w, h, mat, extra = 0) => named('hair', add(head, lockGeo(path.map(([p, t]) => onCap(p, t, extra)), taper(w, 0.72), taper(h, 0.8), (P) => nrmH(P), { segs: 18, radial: 9 }), mat));
   // his right (the big side of the parting) sweeps lower across the forehead corner, his left stays higher;
@@ -502,7 +569,6 @@ export function buildScientist() {
     const k = smooth(HEAD.y - 0.7, HEAD.y - 1.6, P.y);
     return headOut(P).multiplyScalar(1 - k).add(bodyOut(P).multiplyScalar(k)).normalize();
   };
-  const frontOut = (P) => drapeOut(P).add(V(0, 0, 1.2)).normalize(); // locks beside the face show their width
   const hairLock = (ctrl, W, H, mat, off, out = drapeOut, capK2 = 1, sq = 2.8) => {
     // sample the path, keep every sample clear of the body (push + smooth passes), then sweep the lock
     let pts = new THREE.CatmullRomCurve3(ctrl, false, 'catmullrom', 0.5).getSpacedPoints(16);
@@ -528,16 +594,100 @@ export function buildScientist() {
   });
   hairLock([hAt(PI, 0.4, 0.9), hAt(PI, 0.6, 1.1), bAt(PI, 6.85, 0.16), bAt(PI, 6.0, 0.12), bAt(PI, 5.3, 0.12)], taper(1.25, 0.88), taper(0.1, 0.85), hairDeep, () => 0.16, drapeOut, 0.25);
 
-  // long locks over the shoulders: two side by side beside the face falling onto the chest (turned to
-  // show their width), one over the top of the shoulder and one behind it
-  const sideOut = (P) => drapeOut(P).add(V(0, 0, 0.5)).normalize();
+  // A broad soft sheet of hair between two edge paths (inner edge c = -1, outer edge c = +1, control points
+  // matched one to one). Each column interpolates the edges, is sampled, kept clear of the body (pushOut) and
+  // smoothed along and across, then stops at its own length (cut(c): world units taken off its end), so the
+  // sheet ends in a row of soft rounded lobes. The half-thickness H fades to 0 at the side edges (a flat
+  // superellipse, so they are blunt and rounded, not knife-thin) and over the last capLen of every column,
+  // so the front and back faces close into a rounded rim; grooves [[c, depth, width]] dent the front along
+  // a column, bulge rounds the sheet across its width.
+  const drape = (inner, outer, mat, { nc = 12, nr = 11, capRows = 4, capLen = 0.34, H = 0.075, off = 0.3, cut = () => 0, grooves = [], bulge = 0.04, fwd = 1.5 } = {}) => {
+    const cols = [];
+    for (let j = 0; j <= nc; j++) {
+      // (columns crowd toward the side edges, so the rounded rim is resolved)
+      const c0 = -1 + (2 * j) / nc, c = 0.45 * c0 + 0.55 * Math.sin((c0 * PI) / 2);
+      const crv = new THREE.CatmullRomCurve3(inner.map((p, k) => p.clone().lerp(outer[k], (c + 1) / 2)), false, 'catmullrom', 0.5);
+      const L = crv.getLength(), ue = clamp(1 - cut(c) / L, 0.3, 1), vc = 1 - Math.min(0.3, capLen / (ue * L));
+      const rows = [];
+      for (let i = 0; i < nr; i++) rows.push({ v: (vc * i) / nr, f: 1 });
+      for (let k = 0; k <= capRows; k++) { const a = (k / capRows) * (PI / 2); rows.push({ v: vc + (1 - vc) * Math.sin(a), f: Math.cos(a) }); }
+      for (const r of rows) r.p = crv.getPointAt(r.v * ue);
+      cols.push({ c, rows });
+    }
+    const NR = nr + capRows + 1, at = (j, i) => cols[j].rows[i].p;
+    for (let pass = 0; pass < 3; pass++) {
+      for (const col of cols) for (const r of col.rows) if (r.p.y < HEAD.y - 0.9) pushOut(r.p, off, fwd);
+      if (pass === 2) break;
+      const next = cols.map((col, j) => col.rows.map((r, i) => {
+        if (i === 0 || i === NR - 1) return r.p.clone();
+        const q = r.p.clone().multiplyScalar(2).add(at(j, i - 1)).add(at(j, i + 1));
+        if (j === 0 || j === nc || i > nr * 0.7) return q.multiplyScalar(0.25);
+        return q.add(at(j - 1, i)).add(at(j + 1, i)).multiplyScalar(1 / 6);
+      }));
+      cols.forEach((col, j) => col.rows.forEach((r, i) => r.p.copy(next[j][i])));
+    }
+    // mid-surface normals (facing away from the body), then the front and back faces
+    const A = new THREE.Vector3(), D = new THREE.Vector3();
+    const nrm = cols.map((col, j) => col.rows.map((r, i) => {
+      A.subVectors(at(Math.min(nc, j + 1), i), at(Math.max(0, j - 1), i));
+      D.subVectors(at(j, Math.min(NR - 1, i + 1)), at(j, Math.max(0, i - 1)));
+      const n = new THREE.Vector3().crossVectors(A, D).normalize();
+      return n.dot(drapeOut(r.p)) < 0 ? n.negate() : n;
+    }));
+    const groove = (c) => grooves.reduce((g, [gc, d, w]) => g * (1 - d * Math.exp(-(((c - gc) / w) ** 2))), 1);
+    const RING = 2 * nc, pos = [], idx = [];
+    for (let i = 0; i < NR; i++) for (let k = 0; k < RING; k++) {
+      const front = k <= nc, j = front ? k : RING - k, { c } = cols[j], r = cols[j].rows[i], n = nrm[j][i];
+      const h = H * Math.max(0, 1 - Math.abs(c) ** 3) ** (1 / 3) * r.f * (front ? groove(c) : -1) + bulge * (1 - c * c);
+      pos.push(r.p.x + n.x * h - HEAD.x, r.p.y + n.y * h - HEAD.y, r.p.z + n.z * h - HEAD.z);
+    }
+    // wind the triangles so they face outward (checked on the middle of the front face)
+    const P3 = (q) => V(pos[3 * q], pos[3 * q + 1], pos[3 * q + 2]), mi = Math.floor(nr / 2) * RING + Math.floor(nc / 2);
+    const flip = A.subVectors(P3(mi + 1), P3(mi)).cross(D.subVectors(P3(mi + RING), P3(mi))).dot(nrm[Math.floor(nc / 2)][Math.floor(nr / 2)]) < 0;
+    for (let i = 0; i < NR - 1; i++) for (let k = 0; k < RING; k++) {
+      const a = i * RING + k, b = i * RING + ((k + 1) % RING), c2 = a + RING, d = b + RING;
+      if (flip) idx.push(a, c2, b, b, c2, d); else idx.push(a, b, c2, b, d, c2);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    return named('hair', add(head, g, mat));
+  };
+  // how much a lock's end is cut back across its width: soft round lobes [[c, radius, height]] and rounded corners
+  const lobed = (spec, notch, corner) => (c) => {
+    let keep = 1;
+    for (const [cc, r, a] of spec) { const t2 = ((c - cc) / r) ** 2; if (t2 < 1) keep *= 1 - a * (1 - t2) ** 0.7; }
+    return notch * keep + corner * (1 - Math.sqrt(Math.max(0, 1 - c * c)));
+  };
+
+  // long hair beside the face: one soft mass per side falling over the front of the shoulder onto the chest.
+  // A continuous dark under-layer from the temple down to the chest, then three broad flat locks of different
+  // lengths overlapping on top of it, each ending in two broad soft lobes, the overlaps reading as grooves
   for (const sx of [-1, 1]) {
-    // (his left one ends in a slight outward flick: a bit unkempt)
-    const tip = sx > 0 ? [V(1.21, 5.7, 1.28), V(1.33, 5.44, 1.32)] : [V(-1.18, 5.42, 1.28)];
-    hairLock([hAt(sx * 1.12, 0.42, 0.95), hAt(sx * 1.24, 0.55, 1.15), V(sx * 1.56, 7.35, 0.95), V(sx * 1.42, 6.75, 1.15), V(sx * 1.25, 6.05, 1.25), ...tip],
-      taper(0.42, 0.62), taper(0.12, 0.8), hairM, () => 0.28, frontOut);
-    hairLock([hAt(sx * 1.32, 0.42, 0.95), hAt(sx * 1.42, 0.56, 1.17), V(sx * 1.76, 7.32, 0.66), V(sx * 1.78, 6.7, 0.98), V(sx * 1.66, 6.0, 1.12), V(sx * 1.6, 5.7, 1.16)],
-      taper(0.4, 0.62), taper(0.12, 0.8), hair2, () => 0.32, sideOut);
+    const S = (x, y, z) => V(sx * x, y, z);
+    const onHead = (phi, th, k) => hAt(sx * phi, th, k);
+    // a lock rooted around azimuth phi (±dphi) on the side of the head, falling through body points
+    // [x, y, z, half-width]; its outer edge wraps back a little more than its inner edge
+    const lock = (phi, dphi, pts, mat, opt) => drape(
+      [onHead(phi - dphi, 0.3, 0.96), onHead(phi - dphi * 1.1, 0.47, 1.12), ...pts.map(([x, y, z, w]) => S(x - w, y, z - 0.06 * w))],
+      [onHead(phi + dphi, 0.32, 0.96), onHead(phi + dphi * 1.1, 0.5, 1.14), ...pts.map(([x, y, z, w]) => S(x + w, y, z - 0.3 * w))],
+      mat, opt);
+    // the dark under-layer, temple to chest, from beside the beard round to the top of the shoulder; it ends
+    // in a plain rounded edge a little above the lock tips
+    drape([onHead(0.92, 0.3, 0.96), onHead(0.98, 0.47, 1.1), S(1.3, 7.45, 1.0), S(1.14, 6.8, 1.12), S(1.04, 6.15, 1.16), S(1.0, 5.85, 1.16)],
+      [onHead(1.66, 0.36, 0.96), onHead(1.7, 0.52, 1.15), S(1.92, 7.3, 0.55), S(2.02, 6.7, 0.78), S(1.96, 6.1, 0.92), S(1.92, 5.9, 0.94)],
+      hairDeep, { nc: 8, H: 0.08, off: 0.2, bulge: 0.06, cut: lobed([], 0, 0.3) });
+    // the three locks on top: inner, outer and (longest, lying over both) middle, each with two broad soft
+    // lobes at the end; his two sides differ a little (shorter on the mug side, clear of the forearm)
+    const k = sx > 0 ? 1 : 0;
+    lock(1.04, 0.14, [[1.44, 7.42, 1.0, 0.3], [1.3, 6.8, 1.2, 0.48], [1.22, 6.1, 1.3, 0.58], [1.2, 5.52 - 0.1 * k, 1.34, 0.6]], hairM,
+      { off: 0.3, cut: lobed([[-0.42, 0.75, 0.9], [0.46, 0.7, 0.75]], 0.17, 0.2), grooves: [[0.02, 0.3, 0.2]] });
+    // (on the mug side the outer and middle locks keep to the top of the arm)
+    lock(1.44, 0.15, [[1.8, 7.3, 0.7, 0.28], [1.8 - 0.06 * (1 - k), 6.72, 0.98, 0.44], [1.74 - 0.1 * (1 - k), 6.05, 1.14, 0.52 - 0.08 * (1 - k)], [1.7 - 0.14 * (1 - k), 5.66 + 0.08 * k, 1.18, 0.54 - 0.12 * (1 - k)]], hair2,
+      { off: 0.27, cut: lobed([[-0.38, 0.8, 0.85], [0.52, 0.65, 0.9]], 0.15, 0.22), grooves: [[0.12, 0.3, 0.2]] });
+    lock(1.22, 0.13, [[1.62, 7.38, 0.9, 0.26], [1.52 - 0.04 * (1 - k), 6.76, 1.16, 0.44], [1.44 - 0.1 * (1 - k), 6.0, 1.28, 0.56 - 0.07 * (1 - k)], [1.42 - 0.1 * (1 - k), 5.42 - 0.14 * k, 1.32, 0.58 - 0.07 * (1 - k)]], hairM,
+      { off: 0.36, cut: lobed([[-0.5, 0.7, 0.8 + 0.1 * k], [0.4, 0.75, 0.9 - 0.1 * k]], 0.18, 0.2), grooves: [[-0.08, 0.32, 0.2]] });
     // over the shoulder: on the side of the raised arm it rests on the shoulder top, on the mug side it
     // falls behind the arm (never wrapping around an arm)
     hairLock(sx > 0
@@ -553,12 +703,16 @@ export function buildScientist() {
 
   // ---- expressions + animation
   let expr = 'grumpy';
-  let started = false, t = 0, blink = 2.5;
-  // body language that goes with the face: the head tips back and the lecturing hand flies up when startled
+  let started = false, t = 0, blink = 2.5, mouthOpen = 1;
+  // body language that goes with the face: the head tips back and the lecturing hand flies up when startled;
+  // the jaw (the whole beard) drops and the moustache lifts as the mouth opens
   const pose = (talk) => {
     head.rotation.x = cur.tilt + (talk ? Math.sin(t * 6.1) * 0.025 : 0);
     left.fore.rotation.z = 1.98 + (talk ? Math.sin(t * 9) * 0.22 : Math.sin(t * 1.2) * 0.04) + cur.startle * 0.25;
     left.sh.rotation.z = 0.88 + (talk ? Math.sin(t * 4.5) * 0.05 : 0) + cur.startle * 0.12;
+    const open = mouths.talk.visible ? mouthOpen : 0;
+    beardG.position.y = BEARD_Y - JAW * (cur.jaw + 0.6 * open);
+    stache.position.y = 0.055 * cur.lift + 0.02 * open;
   };
   const apply = (blinking) => {
     brows.forEach(layBrow);
@@ -602,7 +756,8 @@ export function buildScientist() {
     const talk = talking || expr === 'talking';
     if (talk) {
       for (const [key, m] of Object.entries(mouths)) m.visible = key === 'talk';
-      mouths.talk.scale.set(1, 0.3 + 0.7 * Math.abs(Math.sin(t * 11 + Math.sin(t * 3.1) * 2)), 1);
+      mouthOpen = 0.25 + 0.75 * Math.abs(Math.sin(t * 11 + Math.sin(t * 3.1) * 2));
+      openMouth(mouthOpen);
     } else showMouth();
     // breathing, a grumpy little bob while talking, the stoop settling
     const breath = Math.sin(t * 1.5);
