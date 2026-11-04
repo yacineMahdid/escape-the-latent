@@ -199,9 +199,9 @@ export default {
 
     // ---------- camera shots (w.camera; absent on a page without it) ----------
     // cam: the shot this puzzle holds; every to() is paired with a back() (zone exit, board done, finale, destroy)
-    let cam = null, camGen = 0;
-    const shotTo = (name, [pos, look], ms) => { cam = name; camGen += 1; return w.camera ? w.camera.to(pos, look, ms) : Promise.resolve(); };
-    const shotBack = (ms = 800) => { if (cam === null) return; cam = null; camGen += 1; w.camera?.back(ms); };
+    let cam = null;
+    const shotTo = (name, [pos, look], ms) => { cam = name; return w.camera ? w.camera.to(pos, look, ms) : Promise.resolve(); };
+    const shotBack = (ms = 800) => { if (cam === null) return; cam = null; w.camera?.back(ms); };
     // a pose that looks down at `at` (DOWN degrees) from distance d
     const pose = (at, d) => [[at[0], at[1] + d * Math.sin(DOWN), at[2] + d * Math.cos(DOWN)], at];
     const aspect = () => Math.max(0.5, (window.innerWidth || 16) / (window.innerHeight || 9));

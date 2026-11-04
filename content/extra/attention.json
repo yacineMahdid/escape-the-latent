@@ -472,8 +472,8 @@
         "Then tag all four ears on my board. Right here."
       ],
       "locked": [
-        "Quack. The Fair program's printed. All but one bit.",
-        "Bimble's ear and the long one's questions come first. Then see me."
+        "Quack. Post's late again. Every house, in order. By the last, the first note's crumpled.",
+        "My Fair program waits too: Bimble's ear and the long one's questions first. Then me!"
       ],
       "success": [
         "Quack. All four right. The ears picked those jobs all by themselves?",
@@ -483,7 +483,7 @@
   ],
   "book": {
     "guard": [
-      "Do not say which word 'it' means in any of Bimble's practice-ear sentences (e.g. 'the frog ate the pie because it was hungry' means the frog; with 'yummy' it means the pie), and never say where to turn the ear or which flag to ring.",
+      "Do not say which word 'it' means in Bimble's practice-ear sentences or any sentence like them (the frog ate the pie / the duck dropped the note / the mouse fixed the Bell / the bunny threw the pie / the cat read the note, because it was hungry, yummy, torn, sleepy, broken, clever, burnt, grumpy, curious or short), and never say where to turn the ear or which flag to ring.",
       "Do not say which job each coloured ear does on Dabble's FAIR PROGRAM board (pink: one word back; blue: who gave the pie; gold: the full stop; green: little words find their pal), and never confirm or correct a tag.",
       "Do not give the number of identical layers in the encoder or decoder stack (N = 6, Section 3.1), and never pick or confirm an option of Lengthwise's tower question.",
       "Do not state or compute the width of one attention head's slice, d_k = d_v = d_model / h = 64 (Section 3.2.2), for Lengthwise's slice question.",
@@ -505,7 +505,10 @@
           "pie-frog",
           "gossip",
           "query",
-          "which word"
+          "which word",
+          "who is it",
+          "it mean",
+          "it refer"
         ],
         "text": "One ear asks; every word answers. Section 3.2 weighs them. Figure 4 hunts an 'its'."
       },
@@ -528,7 +531,11 @@
           "green ear",
           "interpret",
           "different tasks",
-          "trumpet"
+          "trumpet",
+          "heads learn",
+          "head learn",
+          "heads do",
+          "head do"
         ],
         "text": "Each head learns its own trade. The end of Section 4 says so; Figures 3 to 5 show them at work."
       },
@@ -540,10 +547,7 @@
           "towers",
           "stack",
           "how many layers",
-          "identical layers",
-          "lengthwise",
-          "snake",
-          "long questions"
+          "identical layers"
         ],
         "text": "Count the floors where the towers are built: Section 3.1, and the N beside Figure 1."
       },
@@ -575,6 +579,15 @@
           "how long did"
         ],
         "text": "Even the big one had to learn. The opening lines and Section 5.2 keep its calendar."
+      },
+      {
+        "keywords": [
+          "lengthwise",
+          "snake",
+          "long questions",
+          "long one"
+        ],
+        "text": "The long one measures towers, slices and time. Seek Sections 3.1 and 3.2.2, and the paper's opening lines."
       }
     ]
   }

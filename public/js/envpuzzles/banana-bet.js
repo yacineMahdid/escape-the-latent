@@ -219,7 +219,7 @@ export default {
         sheet.rotation.x = -0.12;
         const pencil = mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.26, 6), M(0x5a5a64), 0.24, 0.6, 0.15, g); pencil.rotation.z = Math.PI / 2;
         mesh(new THREE.ConeGeometry(0.018, 0.05, 6), M(0xe8c89a), 0.395, 0.6, 0.15, g).rotation.z = -Math.PI / 2;
-        return { flag: [0.68, 0, 0.12] };
+        return { flag: [-0.68, 0, 0.12] }; // left: players come up the hill from the right
       },
       // ImageNet-R (cartoon, painting): a smiling cartoon banana in a pink frame
       painting(g) {
@@ -365,7 +365,7 @@ export default {
           for (const f of [0.34, 0.66]) { const st = mesh(new THREE.BoxGeometry(0.04, 0.18, 0.062), band, 0, 0, 0, bm); st.position.copy(elbow).addScaledVector(dir, L * f - 0.06); st.rotation.z = ang; }
         }
         mesh(new THREE.CylinderGeometry(0.085, 0.085, 0.05, 18), yel, 0, 0.48, 0, bm).rotation.x = Math.PI / 2;
-        return { flag: [0.68, 0, 0.1] };
+        return { flag: [-0.68, 0, 0.1] }; // left: the terrace stairs are on its right
       },
       // look-alike: a sleepy crescent-moon cut-out on a stake, a paper star dangling from its tip
       moon(g) {
@@ -408,14 +408,14 @@ export default {
         mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.95, 6), pw, 0, 0, 0, pad).rotation.z = Math.PI / 2;
         mesh(plate(0.3, 0.13, 0.025, 0.06), pw, 0.6, 0, 0, pad).rotation.x = Math.PI / 2;
         mesh(plate(0.1, 0.05, 0.05, 0.02), pw, -0.5, 0, 0, pad);
-        return { flag: [1.14, 0, 0.05] };
+        return { flag: [-1.14, 0, 0.05] }; // left: the bank is reached from the pier, on its right
       },
     };
     const fallback = (g) => { banana(g, 0.7, 0.09); return { flag: [0.6, 0, 0] }; };
 
     // ---------- flags: a pin with a paper pennant, a banana (counts) or a crossed-out film strip (wasted film) ----------
     const F = {
-      stick: new THREE.CylinderGeometry(0.018, 0.018, 1.2, 6), head: new THREE.SphereGeometry(0.05, 10, 8), pen: new THREE.PlaneGeometry(0.44, 0.3),
+      stick: new THREE.CylinderGeometry(0.02, 0.02, 1.3, 6), head: new THREE.SphereGeometry(0.055, 10, 8), pen: new THREE.PlaneGeometry(0.56, 0.38),
       pin: M(0xc9c9d2, { roughness: 0.4, metalness: 0.3 }),
     };
     for (const good of [true, false]) {
@@ -428,10 +428,12 @@ export default {
       const f = new THREE.Group();
       const [fx, fy, fz] = rec.flagAt;
       f.position.set(fx, fy, fz);
-      mesh(F.stick, F.pin, 0, 0.6, 0, f).castShadow = true;
-      mesh(F.head, good ? F.headG : F.headB, 0, 1.22, 0, f).castShadow = true;
-      const pg = group(f, 0, 1.0, 0);
-      mesh(F.pen, good ? F.penG : F.penB, 0.23, 0, 0, pg);
+      mesh(F.stick, F.pin, 0, 0.65, 0, f).castShadow = true;
+      mesh(F.head, good ? F.headG : F.headB, 0, 1.32, 0, f).castShadow = true;
+      const pg = group(f, 0, 1.08, 0);
+      // a flag left of its prop flies to the left (mirrored), so it never hangs over the prop
+      const side = fx < 0 ? -1 : 1;
+      mesh(F.pen, good ? F.penG : F.penB, side * 0.29, 0, 0, pg).scale.x = side;
       const ph = rec.index * 1.3;
       f.userData.wave = (dt, t) => { pg.rotation.y = Math.sin(t * 3 + ph) * 0.2; };
       loops.push(f.userData.wave);
