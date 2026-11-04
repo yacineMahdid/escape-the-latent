@@ -415,7 +415,7 @@ export default {
         mesh(G.stand, paperM, 0, 0.1, 0, g); mesh(G.cup, paperM, 0, 0.215, 0, g);
         const gem = mesh(gemGeo[BEADS[s.tok].cut], gemM[s.tok], 0, 0.36, 0.01, g);
         gem.rotation.x = -0.32;
-        slotObj.set(s.i, { gem, home: gem.position.clone() });
+        slotObj.set(s.i, { gem });
         colliders.push(w.addCollider({ type: 'circle', x: s.x, z: row.z, r: 0.1 }));
       } else if (s.tok === 'um') {
         mesh(G.stick, woodLight, 0, 0.15, 0, g);

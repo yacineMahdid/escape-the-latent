@@ -510,13 +510,13 @@
         "marbles": 2,
         "marblesNote": "Penny's spare clear marbles: glass beads with no colour at all. The stock is 2; a marble taken off a spot goes back to it.",
         "props": {
-          "wrapping": "Each parcel's slots sit on one strip of brown wrapping paper (#c9a26b, 0.04 thick, 0.5 deep, as long as its slots) with a white string along it.",
+          "wrapping": "Each parcel's slots sit on one flat parcel of kraft wrapping paper (top #b8834a with fibres and two fold lines, sides #7e5228; 0.06 thick, 0.5 deep, reaching 0.36 past its first and last slot) with a white string along its back, tied round both ends. (Was #c9a26b, 0.04 thick: it vanished into the desert path.)",
           "sand": "a small heap: cone r 0.17, h 0.13, #d9b87a, a few darker dots",
-          "bead": "a faceted gem (octahedron r 0.15) on a tiny cream paper stand 0.25 tall, in the c1 colours (ruby #e61f33, lapis #2659e6, emerald #1abf59), each with its own cut as in m1",
-          "um": "an upright paper speech bubble (0.36 × 0.26, white, ink outline) on a stick 0.3 tall, 'um' in grey (canvas texture), facing +z",
-          "bell": "a thin wooden post (r 0.04, 0.95 tall, #6a4a2a) with a small black bell; on top a round paper portrait card (0.44 wide, facing +z) of the owner (species and colours from the region's inhabitants) with the name under the face in 16 px ink. Collider circle r 0.15.",
+          "bead": "a faceted gem (octahedron r 0.15) on a tiny cream paper stand 0.25 tall, in the c1 colours (ruby #e61f33, lapis #2659e6, emerald #1abf59), each with its own cut as in m1 Collider circle r 0.1.",
+          "um": "an upright paper speech bubble (0.36 × 0.26, white, ink outline) on a stick 0.3 tall, 'um' in grey (canvas texture), facing +z Collider circle r 0.1.",
+          "bell": "a thin wooden post (r 0.04, 0.95 tall, #6a4a2a) standing 0.3 right of its bell slot, at the right end of the parcel (clear of the stage lantern at x -18, which hid Tumble's card), with a small black bell on its parcel side; on top a round paper portrait card (0.6 wide, facing +z) of the owner (species and colours from the region's inhabitants) with a name plate (0.84 × 0.25, ink on cream) across its lower edge. Collider circle r 0.15. (A 0.44 card with 16 px text was unreadable from the game camera: about 30 px on a 1280 × 720 screen.)",
           "ribbon": "a red ribbon bow (#e8566a) lying in the gap between two strips, and a faint dashed white circle (r 0.3) on the ground: the spot",
-          "marble": "a clear glass sphere on the spot: r 0.16, #e8f6ff, transparent (opacity 0.45), a white glint",
+          "marble": "a clear glass sphere on the spot: r 0.16, #e8f6ff, transparent (opacity 0.5), a white glint, and an ink outline ring (a camera-facing sprite): plain clear glass was invisible on the sandy path",
           "sandPinch": "a sand heap on the spot, like the sand slots but a little wider"
         },
         "menu": {
@@ -554,13 +554,14 @@
           "collider": 0.25,
           "look": "a brass handbell (#e6b84a) hanging from a little wooden post with an arm (1.3 tall) and a red pennant",
           "why": "It stands behind the middle of the row, so the camera (centred on the Speck) sees the whole road during the run.",
-          "onInteract": "Await the whole delivery run, then the result. walkscene keeps the scene busy meanwhile, so the Speck stands and watches and nothing changes mid-run."
+          "onInteract": "Await the whole delivery run, then the result. walkscene keeps the scene busy meanwhile, so the Speck stands and watches and nothing changes mid-run.",
+          "watch": "During a run the Speck steps (0.4 s, round the bell post, not through it) to just behind the dispatch bell, x -16, z -0.12: the follow camera then frames the whole row, and the Speck is out of Noodle's way."
         },
         "noodle": {
           "mesh": "w.villager('noodle'). Remember his position; put him back at his anchor after the run and in destroy(). If null, use a green capsule stand-in.",
           "belly": "Add a small sphere (r 0.17) as a child of Noodle's mesh at local (0, 0.62, 0.62), emissive in the belly's colour, hidden while the belly is empty. Remove it in destroy().",
           "path": "Glide from his anchor (w.anchors['lane-left'] = [-21, 0, 1.4]) to [-25.3, 0, 1.45] (0.8 s, small bob), then slither right along z 1.45 at 1.6 units/s to x -7.2, wait 0.6 s, glide back to the anchor (1.8 s). About 20 s in all.",
-          "process": "When the mesh's x passes a slot's x - 0.12, handle that slot once, in order:",
+          "process": "When the mesh's x passes a slot's x - 0.12, handle that slot once, in order. A bell is handled where he stops for it, at its x - 0.45 (the slot before a bell is always 0.82 earlier, so the order holds): his glowing belly then shows beside the owner's card instead of behind it.",
           "steps": [
             "bead: belly = that bead; the gem hops into his mouth (0.25 s arc, then hides), w.sfx('pop'); the belly sphere takes the bead's colour.",
             "ribbon holding a marble: belly = empty; the marble hops in the same way, w.sfx('pop'); the belly sphere fades out.",
@@ -570,9 +571,9 @@
           "reset": "After the run every hidden gem and marble fades back in where it was (Penny re-packs). The placements stay."
         },
         "bells": {
-          "shout": "A speech-bubble sprite 0.5 above the portrait card: '{WORD}!' in the bead colour (RUBY!, LAPIS!, EMERALD!), or 'Nothing for you!' in grey when the belly is empty.",
+          "shout": "He faces the camera and stretches up (×1.2, squash and stretch: his face then clears the stage lantern in front of Tumble's bell). A speech-bubble sprite just above his head, beside the bell's card: '{WORD}!' in the bead colour (RUBY!, LAPIS!, EMERALD!), or 'Nothing for you!' in grey when the belly is empty. (A bubble 0.5 above the card would cover his stretched face.)",
           "judge": "Right when the shout matches the parcel's own bead (parcels[].own; null = nothing). w.sfx('ding') if right, w.sfx('buzz') if wrong.",
-          "flag": "A paper flag on a pin pops up on the post, green #7bcd5d ✓ or red #e8566a ✕, with the owner's reaction sprite above it. Both stay until the next run starts."
+          "flag": "A paper flag (0.48 × 0.36) on a pin (0.5) pops up at the top right of the card, green #7bcd5d ✓ or red #e8566a ✕; when he leaves the bell his shout gives way to the owner's reaction bubble above the card (two lines when longer than 15 characters). Both stay until the next run starts. The rightmost post's bubbles open to the left so they stay on screen."
         },
         "reactions": {
           "kayvee": {
@@ -603,7 +604,8 @@
             "many": "{n} mix-ups!"
           },
           "detail": "{owner} got {source}'s {bead}.",
-          "detailNote": "One sentence per wrong bell, in road order, joined by a space; source = the owner of the parcel the shouted bead came from. With this road only Tumble and Umberto can be wrong, so the line stays under 90 characters ('Tumble got Kayvee's ruby. Umberto got Doc Marrow's lapis.'). Never say how to fix it."
+          "detailNote": "One sentence per wrong bell, in road order, joined by a space; source = the owner of the parcel the shouted bead came from. With this road only Tumble and Umberto can be wrong, so the line stays under 90 characters ('Tumble got Kayvee's ruby. Umberto got Doc Marrow's lapis.'). Never say how to fix it.",
+          "countNote": "{n} is spelled out: 'Two mix-ups!'"
         },
         "solution": {
           "R1": "marble",
@@ -613,7 +615,7 @@
           "why": "Tumble's and Umberto's parcels hold no bead, so without help Noodle still has the previous parcel's bead (Kayvee's ruby, Doc Marrow's lapis) at their bells. Sand cannot help: Noodle lets sand slide and keeps his belly across any amount of it. A clear marble is gulped like any bead, and a gulp replaces the whole belly, here with nothing. The other ribbons need nothing: the next parcel's own bead replaces the belly anyway. With exactly 2 marbles only R1 + R3 wins (checked over all 81 placements)."
         },
         "destroy": "Remove every mesh, sprite, prop, collider and interactable, and Noodle's belly sphere; put Noodle's mesh back at his anchor (also mid-run); unsubscribe from w.onUpdate; delete window.__etl.parcelDay.",
-        "testHooks": "Set it.id on every interactable ('R1'..'R4', 'dispatch'), so tests can find them in window.__etl.ws.interactables (labels 'Ribbon', 'Dispatch bell'). While mounted, keep window.__etl.parcelDay = { placed: { R1..R4: 'none' | 'sand' | 'marble' }, marbles, running, last: [{ owner, heard, ok }] }.",
+        "testHooks": "Set it.id on every interactable ('R1'..'R4', 'dispatch'), so tests can find them in window.__etl.ws.interactables (labels 'Ribbon', 'Dispatch bell'). While mounted, keep window.__etl.parcelDay = { placed: { R1..R4: 'none' | 'sand' | 'marble' }, marbles, running, last: [{ owner, heard, ok }] }. window.__etl.parcelDay.speed (default 1) is a test-only time scale for the run.",
         "rule": "Section 3.5.2, Boundary Resetting: when independent sequences are stitched together (for example documents packed end to end to use the hardware better), LTI models bleed information from one into the next, while a selective SSM can reset its state at the boundary (Δ_t → ∞, or g_t → 1 in Theorem 1). Penny packs parcels end to end to save trips; an empty parcel shows the bleed (Noodle shouts the previous parcel's bead). The player must find the reset: sand is a grain Noodle ignores with a tiny step, so his belly persists across it (selection remembers what matters across any amount of noise), while a clear marble is taken in with a big gulp that carries nothing and wipes the belly: a boundary token. Umberto's parcel adds Variable Spacing: ums are fillers to let slide, not beads. Playing well = a reset exactly at the boundaries where the old belly would leak into the next parcel."
       },
       "design": "The finale, on the road in front of Noodle. Penny has packed five parcels end to end (Kayvee, Tumble, Doc Marrow, Umberto, Penny): each a strip of wrapping paper with its grains and its owner's bell at the end, with a ribbon between parcels. Ring the dispatch bell and Noodle slithers the whole row, gulping beads and shouting at each bell whatever is in his belly. Tumble's and Umberto's parcels hold no bead, so they hear the previous parcel's bead: mix-ups. At each ribbon the Speck may leave a clear marble (2 in all) or a pinch of sand. Sand changes nothing; a marble is gulped like a bead and leaves his belly empty. With the 2 marbles before the two empty parcels every bell is right. Unlimited runs; the HUD keeps count.",
