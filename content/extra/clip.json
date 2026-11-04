@@ -6,7 +6,7 @@
       "title": "Raft Rush",
       "giver": "pomelo",
       "requires": [
-        "c1"
+        "c2"
       ],
       "minigame": "raft-rush",
       "spec": {
@@ -334,10 +334,9 @@
       },
       "design": "A lagoon race. Mrs. Pomelo holds up a caption card while a fuse burns under it; a row of rafts carries photos on little masts. The Speck hops raft to raft (← → one raft per press, or click a raft to jump straight there). When the fuse runs out, every raft whose photo does not fit the whole caption sinks; the true one glues to the card and pins to the clothesline. Skipper Brine races on the same rafts with his sticker crate: he reads one fixed word per photo, so he picks the plainest match and splashes on detailed captions, and dives in when he has no sticker at all. 8 rounds, 3 → 6 rafts, fuses 5.0 → 3.5 s. Glue 6 to win; 3 splashes and you lose (the kit offers Again?). The rules card shows spec.goal and spec.controls.",
       "paperLink": "§2.3 · §2.1 · Abstract",
-      "worldEffect": "Skipper Brine squelches back to his pier, peeling soggy stickers off his cap.",
       "intro": [
         "The afternoon ferry tipped my post into the lagoon! Photos on rafts, words on my cards.",
-        "Hop on the photo my card describes before the rest sink. Brine's racing you!"
+        "Brine swears his stickers are quicker. Show him, dear!"
       ],
       "success": [
         "Six postcards glued, and dry! Brine's still wringing out his cap."
@@ -352,7 +351,7 @@
       "title": "The Banana Bet",
       "giver": "brine",
       "requires": [
-        "c2",
+        "c3",
         "m1"
       ],
       "environment": "banana-bet",
@@ -373,15 +372,15 @@
           "note": "Same label on every prop: the prompt never says what a thing is, the player has to look."
         },
         "verdict": "Snapper: “{snapper}” {mark} · Lens: “{lens}” ✓",
-        "verdictNote": "mark = ✓ when the prop has snapperRight: true (only the crate), else ✗. The Lens is always right.",
+        "verdictNote": "mark = ✓ when the prop has snapperRight: true (only the crate), else ✗: whether the Snapper named it right. The Lens is always right. The flags use other marks (a banana: counts; a crossed-out film strip: film wasted), so the two never contradict each other.",
         "props": [
           {
             "id": "sketch",
             "counts": true,
             "shift": "ImageNet Sketch",
-            "where": "hilltop, left of the Lens",
+            "where": "hilltop, left of the Lens, in the gap between the first two terrace houses (their roofs hid it and its flag)",
             "at": [
-              -26.4,
+              -28.4,
               3.4,
               -11.2
             ],
@@ -453,31 +452,32 @@
               7.5
             ],
             "collider": {
-              "w": 1.8,
-              "d": 0.7
+              "w": 2.3,
+              "d": 0.8
             },
             "look": "A banana sculpted from sand (a curved, lumpy capsule 1.2 long, #e9cf8f) lying on the beach, a red toy bucket and a blue spade beside it.",
             "snapper": "a sandcastle",
             "lens": "a banana",
-            "react": "Sand isn't fruit! My Snapper agrees. Your Lens doesn't."
+            "react": "Sand isn't fruit! ...Your Lens says banana anyway. It counts.",
+            "scale": 1.3
           },
           {
             "id": "teacup",
             "counts": true,
             "shift": "ObjectNet (odd place, odd pose)",
-            "where": "on the rim of the well",
+            "where": "on the front-right of the well's rim, clear of its roof",
             "at": [
-              31.0,
+              31.4,
               0.82,
-              -0.62
+              -0.72
             ],
             "collider": null,
             "scale": 1.3,
             "interact": {
               "pos": [
-                31.0,
+                31.4,
                 0,
-                -0.2
+                -0.1
               ],
               "radius": 2.0,
               "promptHeight": 2.3
@@ -512,17 +512,17 @@
             "counts": false,
             "tie": true,
             "shift": "none: a plain catalogue banana (ImageNet itself)",
-            "where": "front bank, next to Brine",
+            "where": "front bank, between the pier steps and Brine (the bank's crates hid it on his right)",
             "at": [
-              30.6,
+              25.4,
               -0.95,
               7.5
             ],
             "collider": {
-              "w": 1.0,
-              "d": 0.65
+              "w": 1.1,
+              "d": 0.7
             },
-            "scale": 1.15,
+            "scale": 1.3,
             "look": "A wooden fruit crate (0.8 × 0.5 × 0.5) with a plain bunch of ripe bananas on top and a paper tag 'No. 954'.",
             "snapper": "a banana",
             "snapperRight": true,
@@ -591,7 +591,7 @@
         "propsNote": "Positions are [x, y, z] world units (the Speck is 1.9 tall); y is the floor of that layer (main path 0, terrace 1.7, hilltop 3.4, bank -0.95). Each prop faces the camera (+z), is about 1-1.4 units big (scale multiplies the look's sizes, so small things still read from the diorama camera) and gets a collider: a number is a circle radius, {w, d} a box footprint centred on at (none for the float in the river and the cup on the well, which already has one). The bank is only 2.1 deep, so its props sit on the river side (z about 7.5) with box colliders, leaving a 0.8-wide walkway behind them like the one behind Old Scribbit, at x spots the foreground leaves do not hide. Interactable pos = at, unless interact gives pos / radius / promptHeight (the prompt floats just above the prop). Nudge a prop if it clips a tree, house or villager.",
         "onSnap": [
           "Flash: a white full-screen div in #ui-root (pointer-events none), opacity 0.9 → 0 over 0.3 s, then removed; w.sfx('pop').",
-          "film -= 1. The prop's interactable gets enabled = false, and a paper flag on a pin pops up 0.4 to its right: green #7bcd5d with ✓ if it counts, grey #9a9aa6 with ✗ if not.",
+          "film -= 1. The prop's interactable gets enabled = false, and a paper flag on a pin pops up beside it: green #7bcd5d with a banana if it counts (the HUD's 🍌), grey #9a9aa6 with a crossed-out film strip if not (a wasted shot, the HUD's 🎞️).",
           "counts: n += 1, w.sfx('ding'), w.confetti(30). Otherwise w.sfx('buzz').",
           "w.speak('brine', [verdict, react]) with spec.verdict filled in.",
           "api.onProgress(spec.progress filled in).",
@@ -608,7 +608,6 @@
       },
       "design": "Brine's bet, played on the island itself. Ten props stand around the island (spec.props): six bananas in disguise, one plain catalogue banana and three yellow look-alikes, spread over the hilltop, the terrace, the main path, the river, the bank, the well and the gate. Walk up to one and press E to 📷 Snap it with Brine's Sticker Snapper: a flash, then Brine reads out two verdicts, his Snapper's sticker and the Lens's name. Only a banana the Snapper gets wrong counts. 6 shots of film for 4 bananas: the plain banana (a tie) and the look-alikes (not bananas) waste film. Out of film, Brine gloats and the bet restarts. The HUD shows the goal, then the count and the film left. No prop is labelled.",
       "paperLink": "§3.3 · Fig. 13",
-      "worldEffect": "Brine's Snapper sulks in its crate. Up on the hill, the Lens twinkles.",
       "intro": [
         "Those rafts were rigged. But my Sticker Snapper got 76 of my 100 catalogue photos!",
         "Your Lens? Also 76. A tie! So: snap 4 bananas my Snapper gets wrong.",
@@ -620,6 +619,11 @@
       "success": [
         "Four bananas, four wrong stickers. My Snapper only knows my catalogue.",
         "Your Lens knows a banana in any outfit. Fine. FINE. You win the bet."
+      ],
+      "locked": [
+        "Ahoy! I've a crate of 1000 stickers. One per photo. Job done!",
+        "Unless it's not one of my 1000 things. Then... back in the sea?",
+        "A bet with my Snapper? Once you've raced me on Pomelo's rafts and woken your Lens."
       ]
     },
     {
@@ -628,7 +632,8 @@
       "title": "Scribbit's Three Questions",
       "giver": "scribbit",
       "requires": [
-        "c1"
+        "c4",
+        "e1"
       ],
       "questions": [
         {
@@ -648,7 +653,7 @@
           "paperLink": "§2.2 (WIT: 400 million pairs; 15 million = filtered YFCC100M; 1.28 million = ImageNet's labelled photos)"
         },
         {
-          "question": "One photo a second, nonstop: how long to show it all 32 laps of its training?",
+          "question": "Shown one photo a second, how long would its 32 training laps take?",
           "options": [
             "405 years",
             "40 years",
@@ -668,7 +673,7 @@
           "options": [
             "1 shot",
             "4 shots",
-            "16 shots"
+            "8 shots"
           ],
           "answer": 1,
           "right": [
@@ -677,12 +682,12 @@
           "wrong": [
             "Wrong. Figure 6 drew it. Ribbit."
           ],
-          "paperLink": "§3.1.5 · Fig. 6 (zero-shot CLIP matches 4-shot logistic regression on the same feature space; 16 shots = it nearly matches the best of the other public models; 1 shot = the intuitive guess it beats)"
+          "paperLink": "§3.1.5 · Fig. 6 (zero-shot CLIP matches 4-shot logistic regression on the same feature space; 1 shot = the intuitive guess it beats; 8 shots = no such claim. 16 is left out on purpose: on ImageNet alone zero-shot CLIP matches a 16-shot probe on its own features, and it nearly matches the best 16-shot probe on other models' features, so 16 would also be defensible)"
         }
       ],
       "paperLink": "§2.2 · §6 · §3.1.5 · Fig. 6",
       "intro": [
-        "Ribbit. So your Lens learns from postcards now? Pah. Let's see what you know.",
+        "Ribbit. Brine lost his bet, I hear. Before I post a thing to your giant...",
         "Three questions. All right in one go, or come back later."
       ],
       "wrong": [
@@ -693,7 +698,127 @@
       ],
       "retry": [
         "Read the Cursed Book, then come back. I'll be here. Writing. Slowly."
+      ],
+      "locked": [
+        "Ribbit. Still writing captions by hand. Word. By. Word.",
+        "Brine's itching to bet against your Lens. Win, then come back for my questions."
       ]
     }
-  ]
+  ],
+  "book": {
+    "guard": [
+      "Do not give, hint at or confirm the answers to Old Scribbit's three questions: CLIP learned from 400 million (image, text) pairs (Section 2.2's new dataset; not ImageNet's 1.28 million photos or the 15 million of filtered YFCC100M); shown one per second, the 12.8 billion images it saw over 32 training epochs would take 405 years (Section 6); zero-shot CLIP matches a 4-shot linear classifier trained on its own features (Section 3.1.5, Figure 6). Do not work out that sum, do not quote these numbers, and never say which option of his questions is right.",
+      "Do not say which props of Brine's Banana Bet fool his Sticker Snapper (an ImageNet model) and count, or which waste film: never confirm that a particular prop (the easel sketch, the smiling painting, the pool float, the sand banana, the teacup banana, the banana under a ladybird, the bananas in his crate, the boomerang, the moon cut-out, the canoe) counts, ties or is no banana, and do not map Figure 13's datasets onto the island's props. Pointing to Section 3.3 and Figure 13 is allowed.",
+      "Never say which photo or raft fits one of Mrs. Pomelo's Raft Rush captions: the player reads the whole caption and picks."
+    ],
+    "offlineHints": [
+      {
+        "keywords": [
+          "dataset",
+          "400",
+          "million",
+          "webimagetext",
+          "learn from",
+          "learned from",
+          "learnt from",
+          "trained on",
+          "train on",
+          "training data",
+          "internet",
+          "scraped",
+          "pair",
+          "pairs"
+        ],
+        "text": "Its lessons were gathered from the internet. Section 2.2 counts the pairs."
+      },
+      {
+        "keywords": [
+          "405",
+          "years",
+          "per second",
+          "a second",
+          "one second",
+          "how long",
+          "nonstop",
+          "12.8",
+          "billion",
+          "epoch",
+          "epochs",
+          "training laps"
+        ],
+        "text": "One photo a second, for how long? Section 6 confesses the sum."
+      },
+      {
+        "keywords": [
+          "shot",
+          "shots",
+          "few-shot",
+          "few shot",
+          "one-shot",
+          "4-shot",
+          "16-shot",
+          "examples per class",
+          "linear probe",
+          "logistic",
+          "labelled example",
+          "labeled example"
+        ],
+        "text": "Words against a few labelled photos each. Figure 6 draws that race."
+      },
+      {
+        "keywords": [
+          "raft",
+          "rafts",
+          "raft rush",
+          "hop on",
+          "hopping",
+          "lagoon",
+          "sink",
+          "splash",
+          "pomelo",
+          "caption card"
+        ],
+        "text": "One sticker word is not a caption. Read every word; Section 2.1 says why."
+      },
+      {
+        "keywords": [
+          "banana",
+          "bananas",
+          "snapper",
+          "sticker",
+          "stickers",
+          "brine",
+          "fool",
+          "film",
+          "snap",
+          "crate",
+          "count",
+          "disguise",
+          "sketch",
+          "drawing",
+          "painting",
+          "cartoon",
+          "toy",
+          "float",
+          "sculpt",
+          "sand banana",
+          "teacup",
+          "ladybird",
+          "boomerang",
+          "moon",
+          "canoe",
+          "robust",
+          "robustness",
+          "distribution",
+          "shift",
+          "imagenet",
+          "objectnet",
+          "rendition",
+          "catalogue",
+          "catalog"
+        ],
+        "text": "Bananas in disguise. Section 3.3 tests who still knows them; Figure 13 lines them up."
+      }
+    ]
+  }
 }

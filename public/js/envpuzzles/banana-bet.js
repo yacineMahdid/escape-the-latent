@@ -2,7 +2,8 @@
 // Skipper Brine's Sticker Snapper is an ImageNet model: 1000 fixed stickers learned from his catalogue.
 // Ten unlabelled props stand around the island, every one with the same '📷 Snap' prompt, so the
 // player has to look: six bananas in disguise, one plain catalogue banana and three yellow look-alikes.
-// Snap one: a camera flash, a ✓ / ✗ paper flag pops up beside it, then Brine reads out both verdicts
+// Snap one: a camera flash, a paper flag pops up beside it (a banana: it counts; a crossed-out strip of
+// film: a wasted shot), then Brine reads out both verdicts
 // (his Snapper's sticker, your Lens's name) with a silly reaction. Only a banana the Snapper gets
 // wrong counts: 4 of them with 6 shots of film. Out of film, Brine gloats and the bet restarts.
 // The paper (§3.3, Fig. 13, whose example class is the banana): an ImageNet ResNet-101 and zero-shot
@@ -102,16 +103,33 @@ function drawTag(g, W, H) {
   g.font = 'bold 26px "Trebuchet MS", Verdana, sans-serif'; g.textBaseline = 'middle'; g.fillText('No. 954', 28, H / 2 + 1);
 }
 
+// The flag's marks are the HUD's own: a banana (it counts, 🍌) or a crossed-out strip of film (a wasted shot, 🎞️).
+// Not ✓ / ✗: Brine's verdict line uses those for "named it right", and the plain crate banana is named right
+// by both yet wastes film.
 function drawFlag(good) {
   return (g, W, H) => {
     g.clearRect(0, 0, W, H);
     g.beginPath(); g.moveTo(6, 6); g.lineTo(W - 6, 6); g.lineTo(W - 32, H / 2); g.lineTo(W - 6, H - 6); g.lineTo(6, H - 6); g.closePath();
     g.fillStyle = good ? '#7bcd5d' : '#9a9aa6'; g.fill();
     g.lineWidth = 6; g.lineJoin = 'round'; g.strokeStyle = INK; g.stroke();
-    g.lineCap = 'round';
-    const mark = () => { g.beginPath(); if (good) { g.moveTo(34, 58); g.lineTo(54, 78); g.lineTo(92, 30); } else { g.moveTo(40, 32); g.lineTo(84, 78); g.moveTo(84, 32); g.lineTo(40, 78); } };
-    mark(); g.strokeStyle = INK; g.lineWidth = 22; g.stroke();
-    mark(); g.strokeStyle = '#ffffff'; g.lineWidth = 12; g.stroke();
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    if (good) {
+      const B = bananaOutline(64, 64, 86, 16, 1.7);
+      g.fillStyle = '#ffe14d'; outlinePath(g, B.pts); g.fill();
+      g.save(); outlinePath(g, B.pts); g.clip(); g.fillStyle = '#ffc93a'; outlinePath(g, [...B.mid.map(([x, y]) => [x, y + 5]), ...[...B.bot].reverse()]); g.fill(); g.restore();
+      const [sx, sy] = B.tip0, [dx, dy] = B.stemDir;
+      g.lineCap = 'butt'; g.lineWidth = 9; g.strokeStyle = '#7a5a2a'; g.beginPath(); g.moveTo(sx - dx * 2, sy - dy * 2); g.lineTo(sx + dx * 12, sy + dy * 12); g.stroke();
+      g.lineCap = 'round'; g.lineWidth = 5; g.strokeStyle = INK; outlinePath(g, B.pts); g.stroke();
+      g.fillStyle = '#5a3a1a'; g.beginPath(); g.arc(B.tip1[0], B.tip1[1], 4.5, 0, 7); g.fill();
+    } else {
+      const x0 = 24, x1 = 104, y0 = 32, y1 = 78;
+      g.fillStyle = '#3a3440'; g.fillRect(x0, y0, x1 - x0, y1 - y0); g.lineWidth = 4; g.strokeStyle = INK; g.strokeRect(x0, y0, x1 - x0, y1 - y0);
+      g.fillStyle = '#fffdf6'; for (let x = x0 + 5; x < x1 - 6; x += 13) { g.fillRect(x, y0 + 4, 7, 6); g.fillRect(x, y1 - 10, 7, 6); }
+      g.fillStyle = '#b9c8dc'; g.fillRect(x0 + 7, y0 + 14, 30, 18); g.fillRect(x0 + 43, y0 + 14, 30, 18);
+      const slash = () => { g.beginPath(); g.moveTo(x0 - 4, y1 + 8); g.lineTo(x1 + 4, y0 - 8); };
+      slash(); g.lineWidth = 17; g.strokeStyle = INK; g.stroke();
+      slash(); g.lineWidth = 10; g.strokeStyle = '#e8343a'; g.stroke();
+    }
   };
 }
 
@@ -284,7 +302,8 @@ export default {
         const plant = group(g, 0, 0, 0); plant.rotation.set(0.3, 0, 0.1); // leans out from under the well's roof
         const b = banana(plant, 0.66, 0.085, { bend: 1.0 });
         b.g.rotation.z = -Math.PI / 2; b.g.position.set(-0.11, 0.39, 0);
-        return { flag: [0.3, 0, 0], scale: 1.3, unshaded: [b.g] }; // the well's roof would turn it olive
+        // its flag stands on the ground in front of the well: on the rim it would poke into the well's roof
+        return { flag: [0.35, -0.63, 0.55], scale: 1.3, unshaded: [b.g] }; // the well's roof would turn it olive
       },
       // ImageNet-A (a real banana photo that trips the Snapper): a banana half hidden in leaves, a ladybird on it
       ladybird(g) {
@@ -394,7 +413,7 @@ export default {
     };
     const fallback = (g) => { banana(g, 0.7, 0.09); return { flag: [0.6, 0, 0] }; };
 
-    // ---------- flags: a pin with a paper pennant, ✓ (counts) or ✗ (wasted film) ----------
+    // ---------- flags: a pin with a paper pennant, a banana (counts) or a crossed-out film strip (wasted film) ----------
     const F = {
       stick: new THREE.CylinderGeometry(0.018, 0.018, 1.2, 6), head: new THREE.SphereGeometry(0.05, 10, 8), pen: new THREE.PlaneGeometry(0.44, 0.3),
       pin: M(0xc9c9d2, { roughness: 0.4, metalness: 0.3 }),
