@@ -73,7 +73,11 @@ export async function createRegionScene(ctx, regionId) {
   // (dev: localStorage 'etl-extra-draft' = '1' loads content/extra-draft/ instead, for unfinished packs)
   let draft = false; try { draft = localStorage.getItem('etl-extra-draft') === '1'; } catch { /* storage blocked */ }
   const extra = await fetch(`/content/${draft ? 'extra-draft' : 'extra'}/${regionId}.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
-  if (extra) for (const key of ['challenges', 'inhabitants', 'stations']) if (Array.isArray(extra[key])) region[key] = [...(region[key] || []), ...extra[key]];
+  if (extra) for (const key of ['challenges', 'inhabitants', 'stations']) {
+    if (!Array.isArray(extra[key])) continue;
+    const add = key === 'challenges' ? extra[key].map((c) => ({ ...c, fromPack: true })) : extra[key];
+    region[key] = [...(region[key] || []), ...add];
+  }
   const save = getSave();
   const world = buildDiorama(region.region.biome, { seed: hashSeed(regionId) });
   const player = await createPlayer(save.character);
@@ -417,7 +421,8 @@ export async function createRegionScene(ctx, regionId) {
   const stageGroup = new THREE.Group(); ws.scene.add(stageGroup);
   let stagesShown = 0;
   function applyStages(animate = false) {
-    const n = challenges.filter(isSolved).length;
+    // decorations follow the base chain (c1 then c2 narrate them), not challenges from the extra pack
+    const n = challenges.filter((c) => !c.fromPack && isSolved(c)).length;
     for (let i = stagesShown; i < n; i++) {
       if (i === 0) addBunting();
       else if (i === 1) addLanterns();
