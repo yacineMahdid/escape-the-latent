@@ -591,8 +591,8 @@ export default {
       const look = [cx, cam.lookY, row.z + cam.lookDz];
       return { pos: [cx, look[1] + d * Math.sin(a), look[2] + d * Math.cos(a)], look };
     }
-    let shot = 0; // which shot holds the camera (0: none); a newer shot or back() takes over
-    function shotTo(ms = cam.fly) { const s = roadShot(); shot++; w.camera?.to?.(s.pos, s.look, ms); return shot; }
+    let shot = 0, shots = 0; // which shot holds the camera (0: none); a newer shot or back() takes over
+    function shotTo(ms = cam.fly) { const s = roadShot(); shot = ++shots; w.camera?.to?.(s.pos, s.look, ms); return shot; }
     function shotBack(id, ms = cam.back) { if (!shot || (id && id !== shot)) return; shot = 0; w.camera?.back?.(ms); }
 
     // the row pops up when the puzzle starts, left to right; from afar, the camera goes to look
@@ -766,8 +766,18 @@ export default {
       });
     }
 
+    // ---------- hurrying a run: a fresh press of Space / E / Enter (or the mouse button) during it, held ----------
+    let waiters = [];
+    const letGo = () => { hurry = false; const r = waiters; waiters = []; for (const f of r) { pending.delete(f); f(); } };
+    const released = () => (hurry ? new Promise((resolve) => { waiters.push(resolve); pending.add(resolve); }) : Promise.resolve());
+    const onKeyDown = (e) => { if (running && !e.repeat && HURRY_KEYS.has(e.code)) hurry = true; };
+    const onKeyUp = (e) => { if (HURRY_KEYS.has(e.code)) letGo(); };
+    const onPointerDown = (e) => { if (running && e.button === 0 && !e.target?.closest?.('button, .dlg')) hurry = true; };
+    const listen = [['keydown', onKeyDown], ['keyup', onKeyUp], ['pointerdown', onPointerDown], ['pointerup', letGo], ['pointercancel', letGo], ['blur', letGo]];
+    for (const [ev, fn] of listen) window.addEventListener(ev, fn, true);
+
     // ---------- the delivery run ----------
-    function speckTo(x, z, dur) { // step out of Noodle's way to where the camera sees the row
+    function stepTo(x, z, dur) { // step out of Noodle's way, behind the dispatch bell
       const p = w.player.pos, x0 = p.x, z0 = p.z, y = p.y;
       if (Math.hypot(x - x0, z - z0) < 0.05) return Promise.resolve();
       const side = Math.abs(x0 - at[0]) < 0.6 && z0 > at[2] ? (x0 >= at[0] ? 1 : -1) * 0.75 : 0; // round the bell post, not through it
@@ -801,14 +811,25 @@ export default {
         : fill('{owner} got nothing.', { owner: nameOf(r.owner) }))).join(' ');
       return [count, detail];
     }
+    // the row packs itself away, right to left (the finale, before the region removes the puzzle)
+    function packUp(dur = 0.45) {
+      clearMarks();
+      [...root.children].sort((a, b) => b.position.x - a.position.x).forEach((o, k) => {
+        const s0 = o.scale.clone();
+        tween(dur, (u) => { const e = Math.max(0.001, 1 - easeOut(u)); o.scale.set(s0.x * e, s0.y * e, s0.z * e); }, 0.008 * k);
+      });
+    }
     async function deliver() {
       if (running || solved || destroyed) return;
-      running = true;
+      running = true; hurry = false;
+      base = runs ? REPLAY : 1; // the first run at speed 1, every later one faster
+      if (runs === 1) w.toast(runCfg.hurryHint || 'Hold Space to hurry Noodle', 3200);
       const plan = deliveries(spec, placed); // what each bell will hear; the run below shows exactly this
       const verdicts = new Map(plan.map((r) => [r.owner, r]));
       clearMarks();
       swing(hand, 0.7, 1.3); w.sfx('ding');
-      await speckTo(WATCH.x, WATCH.z, 0.4); if (destroyed) return;
+      const myShot = shotTo(); // the whole road, Penny's post included
+      await stepTo(WATCH.x, WATCH.z, 0.4); if (destroyed) return;
       take(); setBelly(null, true);
       await glide(RUN.start[0], RUN.start[1], RUN.toStart, FACE.left); if (destroyed) return;
       for (const s of slots) {
@@ -829,8 +850,7 @@ export default {
       await glide(home.x, home.z, RUN.back, FACE.left); if (destroyed) return;
       face = homeRy; await wait(0.3); if (destroyed) return; // turn back to the camera
       release(); setBelly(null, true);
-      repack();
-      last = plan; lastOk = plan.filter((r) => r.ok).length;
+      last = plan; lastOk = plan.filter((r) => r.ok).length; runs++;
       running = false;
       api.onProgress?.(progress());
       if (plan.length && lastOk === plan.length) {
@@ -838,11 +858,17 @@ export default {
         for (const p of posts.values()) swing(p.bell, 0.6, 1.2); // five bells ring at once
         swing(hand, 0.7, 1.3);
         w.sfx('win');
-        await wait(1.0); if (destroyed) return;
-        api.onSolved();
+        await wait(1.6); if (destroyed) return;
+        packUp();
+        await wait(0.6); if (destroyed) return;
+        await released(); if (destroyed) return; // a held key would skip Penny's lines
+        api.onSolved(); // the region removes the puzzle (the camera comes back) and Penny speaks
         return;
       }
+      repack();
+      await released(); if (destroyed) return; // a held key would skip Penny's lines
       await w.speak(giver, verdict(plan));
+      if (!destroyed) shotBack(myShot);
     }
 
     // text drawn before the Fredoka web font arrives is drawn again once it is there
@@ -857,6 +883,8 @@ export default {
         if (destroyed) return;
         destroyed = true;
         unsub?.();
+        for (const [ev, fn] of listen) window.removeEventListener(ev, fn, true);
+        shotBack(0, 700); // hand the camera back to the follow camera
         tweens.clear(); loops.clear(); mover = null;
         for (const resolve of pending) resolve(); // a run cut short must not hold the scene busy
         pending.clear();

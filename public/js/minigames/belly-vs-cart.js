@@ -239,7 +239,7 @@ function shade(hex, k) { // k > 0 toward white, k < 0 toward black
   const [r, g, b] = rgbOf(hex), t = k > 0 ? 255 : 0, a = Math.min(1, Math.abs(k));
   return `rgb(${Math.round(r + (t - r) * a)},${Math.round(g + (t - g) * a)},${Math.round(b + (t - b) * a)})`;
 }
-function speckColors() {
+function riderColors() {
   let c = null;
   try { c = getSave()?.character; } catch { /* no save */ }
   c = c && typeof c === 'object' ? c : {};
@@ -456,7 +456,7 @@ function paintHead(g, mood) {
     if (mood === 'shout') { g.beginPath(); g.moveTo(ex - 7, ey - 13); g.quadraticCurveTo(ex, ey - 17, ex + 8, ey - 13); g.lineWidth = 2.6; g.strokeStyle = INK; g.stroke(); }
   }
 }
-function paintSpeck(g, C, pose) { // the tiny paper human, feet at (0, 0), ~40 tall, facing right
+function paintRider(g, C, pose) { // the tiny paper human, feet at (0, 0), ~40 tall, facing right
   g.fillStyle = INK;
   for (const sx of [-4, 4]) { g.beginPath(); g.ellipse(sx + 1, -1.6, 3.6, 2.3, 0, 0, TAU); g.fill(); }
   for (const sx of [-5.2, 1.2]) draw.paper(g, () => rr(g, sx, -9, 4, 8, 2), '#3a3a5a', { lw: 1.8, shadow: false });
@@ -780,7 +780,7 @@ const postArt = (faint) => art(`post|${faint ? 1 : 0}`, () => makeSprite(46, 128
 const bellArt = (hl) => art(`bell|${hl ? 1 : 0}`, () => { const sp = makeSprite(36, 40, 18, 6, paintBell); return hl ? outlined(sp, 3) : sp; });
 const flagArt = (good) => art(`flag|${good ? 1 : 0}`, () => makeSprite(40, 34, 6, 28, (g) => paintFlag(g, good)));
 const headArt = (mood) => art(`head|${mood}`, () => makeSprite(126, 92, 48, 39, (g) => { g.scale(HEAD.s, HEAD.s); paintHead(g, mood); }));
-const speckArt = (C, pose) => art(`speck|${C.skin}${C.hair}${C.top}${C.bald ? 'b' : ''}|${pose}`, () => makeSprite(40, 52, 18, 46, (g) => paintSpeck(g, C, pose)));
+const riderArt = (C, pose) => art(`rider|${C.skin}${C.hair}${C.top}${C.bald ? 'b' : ''}|${pose}`, () => makeSprite(40, 52, 18, 46, (g) => paintRider(g, C, pose)));
 const tumbleArt = (cheer) => art(`tumble|${cheer ? 1 : 0}`, () => makeSprite(46, 70, 23, 44, (g) => paintTumble(g, cheer)));
 const kayveeArt = (pose, step) => art(`kayvee|${pose}|${step}`, () => makeSprite(80, 76, 44, 66, (g) => paintKayvee(g, pose, step)));
 const cartArt = () => art('cart', () => makeSprite(100, 46, 90, 38, paintCart));
@@ -855,7 +855,7 @@ function newFx(S) {
     say: { noodle: null, kayvee: null, tumble: null },
     flash: { gulp: 0, shout: 0, gulpDim: 0, shoutDim: 0 },
     shake: 0, shakeAmp: 0, jaw: 0, hic: 0,
-    mood: null, speck: null, tumbleCheer: 0,
+    mood: null, rider: null, tumbleCheer: 0,
     bellyShown: null, bellyPulse: 0, bells: {}, tauntCd: 0, lastN: 0, clock: 0,
   };
 }
@@ -892,7 +892,7 @@ function react(S, C, e, ctx) { // what the player sees and hears for each race e
       F.flies.push({ tok: e.tok, x0: tileX(S, t.i, T), age: 0 });
       F.swallow.push({ tok: e.tok, age: -0.14 });   // then a bulge slides down his neck into the belly window
       say(F, 'noodle', B.gulp, { life: 0.6, size: 18 });
-      F.speck = { pose: 'point', left: 0.25 };
+      F.rider = { pose: 'point', left: 0.25 };
       break;
     case 'blech':
       sfx('buzz'); setMood(F, 'blech', e.stall); F.swallow.push({ tok: 'mush', age: -0.05 });
@@ -912,7 +912,7 @@ function react(S, C, e, ctx) { // what the player sees and hears for each race e
       say(F, 'noodle', fill(B.right, e.tok), { color: col, size: 24, life: 1 });
       F.bells[t.i] = { ...(F.bells[t.i] || {}), swing: 1.3, flagT: 0 };
       burst(F, tileX(S, t.i, T) + BELL_AT.x, MOUTH.y + BELL_AT.y + 10, 18, { kind: 'confetti', color: [col, '#ffd35a', '#ffffff', PINK], v: 230, g: 420, size: 6, life: 1 });
-      F.speck = { pose: 'cheer', left: 0.6 };
+      F.rider = { pose: 'cheer', left: 0.6 };
       break;
     }
     case 'wrong': {
@@ -923,14 +923,14 @@ function react(S, C, e, ctx) { // what the player sees and hears for each race e
       F.bells[t.i] = { ...(F.bells[t.i] || {}), wob: 0.5, flagT: 0 };
       burst(F, MOUTH.x + 20, MOUTH.y - 40, 8, { color: ['#9a90a6', '#c9c1d2'], v: 90, g: -40, size: 7, life: 0.7 });
       oops(text, { color: isBead ? colorOf(said) : INK, size: 22, big: true, life: 1 });
-      F.speck = { pose: 'sad', left: 0.8 };
+      F.rider = { pose: 'sad', left: 0.8 };
       break;
     }
     case 'missBell':
       sfx('buzz'); setMood(F, 'dizzy', e.stall);
       F.bells[t.i] = { ...(F.bells[t.i] || {}), flagT: 0 };
       oops(B.missedBell, { big: true, size: 22 });
-      F.speck = { pose: 'sad', left: 0.8 };
+      F.rider = { pose: 'sad', left: 0.8 };
       break;
     case 'missBead': sfx('tick'); F.puffs.push({ i: t.i, age: 0 }); break;
     case 'dig': {
@@ -947,11 +947,11 @@ function react(S, C, e, ctx) { // what the player sees and hears for each race e
       break;
     case 'kLead': if (kayveeOnScreen(S, T) && !F.say.kayvee) say(F, 'kayvee', B.kayveeTaunt); break;
     case 'won':
-      setMood(F, 'happy', 99); F.speck = { pose: 'cheer', left: 99 }; F.tumbleCheer = 99;
+      setMood(F, 'happy', 99); F.rider = { pose: 'cheer', left: 99 }; F.tumbleCheer = 99;
       burst(F, MOUTH.x, MOUTH.y - 60, 40, { kind: 'confetti', color: ['#e61f33', '#2659e6', '#1abf59', '#ffd35a', PINK], v: 320, g: 380, size: 7, life: 1.6, a0: -Math.PI, spread: Math.PI });
       break;
     case 'lost':
-      setMood(F, 'sad', 99); F.speck = { pose: 'sad', left: 99 };
+      setMood(F, 'sad', 99); F.rider = { pose: 'sad', left: 99 };
       if (kayveeOnScreen(S, T)) say(F, 'kayvee', B.kayveeTaunt, { life: 2 });
       break;
     default: break;
@@ -973,7 +973,7 @@ function stepFx(S, rdt) { // presentation timers run on real time, so they finis
   F.shake = Math.max(0, F.shake - rdt); F.jaw = Math.max(0, F.jaw - rdt); F.hic = Math.max(0, F.hic - rdt);
   F.bellyPulse = Math.max(0, F.bellyPulse - rdt); F.tumbleCheer = Math.max(0, F.tumbleCheer - rdt); F.tauntCd = Math.max(0, F.tauntCd - rdt);
   if (F.mood) { F.mood.left -= rdt; if (F.mood.left <= 0) F.mood = F.mood.then ? { name: F.mood.then, left: F.mood.thenSec || 0.4 } : null; }
-  if (F.speck) { F.speck.left -= rdt; if (F.speck.left <= 0) F.speck = null; }
+  if (F.rider) { F.rider.left -= rdt; if (F.rider.left <= 0) F.rider = null; }
   for (const b of Object.values(F.bells)) { if (b.swing) b.swing = Math.max(0, b.swing - rdt); if (b.wob) b.wob = Math.max(0, b.wob - rdt); if (b.flagT != null) b.flagT += rdt; }
 }
 
@@ -1205,10 +1205,10 @@ function drawNoodle(g, S, C, F, T) { // Tumble on the tail, the body with its be
   blit(g, headArt(noodleMood(S, F)), hx, hy);
   return { hx, hy, ty };
 }
-function drawSpeck(g, S, F, colors, nd) { // the player rides his head, telling him when
-  const pose = F.speck ? F.speck.pose : 'idle', now = F.clock;
+function drawRider(g, S, F, colors, nd) { // the player rides his head, telling him when
+  const pose = F.rider ? F.rider.pose : 'idle', now = F.clock;
   const sb = pose === 'cheer' ? -Math.abs(Math.sin(now * 14)) * 4 : pose === 'point' ? 1.5 : 0;
-  blit(g, speckArt(colors, pose), nd.hx - 16, nd.hy - 24 + sb);
+  blit(g, riderArt(colors, pose), nd.hx - 16, nd.hy - 24 + sb);
   if (S.stall > 0 && !S.winner) { // a hiccup: stars swirl round his head while the ring at his mouth runs out
     for (let k = 0; k < 3; k++) { const a = now * 5 + (k * TAU) / 3; star(g, nd.hx - 6 + Math.cos(a) * 32, nd.hy - 26 + Math.sin(a) * 7, 5.5); g.fillStyle = '#ffd35a'; g.fill(); g.lineWidth = 1.4; g.strokeStyle = INK; g.stroke(); }
   }
@@ -1295,7 +1295,7 @@ function makeGame(ctx) {
       drawRoadBack(g, S, C, T);
       const nd = drawNoodle(g, S, C, F, T);
       drawBells(g, S, C, T);
-      drawSpeck(g, S, F, ctx.colors, nd);
+      drawRider(g, S, F, ctx.colors, nd);
       drawRoadFront(g, S, C, T);
       drawFlies(g, S, C, F);
       drawPuffs(g, S, T, F);
@@ -1318,7 +1318,7 @@ function makeGame(ctx) {
 export default {
   mount(container, spec = {}, api = {}) {
     const ctx = {
-      colors: speckColors(),
+      colors: riderColors(),
       sfx: (n) => { try { (api.sfx || gameSfx)(n); } catch { /* sound is optional */ } },
       lastDraw: 0,
     };
