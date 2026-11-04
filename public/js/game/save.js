@@ -37,8 +37,12 @@ export function updateSave(mutator) {
 
 export function regionState(id) {
   const s = getSave();
-  if (!s.regions[id]) s.regions[id] = { arrived: false, solved: {}, talked: {}, artefact: false, returned: false };
-  return s.regions[id];
+  // fill in anything missing (older or hand-edited saves)
+  s.regions[id] = { arrived: false, artefact: false, returned: false, ...(s.regions[id] || {}) };
+  const rs = s.regions[id];
+  if (!rs.solved || typeof rs.solved !== 'object') rs.solved = {};
+  if (!rs.talked || typeof rs.talked !== 'object') rs.talked = {};
+  return rs;
 }
 
 export function isLearned(concept) {
