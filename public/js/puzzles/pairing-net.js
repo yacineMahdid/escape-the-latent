@@ -243,7 +243,7 @@ export default {
         c.left.setAttribute('d', ''); c.right.setAttribute('d', ''); c.whole.setAttribute('r', 0);
         if (!rows && !cols) {
           c.whole.setAttribute('r', R * (0.35 + 0.65 * Math.max(0, raw))); c.whole.setAttribute('fill', '#b9b2c6');
-          c.title.textContent = '';
+          c.title.textContent = `cos ${raw.toFixed(2)}`;
         } else if (rows && cols) {
           c.left.setAttribute('d', half(R * (0.35 + 0.65 * rowP[r][j]), 'left')); c.left.setAttribute('fill', colorAt(rowP[r][j], stops));
           c.right.setAttribute('d', half(R * (0.35 + 0.65 * colP[r][j]), 'right')); c.right.setAttribute('fill', colorAt(colP[r][j], stops));
@@ -278,9 +278,11 @@ export default {
       if (busy) return;
       const m = grid[knob];
       const wrong = [];
-      if (sol.captionOrder && order.some((id, j) => id !== sol.captionOrder[j])) wrong.push('lineup');
+      const badOrder = sol.captionOrder && order.some((id, j) => id !== sol.captionOrder[j]);
       const wantFloats = sol.floats || ['rows', 'cols'];
-      if (hung.size !== wantFloats.length || wantFloats.some((f) => !hung.has(f))) wrong.push('floats');
+      const badFloats = hung.size !== wantFloats.length || wantFloats.some((f) => !hung.has(f));
+      if (spec.feedback?.net) { if (badOrder || badFloats) wrong.push('net'); } // one check for the whole net
+      else { if (badOrder) wrong.push('lineup'); if (badFloats) wrong.push('floats'); }
       if (sol.start != null && Math.abs(m - sol.start) > (sol.startTolerance ?? 0.15)) wrong.push('start');
       if (pin == null) wrong.push('pinMissing');
       else if (sol.pin != null && Math.abs(grid[pin] - sol.pin) > (sol.pinTolerance ?? 0)) wrong.push('pinWrong');
@@ -299,7 +301,7 @@ export default {
         // runaway: nothing stops the knob
         const start = m;
         await animate(1200, (u) => { anim = { m: start * (1000 / start) ** u, cos: cosine }; changed(); });
-        board.sfx('stamp');
+        board.sfx('pop');
         await new Promise((r) => setTimeout(r, 600));
         anim = null; changed();
       } else {

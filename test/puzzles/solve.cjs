@@ -75,11 +75,14 @@ const SOLVERS = {
     for (let i = 0; i < Math.abs(to - from); i++) await p.click(`.vj-e button:${to < from ? 'first-child' : 'last-child'}`);
     await submit(p);
   },
-  'name-racks': async (p) => {
-    const plan = { dock: 'machine', lagoon: 'bird', boxer: 'pet', pug: 'pet' };
-    for (const [rack, tag] of Object.entries(plan)) await drag(p, `.nr-tag[data-tag="${tag}"]`, `.nr-slot[data-rack="${rack}"]`);
+  'name-racks': async (p, spec) => {
+    const plan = spec.winningSettings?.[0] || { dock: 'machine', lagoon: 'bird', boxer: 'pet', pug: 'pet' };
+    for (const [rack, tag] of Object.entries(plan)) if (tag) await drag(p, `.nr-tag[data-tag="${tag}"]`, `.nr-slot[data-rack="${rack}"]`);
   },
 };
+
+module.exports = { SOLVERS, drag };
+if (require.main !== module) return;
 
 (async () => {
   const want = process.argv.slice(2);

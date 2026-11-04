@@ -32,7 +32,11 @@ const CSS = `
 .nr-photo.nr-tie { animation: nr-wobble .9s ease-in-out infinite; }
 .nr-mark { position: absolute; right: -8px; top: -8px; font-size: 13px; font-weight: 700; background: #fff; border: 2px solid var(--ink); border-radius: 999px; padding: 0 4px; line-height: 1.3; }
 .nr-mark.bad { color: #fff; background: #e8566a; }
-.nr-tray { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 12px; padding: 8px; border-radius: 12px; background: rgba(43, 34, 51, .08); }
+.nr-tray { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; align-items: center; margin-top: 12px; padding: 8px; border-radius: 12px; background: rgba(43, 34, 51, .08); }
+.nr-dabs { display: flex; gap: 2px; margin-left: 12px; font-size: 22px; padding: 2px 8px; border-radius: 999px; background: rgba(255, 253, 246, .7); border: 2px dashed rgba(43, 34, 51, .4); }
+.nr-dab.used { opacity: .18; filter: grayscale(1); }
+.nr-tell { position: absolute; left: -6px; bottom: -6px; font-size: 12px; background: #fff; border: 2px solid var(--ink); border-radius: 999px; padding: 0 3px; line-height: 1.3; }
+.nr-photos { max-width: 300px; }
 .nr-tag { font-weight: 700; font-size: 14px; padding: 6px 10px; background: #fff3c4; transform: rotate(-1.5deg); }
 @keyframes nr-wobble { 0%, 100% { transform: rotate(-6deg) translateX(-4px); } 50% { transform: rotate(6deg) translateX(4px); } }
 @media (max-width: 760px) { .nr { flex-direction: column; } .nr-lens { flex-direction: row; width: auto; } .nr-racks { grid-template-columns: repeat(2, 1fr); } }
@@ -62,7 +66,13 @@ export default {
     // ---------- racks, signs, photos ----------
     const dnd = createDnd(board.root, {
       sfx: board.sfx,
-      onDrop(tag, target) { if (target.rack && signs[target.rack] !== tag.id) { signs[target.rack] = tag.id; board.sfx('stamp'); changed(); } },
+      onDrop(tag, target) {
+        if (!target.rack || signs[target.rack] === tag.id) return;
+        if (!signs[target.rack] && used() >= paint) { // no paint left for a new sign
+          dabs.classList.remove('pz-shake'); void dabs.offsetWidth; dabs.classList.add('pz-shake'); board.sfx('buzz'); return;
+        }
+        signs[target.rack] = tag.id; board.sfx('stamp'); changed();
+      },
     });
     const rackEls = {};
     const rackGrid = h('div', { class: 'nr-racks' });
@@ -79,10 +89,16 @@ export default {
     const photoEls = {};
     photos.forEach((p) => {
       const mark = h('span', { class: 'nr-mark' });
-      photoEls[p.id] = { el: h('div', { class: 'nr-photo', 'data-photo': p.id }, [p.icon || '🖼️', mark]), mark };
+      const tell = p.tell ? h('span', { class: 'nr-tell', text: p.tell }) : null;
+      photoEls[p.id] = { el: h('div', { class: 'nr-photo', 'data-photo': p.id }, [p.icon || '🖼️', mark, ...(tell ? [tell] : [])]), mark };
     });
-    const tray = h('div', { class: 'nr-tray', title: 'Tags' });
-    tagDefs.forEach((t) => tray.append(dnd.item(h('div', { class: 'pz-card nr-tag', 'data-tag': t.id, text: t.text.replace(/^,\s*/, '') }), { id: t.id })));
+    const tray = h('div', { class: 'nr-tray', title: 'Stamps' });
+    tagDefs.forEach((t) => tray.append(dnd.item(h('div', { class: 'pz-card nr-tag', 'data-tag': t.id, title: t.text.replace(/^,\s*/, ''), text: t.label || t.text.replace(/^,\s*/, '') }), { id: t.id })));
+    const paint = Number.isFinite(spec.paint) ? spec.paint : Infinity;
+    const dabEls = Number.isFinite(paint) ? Array.from({ length: paint }, () => h('span', { class: 'nr-dab', text: '🖌️' })) : [];
+    const dabs = h('div', { class: 'nr-dabs', title: 'paint dabs' }, dabEls);
+    if (dabEls.length) tray.append(dabs);
+    const used = () => racks.filter((r) => signs[r.id]).length;
     const lens = h('div', { class: 'nr-lens' }, [h('div', { class: 'nr-eye', title: 'The Lens' }), h('div', { class: 'pz-label', text: 'the Lens' })]);
     const wrap = h('div', { class: 'nr' }, [lens, rackGrid]);
     board.body.append(wrap, tray);
@@ -115,12 +131,12 @@ export default {
         const t = signs[r.id];
         slot.replaceChildren();
         if (t) {
-          const st = h('span', { class: 'nr-stamped', title: 'Click to clear', text: tagById[t]?.text.replace(/^,\s*/, '') || t });
+          const st = h('span', { class: 'nr-stamped', title: 'Click to wash it off', text: tagById[t]?.text || t });
           st.addEventListener('click', (e) => { e.stopPropagation(); signs[r.id] = null; board.sfx('paper'); changed(); });
           slot.append(st);
         }
-        const lies = t && category[r.id] && t !== category[r.id];
-        flag.textContent = lies ? (spec.feedback?.lie && spec.feedback.lie.length <= 3 ? spec.feedback.lie : '🤨') : '';
+        const lies = t && category[r.id] && t !== category[r.id]; // older specs only
+        flag.textContent = lies ? '🤨' : '';
         flag.title = lies ? PHRASES.lie : '';
       });
       // photos
@@ -132,9 +148,9 @@ export default {
         if (el.parentElement !== home.list) home.list.append(el);
         const tie = top.length > 1;
         el.classList.toggle('nr-tie', tie);
-        el.title = `${p.art || p.id}\n${racks.map((r, i) => `${rackName(r)} ${Number.isFinite(scores[i]) ? scores[i].toFixed(2) : '–'}`).join(' · ')}`;
-        if (tie) { ties++; mark.textContent = '⚖️'; mark.className = 'nr-mark'; mark.style.display = ''; }
-        else if (top[0] !== p.truth) { misfiled++; mark.textContent = '✗'; mark.className = 'nr-mark bad'; mark.style.display = ''; }
+        el.title = `${p.art || p.id}\ncos ${racks.map((r, i) => `${rackName(r)} ${Number.isFinite(scores[i]) ? scores[i].toFixed(2) : '–'}`).join(' · ')}`;
+        if (tie) { ties++; mark.textContent = spec.feedback?.tie || '⚖️'; mark.title = PHRASES.tie; mark.className = 'nr-mark'; mark.style.display = ''; }
+        else if (top[0] !== p.truth) { misfiled++; mark.textContent = spec.feedback?.misfiled || '✗'; mark.title = PHRASES.misfiled; mark.className = 'nr-mark bad'; mark.style.display = ''; }
         else { mark.style.display = 'none'; }
       });
       const lies = racks.filter((r) => signs[r.id] && category[r.id] && signs[r.id] !== category[r.id]).length;
@@ -142,7 +158,9 @@ export default {
       if (ties) parts.push(feedbackText('tie', ties));
       if (misfiled) parts.push(feedbackText('misfiled', misfiled));
       if (lies) parts.push(feedbackText('lie', lies));
-      if (parts.length) board.note(parts.join('   ·   '), 'bad'); else board.note('', 'info');
+      dabEls.forEach((d, i) => d.classList.toggle('used', i < used()));
+      // the marks on the photos are the feedback; the footer only explains them
+      if (parts.length) board.note(parts.join('   ·   '), 'info'); else board.note('', 'info');
       if (!ties && !misfiled && !lies) {
         winTimer = setTimeout(() => { solved = true; wrap.classList.add('nr-win'); board.sfx('ding'); board.solve(); }, 600);
       }
