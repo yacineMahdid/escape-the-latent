@@ -73,7 +73,7 @@ function viewScene(kind, expr) {
   const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 400);
   const m = model(expr);
   if (kind === 'lab') {
-    // the real lab: Grumm-scale desk (top at y = 9.5), the tiny player on it, the lab camera
+    // the real lab: his desk (top at y = 9.5), the tiny player on it, the lab camera
     const S = 2.42;
     m.scale.setScalar(S); m.position.set(0, 0, -10.5); scene.add(m);
     const desk = new THREE.Mesh(new THREE.BoxGeometry(21, 1, 10.6), new THREE.MeshStandardMaterial({ color: 0xc08a52, roughness: 0.8 }));
