@@ -75,6 +75,7 @@ public/
   js/engine/            three.js world builder, biomes, villagers owner: core
   js/engine/humans.js   human player model (+ the old scientist)  owner: creator
   js/engine/scientist.js  Jean-Lafontaine de Becancourt's model  owner: core
+  js/engine/landmarks.js  each world's landmark machine + the artefact relics  owner: core
   js/game/              save, dialogue, scenes (title/lab/map/region/ending) owner: core
   js/ui/modal.js        modal stack (pauses game input)           owner: core
   js/ui/book.js         the Cursed Book: PDF reader, notes, ask   owner: book
@@ -83,6 +84,8 @@ public/
   js/ui/explain.js      explain-it conversation UI                owner: terminal
   js/workers/pyodide-worker.js  runs player code + tests          owner: terminal
   js/puzzles/<name>.js  one module per world puzzle               owner: puzzles
+  js/minigames/<name>.js  Mario Party-style mini-games (kit.js)     owner: puzzles
+  js/envpuzzles/<name>.js environmental puzzles in the 3D world     owner: puzzles
 ```
 
 No build step. Plain ES modules in the browser. `three` comes from the import
@@ -298,12 +301,12 @@ back right that leads "deeper" (the region's exit after completion).
 | `arrival` | far left of the main path (player spawns here) |
 | `lane-left` | main path, left |
 | `lane-mid` | main path, centre-left, near the stairs to the terrace |
-| `bridge` | on the bridge over the stream |
+| `bridge` | on the bridge over the stream, by its back railing (the Speck crosses in front) |
 | `lane-right` | main path, right of the stream |
 | `path-to-gate` | on the winding path toward the back gate |
 | `gate` | in front of the back gate |
 | `terrace-1`, `terrace-2`, `terrace-3` | back terrace, in front of houses 1-3 |
-| `hilltop` | the hilltop, far left back |
+| `hilltop` | the hilltop, in the gap between terrace houses 1 and 2 (the camera sees it from below) |
 | `rightstep` | the lower step, far right |
 | `bank-left`, `bank-right` | the front bank by the river (reached by the pier steps) |
 
@@ -313,7 +316,8 @@ back right that leads "deeper" (the region's exit after completion).
 export default {
   // container: an empty full-screen element inside #ui-root (already in the modal stack)
   // spec: challenge.spec from the region JSON
-  // api: { onSolved(), onClose(), sfx(name) }  call onSolved exactly once on success
+  // api: { onSolved(), onClose(), sfx(name), openBook() }  call onSolved exactly once on success
+  //   (openBook is passed in the game: the kit then shows a Book button; B does the same)
   mount(container, spec, api) { ... return { destroy() {} }; }
 };
 ```
@@ -331,6 +335,8 @@ board.body;                                   // your board content goes here
 board.button('Ring the Bell', check, { primary: true });
 board.fail('peeking', { desk: 3 });           // spec.feedback.peeking with {desk} filled in;
                                               // after spec.hintAfterFailures.after fails, shows its text
+board.clear();                                // empty the feedback line (it also clears by itself when the
+                                              // player touches the board after a wrong attempt)
 board.solve();                                // stamp + spec.successText, then api.onSolved() once
 const dnd = createDnd(board.root, { sfx: board.sfx, onDrop(item, target, itemEl, targetEl) {}, canDrop });
 dnd.item(el, data); dnd.target(el, data);     // drag, or click an item then click where it goes
@@ -406,6 +412,32 @@ a wrong answer plays `wrong` and ends the round.
 artefact then needs those challenges too). Unfinished packs live in
 `content/extra-draft/<regionId>.json`; the game only reads them when
 `localStorage['etl-extra-draft'] === '1'` (tests), and `/dev/minigame.html` with `&draft=1`.
+
+### Landmarks and artefacts (public/js/engine/landmarks.js)
+
+Each world's machine station has its own model, built to the station's `look`: the Listening Bell
+(attention), the Twin Lens (clip) and the Belly Scanner (mamba). Other stations use the generic
+shapes in `js/game/stations.js`.
+
+```js
+buildLandmark(regionId, stationId) -> THREE.Group | null     // null: no bespoke model, use buildStation()
+//   userData.radius             collider radius around the anchor
+//   userData.update(dt, t)      every frame
+//   userData.setAwake(on, now)  region.js: all of the station's own challenges are solved (now = no tween)
+//   userData.celebrate()        region.js: the whole world is solved, just before the resolution lines
+buildRelic(regionId) -> THREE.Group | null   // the artefact (centred, about 1 unit), used by game/artefacts.js
+```
+
+Preview: `/dev/landmarks.html?m=bell|lens|scanner|relic-attention|relic-clip|relic-mamba` (four views;
+`&awake=1`, `&celebrate=1`) or `?view=world&r=<region>&px=..&pz=..` (in the world, from the game camera).
+
+Visible progress in a world: after the first solved challenge, decorations in the world's style go up over
+the main path (attention: flags printed with a wave; clip: postcards, a photo pegged next to its words;
+mamba: bead strings); after the second, lanterns. A challenge's `worldEffect` line is narrated as is, so it
+must only describe what really appears.
+
+Number answers (fundamentals and quizzes) accept `0.96`, `0,96`, `1,000`, `48/50` and `96%` (read as
+0.96 or 96).
 
 ## Shared front-end modules (owner: core)
 
