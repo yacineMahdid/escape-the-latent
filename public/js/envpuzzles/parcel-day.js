@@ -66,10 +66,10 @@ const SPECIES = {
 const POST_DX = 0.3;                     // a post stands at the right end of its parcel's strip: clear of the stage lantern at x -18
 const POST_H = 0.95;
 const CARD = { r: 0.3, y: 1.22 };        // the round portrait card: radius, centre height
-const PLATE = { w: 0.84, h: 0.25, dy: -0.27 }; // the name plate across the card's lower edge (big enough to read in game)
+const PLATE = { w: 1.0, h: 0.3, dy: -0.28 };  // the name plate across the card's lower edge (big enough to read in game)
 const FLAG = { w: 0.48, h: 0.36, pin: 0.5 };   // big enough to read ✓ / ✕ from the camera
 const BUBBLE_GAP = 0.5;                  // speech bubbles start this far above the card
-const PXU = 220;                         // bubble canvas pixels per world unit
+const PXU = 180;                         // bubble canvas pixels per world unit (readable in the road shot)
 const STRIP_PAD = 0.36;                  // a strip reaches this far past its first and last slot
 // Noodle's run (spec.noodle.path): glide to the start, slither right, linger, glide home. About 20 s.
 // A slot is handled when he passes its x - early; he stops for a bell at its x - bell (the slot before a bell is
@@ -82,7 +82,7 @@ const PROP = 1.4;      // beads, ums, the clear marble and the pinch of sand: bi
 const SLOT_SAND = 1.15;
 // The run shot (spec.camera): the whole road for the screen's aspect, a little above it. FOV is the diorama
 // camera's vertical field of view (game/walkscene.js).
-const SHOT = { fov: 32, pitch: 11, lookY: 1.45, lookDz: -0.3, margin: 0.5, fly: 900, back: 900, reveal: 1.6 };
+const SHOT = { fov: 32, pitch: 11, lookY: 1.45, lookDz: -0.3, margin: 0.5, fly: 900, back: 900, reveal: 2.2 };
 const HURRY_KEYS = new Set(['Space', 'KeyE', 'Enter']);
 
 function rr(g, x, y, w, h, r) {
@@ -197,9 +197,9 @@ function paintPortrait(look) { // the round card: a tinted disc, shoulders in th
 function paintPlate(name) {
   return (g, W, H) => {
     g.clearRect(0, 0, W, H);
-    rr(g, 5, 5, W - 10, H - 10, 24); g.fillStyle = CREAM; g.fill(); g.lineWidth = 7; g.strokeStyle = INK; g.stroke();
+    rr(g, 5, 5, W - 10, H - 10, 28); g.fillStyle = CREAM; g.fill(); g.lineWidth = 8; g.strokeStyle = INK; g.stroke();
     g.fillStyle = INK; g.textAlign = 'center'; g.textBaseline = 'middle';
-    fitFont(g, name, W - 46, Math.round(H * 0.64));
+    fitFont(g, name, W - 40, Math.round(H * 0.68));
     g.fillText(name, W / 2, H / 2 + 3);
   };
 }
@@ -454,7 +454,7 @@ export default {
     };
     const posts = new Map(); // owner -> { x, g, bell, flag, flagFace, portrait, bubble }
     for (const p of parcels) {
-      const x = xOf(p.bell) + POST_DX;
+      const x = xOf(p.bell) + (p.postDx ?? POST_DX); // (Tumble's sits a little further right: the lantern at x -18 hid its name)
       const g = group(root, x, 0, row.z);
       mesh(G.foot, wood, 0, 0.025, 0, g);
       mesh(G.post, wood, 0, POST_H / 2, 0, g);
@@ -467,7 +467,7 @@ export default {
       mesh(G.card, inkM, 0, 0, 0, card).rotation.x = Math.PI / 2;
       const portrait = canvasTex(256, 256, paintPortrait(lookOf(p.owner)));
       mesh(G.face, M(0xffffff, { map: portrait.tex, roughness: 0.9 }), 0, 0, 0.019, card);
-      const plate = canvasTex(384, 100, paintPlate(p.name || nameOf(p.owner)));
+      const plate = canvasTex(400, 120, paintPlate(p.name || nameOf(p.owner)));
       mesh(G.plate, M(0xffffff, { map: plate.tex, roughness: 0.9, alphaTest: 0.5 }), 0, PLATE.dy, 0.03, card);
       // the ✓ / ✕ flag on a pin at the card's top right (hidden until the bell is judged)
       const flag = group(card, CARD.r * 0.45, CARD.r * 0.8, 0.0);
@@ -767,12 +767,12 @@ export default {
     }
 
     // ---------- hurrying a run: a fresh press of Space / E / Enter (or the mouse button) during it, held ----------
-    let waiters = [];
+    let waiters = [], hurried = false;
     const letGo = () => { hurry = false; const r = waiters; waiters = []; for (const f of r) { pending.delete(f); f(); } };
     const released = () => (hurry ? new Promise((resolve) => { waiters.push(resolve); pending.add(resolve); }) : Promise.resolve());
-    const onKeyDown = (e) => { if (running && !e.repeat && HURRY_KEYS.has(e.code)) hurry = true; };
+    const onKeyDown = (e) => { if (running && !e.repeat && HURRY_KEYS.has(e.code)) hurry = hurried = true; };
     const onKeyUp = (e) => { if (HURRY_KEYS.has(e.code)) letGo(); };
-    const onPointerDown = (e) => { if (running && e.button === 0 && !e.target?.closest?.('button, .dlg')) hurry = true; };
+    const onPointerDown = (e) => { if (running && e.button === 0 && !e.target?.closest?.('button, .dlg')) hurry = hurried = true; };
     const listen = [['keydown', onKeyDown], ['keyup', onKeyUp], ['pointerdown', onPointerDown], ['pointerup', letGo], ['pointercancel', letGo], ['blur', letGo]];
     for (const [ev, fn] of listen) window.addEventListener(ev, fn, true);
 
@@ -823,7 +823,9 @@ export default {
       if (running || solved || destroyed) return;
       running = true; hurry = false;
       base = runs ? REPLAY : 1; // the first run at speed 1, every later one faster
-      if (runs === 1) w.toast(runCfg.hurryHint || 'Hold Space to hurry Noodle', 3200);
+      // replays: the hurry hint, until it has been used once
+      if (runs && !hurried) w.toast(runCfg.hurryHint || 'Hold Space to hurry Noodle', 3200);
+      api.onProgress?.(spec.goal || 'Parcel Day: each 🔔 hears only its own parcel'); // what to watch for
       const plan = deliveries(spec, placed); // what each bell will hear; the run below shows exactly this
       const verdicts = new Map(plan.map((r) => [r.owner, r]));
       clearMarks();
@@ -833,7 +835,8 @@ export default {
       take(); setBelly(null, true);
       await glide(RUN.start[0], RUN.start[1], RUN.toStart, FACE.left); if (destroyed) return;
       for (const s of slots) {
-        await slitherTo(s.x - (s.tok === 'bell' ? RUN.bell : RUN.early)); if (destroyed) return;
+        // (a parcel's own stop, if any: at Tumble's bell he stops further left, his face clear of the stage lantern)
+        await slitherTo(s.x - (s.tok === 'bell' ? (parcelOf[s.parcel]?.stop ?? RUN.bell) : RUN.early)); if (destroyed) return;
         if (BEADS[s.tok]) {
           const o = slotObj.get(s.i);
           if (o) hop(o.gem, () => { setBelly(s.tok); w.sfx('pop'); }); else setBelly(s.tok);

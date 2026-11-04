@@ -439,7 +439,9 @@
             ],
             "bell": 8,
             "own": null,
-            "note": "empty: his gran forgot the bead"
+            "note": "empty: his gran forgot the bead. His post stands 0.4 right of his bell slot (others 0.3), and Noodle stops 0.8 before his bell (others 0.45): from the road shot the stage lantern at x -18 hid the name and Noodle's face.",
+            "postDx": 0.4,
+            "stop": 0.8
           },
           {
             "owner": "marrow",
@@ -513,9 +515,9 @@
         "props": {
           "wrapping": "Each parcel's slots sit on one flat parcel of kraft wrapping paper (top #b8834a with fibres and two fold lines, sides #7e5228; 0.06 thick, 0.5 deep, reaching 0.36 past its first and last slot) with a white string along its back, tied round both ends. (Was #c9a26b, 0.04 thick: it vanished into the desert path.)",
           "sand": "a small heap: cone r 0.17, h 0.13, #d9b87a, a few darker dots",
-          "bead": "a faceted gem (octahedron r 0.15) on a tiny cream paper stand 0.25 tall, in the c1 colours (ruby #e61f33, lapis #2659e6, emerald #1abf59), each with its own cut as in m1. Collider circle r 0.14.",
+          "bead": "a faceted gem (about 0.3 across, before the 1.4x) on a tiny cream paper stand 0.25 tall, in the c1 colours (ruby #e61f33, lapis #2659e6, emerald #1abf59), each with its own cut as in m1. Collider circle r 0.14.",
           "um": "an upright paper speech bubble (0.36 x 0.26, white, ink outline) on a stick 0.3 tall, 'um' in grey (canvas texture), facing +z. Collider circle r 0.14.",
-          "bell": "a thin wooden post (r 0.04, 0.95 tall, #6a4a2a) standing 0.3 right of its bell slot, at the right end of the parcel (clear of the stage lantern at x -18, which hid Tumble's card), with a small black bell on its parcel side; on top a round paper portrait card (0.6 wide, facing +z) of the owner (species and colours from the region's inhabitants) with a name plate (0.84 × 0.25, ink on cream) across its lower edge. Collider circle r 0.15. (A 0.44 card with 16 px text was unreadable from the game camera: about 30 px on a 1280 × 720 screen.)",
+          "bell": "a thin wooden post (r 0.04, 0.95 tall, #6a4a2a) standing 0.3 right of its bell slot, at the right end of the parcel (clear of the stage lantern at x -18, which hid Tumble's card), with a small black bell on its parcel side; on top a round paper portrait card (0.6 wide, facing +z) of the owner (species and colours from the region's inhabitants) with a name plate (1.0 × 0.3, ink on cream) across its lower edge. Collider circle r 0.15. (A 0.44 card with 16 px text was unreadable from the game camera: about 30 px on a 1280 × 720 screen.)",
           "ribbon": "a red ribbon bow (#e8566a) lying in the gap between two strips, and a faint dashed white circle (r 0.3) on the ground: the spot",
           "marble": "a clear glass sphere on the spot: r 0.16, #e8f6ff, transparent (opacity 0.5), a white glint, and an ink outline ring (a camera-facing sprite): plain clear glass was invisible on the sandy path",
           "sandPinch": "a sand heap on the spot, like the sand slots but a little wider",
@@ -573,7 +575,7 @@
           "mesh": "w.villager('noodle') (it also holds him at his anchor until the puzzle ends). Remember his position; put him back at his anchor after the run and in destroy(). If null, use a green capsule stand-in. w.villager('tumble') holds Tumble too: he would otherwise stroll onto Penny's parcel.",
           "belly": "Add a small sphere (r 0.17) as a child of Noodle's mesh at local (0, 0.62, 0.62), emissive in the belly's colour, hidden while the belly is empty. Remove it in destroy().",
           "path": "Glide from his anchor (w.anchors['lane-left'] = [-21, 0, 1.4]) to [-25.3, 0, 1.45] (0.8 s, small bob), then slither right along z 1.45 at 1.6 units/s to x -7.2, wait 0.6 s, glide back to the anchor (1.8 s). About 20 s in all.",
-          "process": "When the mesh's x passes a slot's x - 0.12, handle that slot once, in order. A bell is handled where he stops for it, at its x - 0.45 (the slot before a bell is always 0.82 earlier, so the order holds): his glowing belly then shows beside the owner's card instead of behind it.",
+          "process": "When the mesh's x passes a slot's x - 0.12, handle that slot once, in order. A bell is handled where he stops for it, at its x - 0.45 (a parcel's stop overrides it; the slot before a bell is always 0.82 earlier and handled at its x - 0.12, so the order holds for stops up to 0.94): his glowing belly then shows beside the owner's card instead of behind it.",
           "steps": [
             "bead: belly = that bead; the gem hops into his mouth (0.25 s arc, then hides), w.sfx('pop'); the belly sphere takes the bead's colour.",
             "ribbon holding a marble: belly = empty; the marble hops in the same way, w.sfx('pop'); the belly sphere fades out.",
@@ -585,7 +587,8 @@
         "bells": {
           "shout": "He faces the camera and stretches up (×1.2, squash and stretch: his face then clears the stage lantern in front of Tumble's bell). A speech-bubble sprite just above his head, beside the bell's card: '{WORD}!' in the bead colour (RUBY!, LAPIS!, EMERALD!), or 'Nothing for you!' in grey when the belly is empty. (A bubble 0.5 above the card would cover his stretched face.)",
           "judge": "Right when the shout matches the parcel's own bead (parcels[].own; null = nothing). w.sfx('ding') if right, w.sfx('buzz') if wrong.",
-          "flag": "A paper flag (0.48 × 0.36) on a pin (0.5) pops up at the top right of the card, green #7bcd5d ✓ or red #e8566a ✕; when he leaves the bell his shout gives way to the owner's reaction bubble above the card (two lines when longer than 15 characters). Both stay until the next run starts. The rightmost post's bubbles open to the left so they stay on screen."
+          "flag": "A paper flag (0.48 × 0.36) on a pin (0.5) pops up at the top right of the card, green #7bcd5d ✓ or red #e8566a ✕; when he leaves the bell his shout gives way to the owner's reaction bubble above the card (two lines when longer than 15 characters). Both stay until the next run starts. The rightmost post's bubbles open to the left so they stay on screen.",
+          "bubbles": "Speech bubbles are sprites at 180 canvas pixels per world unit: in the road shot at 1280 x 720 a shout reads at about 18 px, a reaction at about 14 px."
         },
         "reactions": {
           "kayvee": {
@@ -632,13 +635,13 @@
         "camera": {
           "pitch": 11,
           "fov": 32,
-          "rule": "The run shot frames the whole road, from Noodle's start (x -25.3) to Penny's post with its flag (about x -6.4), plus 0.5 units each side, for the screen's real aspect: w.camera.to(pos, look) with the camera 11 degrees above the look point (x centre, y 1.45, z row.z - 0.3), as far back as that width needs (about 20 units at 16:9, 27 at 4:3). It holds through the run and Penny's verdict, then w.camera.back(). The same shot shows the row popping up when the puzzle starts while the player is far from it (fly 0.9 s, hold 1.6 s, back 0.9 s). destroy() hands the camera back."
+          "rule": "The run shot frames the whole road, from Noodle's start (x -25.3) to Penny's post with its flag (about x -6.4), plus 0.5 units each side, for the screen's real aspect: w.camera.to(pos, look) with the camera 11 degrees above the look point (x centre, y 1.45, z row.z - 0.3), as far back as that width needs (about 20 units at 16:9, 27 at 4:3). It holds through the run and Penny's verdict, then w.camera.back(). The same shot shows the row popping up when the puzzle starts while the player is far from it (fly 0.9 s, hold until the row has popped up, about 2.9 s, back 0.9 s). destroy() hands the camera back."
         },
         "run": {
           "replaySpeed": 2,
           "hurrySpeed": 4,
           "hurryHint": "Hold Space to hurry Noodle",
-          "rule": "The first run plays at speed 1 (about 22 s). Later runs play at replaySpeed. Holding Space, E or Enter (a fresh press during the run, not the one that rang the bell) or the mouse button runs it at hurrySpeed. The hint is a toast at the start of the first replay. If a hurry key is still held when the run ends, Penny waits for its release before her verdict (a held key would skip her lines)."
+          "rule": "The first run plays at speed 1 (about 22 s); the HUD shows the goal while a run plays. Later runs play at replaySpeed. Holding Space, E or Enter (a fresh press during the run, not the one that rang the bell) or the mouse button runs it at hurrySpeed. The hint is a toast at the start of each replay until the player has hurried once. If a hurry key is still held when the run ends, Penny waits for its release before her verdict (a held key would skip her lines)."
         }
       },
       "design": "The finale (after the race and Tumble's questions), on the road in front of Noodle. Penny has packed five parcels end to end (Kayvee, Tumble, Doc Marrow, Umberto, Penny): each a strip of wrapping paper with its grains and its owner's bell at the end, with a ribbon between parcels. Ring the dispatch bell and Noodle slithers the whole row, gulping beads and shouting at each bell whatever is in his belly; the camera frames the whole road. Tumble's and Umberto's parcels hold no bead, so they hear the previous parcel's bead: mix-ups. At each ribbon the player may leave a clear marble (2 in all) or a pinch of sand. Sand changes nothing; a marble is gulped like a bead and leaves his belly empty. With the 2 marbles before the two empty parcels every bell is right. Unlimited runs, faster after the first; the HUD keeps count.",
