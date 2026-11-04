@@ -39,7 +39,7 @@ async function playRegion(browser, regionId) {
   await p.waitForSelector('.title-card .etl-btn', { timeout: 60000 });
   await p.click('.title-card .etl-btn', { force: true });
   if (process.env.DEBUG) console.log('  clicked continue');
-  await p.waitForFunction(() => window.__etl?.ws?.interactables?.length > 0, null, { timeout: 30000 });
+  await p.waitForFunction(() => window.__etl?.ws?.interactables?.length > 0, null, { timeout: 180000 }); // slow machines: software WebGL
   await drain(p);
   if (process.env.DEBUG) console.log('  arrived', regionId);
   const results = [];
