@@ -18,6 +18,34 @@ async function drain(p, ms = 30000) {
   return 'timeout';
 }
 
+// walk up to the artefact from its free side (its giver may stand right beside it), press E until it's taken
+async function pickUpArtefact(p, regionId) {
+  await p.waitForFunction(() => !document.querySelector('.page-wipe') && !window.__etl.ws.busy, null, { timeout: 120000 }).catch(() => {});
+  const spot = await p.evaluate(() => {
+    const ws = window.__etl.ws, at = (it) => (typeof it.pos === 'function' ? it.pos() : it.pos);
+    const art = ws.interactables.find((it) => it.icon === '✦' && it.enabled !== false);
+    if (!art) return null;
+    const a = at(art), others = ws.interactables.filter((it) => it !== art).map(at);
+    let best = null, bestD = -1;
+    for (let i = 0; i < 12; i++) {
+      const ang = (i / 12) * Math.PI * 2, x = a.x + Math.cos(ang) * 0.9, z = a.z + Math.sin(ang) * 0.9;
+      const d = Math.min(99, ...others.map((o) => Math.hypot(o.x - x, o.z - z)));
+      if (d > bestD) { bestD = d; best = [x, a.y ?? 0, z]; }
+    }
+    return best;
+  });
+  if (!spot) return false;
+  await p.evaluate(([x, y, z]) => window.__etl.ws.player.place(x, y, z), spot);
+  await p.waitForTimeout(500);
+  const taken = () => p.evaluate((id) => !!JSON.parse(localStorage.getItem('etl-save-v1')).regions[id].artefact, regionId);
+  for (let i = 0; i < 3 && !(await taken()); i++) {
+    await p.keyboard.press('KeyE');
+    await p.waitForTimeout(700);
+    for (let k = 0; k < 20 && (await p.$('.dlg, .item-get')); k++) { await p.keyboard.press('Space'); await p.waitForTimeout(300); }
+  }
+  return true;
+}
+
 async function playRegion(browser, regionId) {
   const region = await (await fetch(`${BASE}/content/regions/${regionId}.json`)).json();
   // the published extra pack (mini-game, environmental puzzle, quiz) is pre-solved too: see extras-ingame.cjs
@@ -70,16 +98,9 @@ async function playRegion(browser, regionId) {
     results.push(`${solved ? 'PASS' : 'FAIL'} ${regionId}/${c.id} ${c.puzzle} (giver ${label})`);
   }
   // every step is solved now, so the artefact lies in the world: walk over and pick it up
-  const aName = region.artefact?.name || 'artefact';
   // the artefact's prompt has the ✦ icon (a station may share its name)
-  const apos = await p.evaluate((lab) => { const it = window.__etl.ws.interactables.find((x) => x.label === lab && x.icon === '✦'); if (!it) return null; const q = typeof it.pos === 'function' ? it.pos() : it.pos; return [q.x, q.y ?? 0, q.z]; }, aName);
-  if (apos) {
-    await p.evaluate(([x, y, z]) => window.__etl.ws.player.place(x + 0.6, y, z + 0.4), apos);
-    await p.waitForTimeout(500);
-    await p.keyboard.press('KeyE');
-    await p.waitForTimeout(400);
-    await drain(p);
-  }
+  const apos = await pickUpArtefact(p, regionId);
+  await drain(p);
   const st = await p.evaluate((id) => JSON.parse(localStorage.getItem('etl-save-v1')).regions[id], regionId);
   results.push(`${st.artefact ? 'PASS' : 'FAIL'} ${regionId}: artefact ${apos ? 'spawned' : 'never spawned'}, ${st.artefact ? 'picked up' : 'not picked up'}`);
   results.push(`${errors.length ? 'FAIL' : 'PASS'} ${regionId}: page errors ${errors.length ? errors.slice(0, 3).join(' | ') : 'none'}`);

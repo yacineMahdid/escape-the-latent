@@ -58,6 +58,34 @@ async function use(p, target) {
 }
 const solvedIn = (p, regionId, id) => p.evaluate(([r, c]) => !!JSON.parse(localStorage.getItem('etl-save-v1') || '{}').regions?.[r]?.solved?.[c], [regionId, id]);
 
+// walk up to the artefact from its free side (its giver may stand right beside it), press E until it's taken
+async function pickUpArtefact(p, regionId) {
+  await p.waitForFunction(() => !document.querySelector('.page-wipe') && !window.__etl.ws.busy, null, { timeout: 120000 }).catch(() => {});
+  const spot = await p.evaluate(() => {
+    const ws = window.__etl.ws, at = (it) => (typeof it.pos === 'function' ? it.pos() : it.pos);
+    const art = ws.interactables.find((it) => it.icon === '✦' && it.enabled !== false);
+    if (!art) return null;
+    const a = at(art), others = ws.interactables.filter((it) => it !== art).map(at);
+    let best = null, bestD = -1;
+    for (let i = 0; i < 12; i++) {
+      const ang = (i / 12) * Math.PI * 2, x = a.x + Math.cos(ang) * 0.9, z = a.z + Math.sin(ang) * 0.9;
+      const d = Math.min(99, ...others.map((o) => Math.hypot(o.x - x, o.z - z)));
+      if (d > bestD) { bestD = d; best = [x, a.y ?? 0, z]; }
+    }
+    return best;
+  });
+  if (!spot) return false;
+  await p.evaluate(([x, y, z]) => window.__etl.ws.player.place(x, y, z), spot);
+  await p.waitForTimeout(500);
+  const taken = () => p.evaluate((id) => !!JSON.parse(localStorage.getItem('etl-save-v1')).regions[id].artefact, regionId);
+  for (let i = 0; i < 3 && !(await taken()); i++) {
+    await p.keyboard.press('KeyE');
+    await p.waitForTimeout(700);
+    for (let k = 0; k < 20 && (await p.$('.dlg, .item-get')); k++) { await p.keyboard.press('Space'); await p.waitForTimeout(300); }
+  }
+  return true;
+}
+
 async function playWorld(browser, regionId) {
   const base = await (await fetch(`${BASE}/content/regions/${regionId}.json`)).json();
   const pack = await fetch(`${BASE}/content/extra/${regionId}.json`).then((r) => (r.ok ? r.json() : null));
@@ -119,8 +147,8 @@ async function playWorld(browser, regionId) {
   for (const c of extras) if (!done.has(c.id)) results.push(`FAIL ${regionId}/${c.id}: never became ready`);
 
   // everything is solved now: the artefact lies by the player's feet
-  const apos = await posOf(p, (it) => it.icon === '✦');
-  if (apos) { await place(p, apos[0] + 0.5, apos[1], apos[2] + 0.4); await p.keyboard.press('KeyE'); await p.waitForTimeout(400); await drain(p); }
+  const apos = await pickUpArtefact(p, regionId);
+  await drain(p);
   const st = await p.evaluate((id) => JSON.parse(localStorage.getItem('etl-save-v1')).regions[id], regionId);
   results.push(`${st.artefact ? 'PASS' : 'FAIL'} ${regionId}: artefact ${apos ? 'spawned' : 'never spawned'}, ${st.artefact ? 'picked up' : 'not picked up'}`);
   results.push(`${errors.length ? 'FAIL' : 'PASS'} ${regionId}: page errors ${errors.length ? errors.slice(0, 3).join(' | ') : 'none'}`);
