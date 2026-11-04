@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Landmarks preview</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js" } }</script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap">
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#e9dcc0;font-family:Fredoka,sans-serif}
+#err{position:fixed;left:8px;bottom:8px;color:#a01d35;font:13px monospace;background:#fff}
+.lab{position:fixed;font:600 14px sans-serif;color:#2b2233;background:rgba(255,253,246,.85);padding:2px 8px;border-radius:8px}</style>
+</head><body><div id="err"></div>
+<script type="module">
+// Dev-only preview of the bespoke landmarks and artefacts (public/js/engine/landmarks.js).
+//   ?m=bell|lens|scanner|relic-attention|relic-clip|relic-mamba     a sheet of four views
+//     &awake=1 (station solved)  &celebrate=1 (world solved)  &t=seconds (animation time)
+//   ?view=world&r=attention|clip|mamba&px=..&pz=..   the region's landmark in its world, from the game camera
+//     (the player stand-in at px, pz; &artefact=1 also shows the artefact on its pedestal next to the player)
+// window.__ready = true once rendered.
+import * as THREE from 'three';
+import { buildLandmark, buildRelic } from '/js/engine/landmarks.js';
+
+const q = new URLSearchParams(location.search);
+const errEl = document.getElementById('err');
+window.addEventListener('error', (e) => { errEl.textContent += `${e.message}\n`; });
+await document.fonts.ready;
+const W = innerWidth, H = innerHeight;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1); renderer.setSize(W, H); renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+const T = +(q.get('t') || 2);
+const STATION = { attention: 'bell', clip: 'lens', mamba: 'scanner' };
+
+if (q.get('view') === 'world') {
+  const { buildDiorama, ANCHORS } = await import('/js/engine/diorama.js');
+  const { buildArtefact } = await import('/js/game/artefacts.js');
+  const rid = q.get('r') || 'attention';
+  const region = await (await fetch(`/content/regions/${rid}.json`)).json();
+  const world = buildDiorama(region.region.biome, { seed: 7 });
+  const scene = new THREE.Scene(); scene.add(world.root);
+  const B = world.biome; if (B.fog) scene.fog = new THREE.Fog(...B.fog);
+  scene.add(new THREE.HemisphereLight(B.light.sky, B.light.ground, B.light.hi));
+  const sun = new THREE.DirectionalLight(B.light.sun, B.light.si); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0004;
+  Object.assign(sun.shadow.camera, { left: -26, right: 26, top: 20, bottom: -16, near: 1, far: 100 });
+  scene.add(sun, sun.target);
+  const sid = STATION[rid]; const st = region.stations.find((s) => s.id === sid);
+  const a = ANCHORS[st.anchor];
+  const ax = q.has('ax') ? +q.get('ax') : a[0], az = q.has('az') ? +q.get('az') : a[2];
+  const lm = buildLandmark(rid, sid); lm.position.set(ax, a[1], az); lm.rotation.y = 0.1; scene.add(lm);
+  if (q.get('awake')) lm.userData.setAwake(true, true);
+  const px = q.has('px') ? +q.get('px') : ax, pz = q.has('pz') ? +q.get('pz') : az + 1.2;
+  const py = q.has('py') ? +q.get('py') : a[1];
+  const player = new THREE.Mesh(new THREE.CapsuleGeometry(0.35, 1.2, 6, 12), new THREE.MeshStandardMaterial({ color: 0xff7ab8 })); player.castShadow = true;
+  player.position.set(px, py + 0.95, pz); scene.add(player);
+  let art = null; if (q.get('artefact')) { art = buildArtefact(rid); art.position.set(px + 1.6, py, pz); scene.add(art); }
+  const cam = new THREE.PerspectiveCamera(32, W / H, 0.1, 500);
+  const cx = Math.max(-27, Math.min(30, px));
+  cam.position.set(cx, py + 6.6, pz + 19.5); cam.lookAt(cx, py + 1.4, pz - 3);
+  sun.position.set(cx + B.light.dir[0], B.light.dir[1], B.light.dir[2] + pz); sun.target.position.set(cx, 0, pz - 4);
+  for (let i = 0; i < 4; i++) { world.update(0.25, T); lm.userData.update(0.25, T); art?.userData.update?.(0.25); }
+  if (q.get('celebrate')) { lm.userData.celebrate(); lm.userData.update(0.6, T + 0.6); }
+  renderer.render(scene, cam);
+} else {
+  const m = q.get('m') || 'bell';
+  const obj = m.startsWith('relic-') ? buildRelic(m.slice(6)) : buildLandmark(Object.keys(STATION).find((r) => STATION[r] === m), m);
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(0xe9dcc0);
+  scene.add(new THREE.HemisphereLight(0xfff6e8, 0x8a7a66, 1.1));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(4, 9, 6); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -6, right: 6, top: 8, bottom: -2, near: 0.5, far: 30 }); scene.add(sun);
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(8, 48), new THREE.MeshStandardMaterial({ color: 0xcdbb98 })); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true;
+  scene.add(obj);
+  if (q.get('awake')) obj.userData.setAwake?.(true, true);
+  obj.userData.update?.(0.016, T);
+  if (q.get('celebrate')) { obj.userData.celebrate?.(); obj.userData.update?.(0.5, T + 0.5); }
+  const box = new THREE.Box3().setFromObject(obj); const size = box.getSize(new THREE.Vector3()), mid = box.getCenter(new THREE.Vector3());
+  floor.position.y = box.min.y - 0.001; scene.add(floor);
+  const R = Math.max(size.x, size.y, size.z);
+  const views = [['front', 0], ['three-quarter', 0.7], ['side', Math.PI / 2], ['back', Math.PI]];
+  renderer.setScissorTest(true);
+  views.forEach(([name, ang], i) => {
+    const vx = (i % 2) * W / 2, vy = (1 - Math.floor(i / 2)) * H / 2;
+    renderer.setViewport(vx, vy, W / 2, H / 2); renderer.setScissor(vx, vy, W / 2, H / 2);
+    const cam = new THREE.PerspectiveCamera(30, W / H, 0.05, 100);
+    const d = R * 2.2;
+    cam.position.set(mid.x + Math.sin(ang) * d, mid.y + R * 0.35, mid.z + Math.cos(ang) * d); cam.lookAt(mid);
+    renderer.render(scene, cam);
+    const l = document.createElement('div'); l.className = 'lab'; l.textContent = name; l.style.left = `${vx + 8}px`; l.style.top = `${H - vy - H / 2 + 8}px`; document.body.appendChild(l);
+  });
+  window.__info = { size: size.toArray().map((v) => +v.toFixed(2)), meshes: (() => { let n = 0; obj.traverse((o) => { if (o.isMesh) n++; }); return n; })() };
+}
+window.__ready = true;
+</script></body></html>
